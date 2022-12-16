@@ -1,0 +1,17 @@
+node_modules
+
+#Hardhat files
+cache
+artifacts
+
+# dotenv environment variables file
+.env
+.env.test
+
+yarn-error.log
+typechain
+coverage.json
+coverage
+.DS_STORE
+yarn.lock
+package-lock.json
