@@ -6,21 +6,28 @@ import "../interfaces/IOracle.sol";
 import "../curve/ICurveMetaPool.sol";
 
 contract BeanOracle is Ownable, IOracle {
-    uint256 constant ONE = 1e6; // 1 BEAN;
-    int128 constant i = 0; // Bean index on curve metapool;
-    int128 constant j = 1; // 3Crv index on curve metapool;
+    // 1 BEAN amount with decimals
+    uint256 constant ONE = 1e6;
+    // Bean index on curve metapool;
+    int128 constant i = 0;
+    // 3Crv index on curve metapool;
+    int128 constant j = 1;
 
+    // Bean/3Crv curve meta pool
     ICurveMetaPool public immutable beanMetaPool;
 
     constructor(address _beanMetaPool) {
         beanMetaPool = ICurveMetaPool(_beanMetaPool);
     }
 
-    // Assume 3Crv price is 1$. TODO: update it later
-    // Return price with 18 decimals
-    function latestPrice() external view returns (uint256) {
+    /**
+     * @notice Get latest oracle price of BEAN with 18 decimals
+     * @dev Assume 3Crv is 1$. Update it later
+     * @return price latest BEAN price
+     */
+    function latestPrice() external view returns (uint256 price) {
         uint256[2] memory lastPrices = beanMetaPool.get_price_cumulative_last();
 
-        return beanMetaPool.get_dy(i, j, ONE, lastPrices);
+        price = beanMetaPool.get_dy(i, j, ONE, lastPrices);
     }
 }
