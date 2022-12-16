@@ -6,7 +6,7 @@ import "../interfaces/IOracle.sol";
 import "../curve/ICurvePool.sol";
 import "../curve/ICurveMetaPool.sol";
 
-contract BeanOracle is Ownable, IOracle {
+contract Bean3CrvOracle is Ownable, IOracle {
     // 1 BEAN amount with decimals
     uint256 constant ONE = 1e6;
     // Bean index on curve metapool;
@@ -25,9 +25,9 @@ contract BeanOracle is Ownable, IOracle {
     }
 
     /**
-     * @notice Get latest oracle price of BEAN normalized to 1e18
+     * @notice Get latest oracle price of BEAN:3CRV normalized to 1e18
      * @dev Update 3crv price calculation
-     * @return price latest BEAN price
+     * @return price latest BEAN:3CRV price
      */
     function latestPrice() external view returns (uint256 price) {
         uint256[2] memory lastPrices = beanMetaPool.get_price_cumulative_last();

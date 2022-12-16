@@ -11,7 +11,7 @@ contract WaterOracle is Ownable, IOracle {
     uint256 internal waterPrice;
 
     /**
-     * @notice Get latest oracle price of WATER with 18 decimals
+     * @notice Get latest oracle price of WATER normalized to 1e18
      * @return price latest WATER price
      */
     function latestPrice() external view returns (uint256 price) {

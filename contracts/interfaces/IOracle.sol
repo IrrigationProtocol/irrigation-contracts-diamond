@@ -3,7 +3,7 @@ pragma solidity 0.8.17;
 
 interface IOracle {
     /**
-     * @notice Get latest oracle price with 18 decimals
+     * @notice Get latest oracle price normalized to 1e18
      */
     function latestPrice() external view returns (uint256);
 }
