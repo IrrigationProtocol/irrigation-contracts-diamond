@@ -5,6 +5,7 @@ import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "../interfaces/IOracle.sol";
+import "../beanstalk/IBeanstalk.sol";
 
 contract Sprinkler is OwnableUpgradeable {
     using SafeERC20 for IERC20;
@@ -20,13 +21,19 @@ contract Sprinkler is OwnableUpgradeable {
 
     // Water token address
     address public waterToken;
+    // Beanstalk protocol contract
+    IBeanstalk public beanstalk;
     mapping(address => IOracle) public priceOracles;
     mapping(address => uint256) public tokenMultiplier;
 
-    function initialize(address _waterToken) external initializer {
+    function initialize(address _waterToken, address _beanstalk)
+        external
+        initializer
+    {
         __Ownable_init();
 
         waterToken = _waterToken;
+        beanstalk = IBeanstalk(_beanstalk);
     }
 
     /**
@@ -86,15 +93,24 @@ contract Sprinkler is OwnableUpgradeable {
 
     /**
      * @notice Exchange Pods to water
-     * @param _amount pods token amount
      * @return waterAmount received water amount
      */
-    function exchangePodsToWater(uint256 _amount)
-        external
-        returns (uint256 waterAmount)
-    {
+    function exchangePodsToWater(
+        uint256 _plotId,
+        uint256 _plotStart,
+        uint256 _plotEnd
+    ) external returns (uint256 waterAmount) {
         address _waterToken = waterToken;
 
-        require(_amount != 0, "Invalid amount");
+        // plot input will be validated in the transferPlot function.
+        beanstalk.transferPlot(
+            msg.sender,
+            address(this),
+            _plotId,
+            _plotStart,
+            _plotEnd
+        );
+
+        uint256 amount = _plotEnd - _plotStart;
     }
 }
