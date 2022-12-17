@@ -1,12 +1,11 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.17;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
 import "../interfaces/IOracle.sol";
 import "../curve/ICurvePool.sol";
 import "../curve/ICurveMetaPool.sol";
 
-contract BeanOracle is Ownable, IOracle {
+contract BeanOracle is IOracle {
     // 1 BEAN amount with decimals
     uint256 constant ONE = 1e6;
     // Bean index on curve metapool;

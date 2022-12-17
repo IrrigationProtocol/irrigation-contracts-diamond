@@ -13,4 +13,6 @@ interface ICurveMetaPool {
         uint256 dx,
         uint256[2] memory balances
     ) external view returns (uint256);
+
+    function get_virtual_price() external view returns (uint256);
 }
