@@ -1,5 +1,5 @@
 What is Irrigation:
-Irrigation is an optimization protocol built on top of credit martket generating stablecoin issuers.
+Irrigation is an optimization protocol built on top of credit market generating stablecoin issuers.
 Irrigation protocol consists of 6 intertwined sectors that together coalesce into a financial system.
 The smart contracts of these facets can be found in this repository, and the reader will find further technical details in the specific branches.
 
