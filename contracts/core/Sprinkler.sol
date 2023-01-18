@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.17;
 
-import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "../interfaces/IOracle.sol";
 import "../beanstalk/IBeanstalk.sol";
 
-contract Sprinkler is OwnableUpgradeable {
+contract Sprinkler is Ownable {
     using SafeERC20 for IERC20;
 
     event PriceOracleUpdated(address indexed token, address oracle);
@@ -26,12 +26,8 @@ contract Sprinkler is OwnableUpgradeable {
     mapping(address => IOracle) public priceOracles;
     mapping(address => uint256) public tokenMultiplier;
 
-    function initialize(address _waterToken, address _beanstalk)
-        external
-        initializer
+    constructor(address _waterToken, address _beanstalk) Ownable()
     {
-        __Ownable_init();
-
         waterToken = _waterToken;
         beanstalk = IBeanstalk(_beanstalk);
     }
