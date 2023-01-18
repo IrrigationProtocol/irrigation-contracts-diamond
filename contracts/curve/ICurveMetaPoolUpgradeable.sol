@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.17;
 
-interface ICurveMetaPool {
+interface ICurveMetaPoolUpgradeable {
     function get_price_cumulative_last()
         external
         view
