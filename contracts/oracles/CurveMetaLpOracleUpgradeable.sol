@@ -4,9 +4,9 @@ pragma solidity 0.8.17;
 import "../interfaces/IOracleUpgradeable.sol";
 import "../curve/ICurveMetaPoolUpgradeable.sol";
 import { CurveMetaLpOracleStorage } from "./CurveMetaLpOracleStorage.sol";
-import "@gnus.ai/contracts-upgradeable-diamond/contracts/proxy/utils/Initializable.sol";
+import "../utils/EIP2535Initializable.sol";
 
-contract CurveMetaLpOracleUpgradeable is Initializable, IOracleUpgradeable {
+contract CurveMetaLpOracleUpgradeable is EIP2535Initializable, IOracleUpgradeable {
     using CurveMetaLpOracleStorage for CurveMetaLpOracleStorage.Layout;
 
     function __CurveMetaLpOracle_init(address _metaPool) internal onlyInitializing {

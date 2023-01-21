@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.17;
 
 
 import { CurveMetaLpOracleUpgradeable } from "./CurveMetaLpOracleUpgradeable.sol";
@@ -11,9 +11,9 @@ library CurveMetaLpOracleStorage {
   struct Layout {
     // Curve Meta pool
     ICurveMetaPoolUpgradeable metaPool;
-  
+
   }
-  
+
   bytes32 internal constant STORAGE_SLOT = keccak256('openzeppelin.contracts.storage.CurveMetaLpOracle');
 
   function layout() internal pure returns (Layout storage l) {
@@ -23,4 +23,4 @@ library CurveMetaLpOracleStorage {
     }
   }
 }
-    
+

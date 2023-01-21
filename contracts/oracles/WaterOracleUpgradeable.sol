@@ -4,9 +4,9 @@ pragma solidity 0.8.17;
 import "@gnus.ai/contracts-upgradeable-diamond/contracts/access/OwnableUpgradeable.sol";
 import "../interfaces/IOracleUpgradeable.sol";
 import { WaterOracleStorage } from "./WaterOracleStorage.sol";
-import "@gnus.ai/contracts-upgradeable-diamond/contracts/proxy/utils/Initializable.sol";
+import "../utils/EIP2535Initializable.sol";
 
-contract WaterOracleUpgradeable is Initializable, OwnableUpgradeable, IOracleUpgradeable {
+contract WaterOracleUpgradeable is EIP2535Initializable, OwnableUpgradeable, IOracleUpgradeable {
     using WaterOracleStorage for WaterOracleStorage.Layout;
     function __WaterOracle_init() internal onlyInitializing {
         __Ownable_init_unchained();

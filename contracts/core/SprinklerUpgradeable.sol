@@ -7,9 +7,9 @@ import "@gnus.ai/contracts-upgradeable-diamond/contracts/token/ERC20/utils/SafeE
 import "../interfaces/IOracleUpgradeable.sol";
 import "../beanstalk/IBeanstalkUpgradeable.sol";
 import { SprinklerStorage } from "./SprinklerStorage.sol";
-import "@gnus.ai/contracts-upgradeable-diamond/contracts/proxy/utils/Initializable.sol";
+import "../utils/EIP2535Initializable.sol";
 
-contract SprinklerUpgradeable is Initializable, OwnableUpgradeable {
+contract SprinklerUpgradeable is EIP2535Initializable, OwnableUpgradeable {
     using SprinklerStorage for SprinklerStorage.Layout;
     using SafeERC20Upgradeable for IERC20Upgradeable;
 

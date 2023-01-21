@@ -2,9 +2,9 @@
 pragma solidity 0.8.17;
 
 import { ERC1155Upgradeable } from "@gnus.ai/contracts-upgradeable-diamond/contracts/token/ERC1155/ERC1155Upgradeable.sol";
-import "@gnus.ai/contracts-upgradeable-diamond/contracts/proxy/utils/Initializable.sol";
+import "../utils/EIP2535Initializable.sol";
 
-contract Mock1155Upgradeable is Initializable, ERC1155Upgradeable {
+contract Mock1155Upgradeable is EIP2535Initializable, ERC1155Upgradeable {
     function __Mock1155_init() internal onlyInitializing {
         __ERC1155_init_unchained("");
     }

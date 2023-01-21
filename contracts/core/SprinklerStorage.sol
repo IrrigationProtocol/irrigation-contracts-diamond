@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.17;
 
 
 import { SprinklerUpgradeable } from "./SprinklerUpgradeable.sol";
@@ -17,9 +17,9 @@ library SprinklerStorage {
     IBeanstalkUpgradeable beanstalk;
     mapping(address => IOracleUpgradeable) priceOracles;
     mapping(address => uint256) tokenMultiplier;
-  
+
   }
-  
+
   bytes32 internal constant STORAGE_SLOT = keccak256('openzeppelin.contracts.storage.Sprinkler');
 
   function layout() internal pure returns (Layout storage l) {
@@ -29,4 +29,4 @@ library SprinklerStorage {
     }
   }
 }
-    
+

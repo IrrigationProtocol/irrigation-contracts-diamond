@@ -2,9 +2,15 @@
 pragma solidity 0.8.17;
 
 import "@gnus.ai/contracts-upgradeable-diamond/contracts/token/ERC20/ERC20Upgradeable.sol";
-import "@gnus.ai/contracts-upgradeable-diamond/contracts/proxy/utils/Initializable.sol";
+import "../utils/EIP2535Initializable.sol";
+import "../utils/IrrigationAccessControl.sol";
 
-contract WaterUpgradeable is Initializable, ERC20Upgradeable {
+contract WaterUpgradeable is EIP2535Initializable, ERC20Upgradeable, IrrigationAccessControl {
+
+    function Water_initialize() public initializer onlySuperAdminRole {
+        __Water_init();
+    }
+
     /**
      * @notice Mint 100 millions WATER.
      */

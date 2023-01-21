@@ -6,9 +6,9 @@ import "@gnus.ai/contracts-upgradeable-diamond/contracts/token/ERC20/IERC20Upgra
 import "@gnus.ai/contracts-upgradeable-diamond/contracts/token/ERC1155/IERC1155Upgradeable.sol";
 import "@gnus.ai/contracts-upgradeable-diamond/contracts/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import { WaterFaucetStorage } from "./WaterFaucetStorage.sol";
-import "@gnus.ai/contracts-upgradeable-diamond/contracts/proxy/utils/Initializable.sol";
+import "../utils/EIP2535Initializable.sol";
 
-contract WaterFaucetUpgradeable is Initializable, OwnableUpgradeable {
+contract WaterFaucetUpgradeable is EIP2535Initializable, OwnableUpgradeable {
     using WaterFaucetStorage for WaterFaucetStorage.Layout;
     using SafeERC20Upgradeable for IERC20Upgradeable;
 

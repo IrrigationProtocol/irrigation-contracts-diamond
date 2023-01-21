@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.17;
 
 
 import { BeanOracleUpgradeable } from "./BeanOracleUpgradeable.sol";
@@ -15,9 +15,9 @@ library BeanOracleStorage {
     ICurveMetaPoolUpgradeable beanMetaPool;
     // 3Crv pool
     ICurvePoolUpgradeable threeCrvPool;
-  
+
   }
-  
+
   bytes32 internal constant STORAGE_SLOT = keccak256('openzeppelin.contracts.storage.BeanOracle');
 
   function layout() internal pure returns (Layout storage l) {
@@ -27,4 +27,4 @@ library BeanOracleStorage {
     }
   }
 }
-    
+

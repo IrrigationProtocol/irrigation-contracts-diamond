@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.17;
 
-import "@gnus.ai/contracts-upgradeable-diamond/contracts/access/OwnableUpgradeable.sol";
 import "@gnus.ai/contracts-upgradeable-diamond/contracts/token/ERC20/IERC20Upgradeable.sol";
 import "@gnus.ai/contracts-upgradeable-diamond/contracts/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import { WaterTowerStorage } from "./WaterTowerStorage.sol";
-import "@gnus.ai/contracts-upgradeable-diamond/contracts/proxy/utils/Initializable.sol";
+import "../utils/EIP2535Initializable.sol";
+import "../utils/IrrigationAccessControl.sol";
 
-contract WaterTowerUpgradeable is Initializable, OwnableUpgradeable {
+contract WaterTowerUpgradeable is EIP2535Initializable, IrrigationAccessControl {
     using WaterTowerStorage for WaterTowerStorage.Layout;
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
@@ -23,13 +23,11 @@ contract WaterTowerUpgradeable is Initializable, OwnableUpgradeable {
 
     uint256 constant DECIMALS = 1e18;
 
-    function __WaterTower_init(address _waterToken) internal onlyInitializing {
-        __Ownable_init_unchained();
-        __WaterTower_init_unchained(_waterToken);
+    function WaterTower_initialize(address _waterToken) public initializer onlySuperAdminRole {
+        __WaterTower_init(_waterToken);
     }
 
-    function __WaterTower_init_unchained(address _waterToken) internal onlyInitializing {
-
+    function __WaterTower_init(address _waterToken) internal onlyInitializing {
         WaterTowerStorage.layout().waterToken = IERC20Upgradeable(_waterToken);
     }
 

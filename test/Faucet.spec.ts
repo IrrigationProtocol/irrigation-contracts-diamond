@@ -2,17 +2,17 @@ import { expect } from 'chai';
 import { ethers } from 'hardhat';
 import { utils, constants } from 'ethers';
 import type { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
-import { Faucet, MockERC20, Mock1155 } from '../typechain';
+import { WaterFaucetUpgradeable, MockERC20Upgradeable, Mock1155Upgradeable } from '../typechain-types';
 
 describe('Faucet', () => {
   let owner: SignerWithAddress;
   let alice: SignerWithAddress;
   let bob: SignerWithAddress;
-  let waterToken: MockERC20;
-  let stalkToken: MockERC20;
-  let podsToken: MockERC20;
-  let fertToken: Mock1155;
-  let faucet: Faucet;
+  let waterToken: MockERC20Upgradeable;
+  let stalkToken: MockERC20Upgradeable;
+  let podsToken: MockERC20Upgradeable;
+  let fertToken: Mock1155Upgradeable;
+  let faucet: WaterFaucetUpgradeable;
 
   const STALK_MIN_AMOUNT = utils.parseEther('1');
   const PODS_MIN_AMOUNT = utils.parseEther('1');
@@ -21,7 +21,7 @@ describe('Faucet', () => {
     [owner, alice, bob] = await ethers.getSigners();
 
     const MockERC20Factory = await ethers.getContractFactory('MockERC20');
-    waterToken = <MockERC20>(
+    waterToken = <MockERC20Upgradeable>(
       await MockERC20Factory.deploy(
         'Water',
         'Water',
@@ -29,7 +29,7 @@ describe('Faucet', () => {
       )
     );
 
-    stalkToken = <MockERC20>(
+    stalkToken = <MockERC20Upgradeable>(
       await MockERC20Factory.deploy(
         'Stalk',
         'Stalk',
@@ -37,7 +37,7 @@ describe('Faucet', () => {
       )
     );
 
-    podsToken = <MockERC20>(
+    podsToken = <MockERC20Upgradeable>(
       await MockERC20Factory.deploy(
         'Pods',
         'Pods',
@@ -46,10 +46,10 @@ describe('Faucet', () => {
     );
 
     const Mock1155Factory = await ethers.getContractFactory('Mock1155');
-    fertToken = <Mock1155>await Mock1155Factory.deploy();
+    fertToken = <Mock1155Upgradeable>await Mock1155Factory.deploy();
 
     const FaucetFactory = await ethers.getContractFactory('Faucet');
-    faucet = <Faucet>(
+    faucet = <WaterFaucetUpgradeable>(
       await FaucetFactory.deploy(
         waterToken.address,
         stalkToken.address,

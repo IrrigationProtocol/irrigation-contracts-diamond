@@ -5,9 +5,9 @@ import "../interfaces/IOracleUpgradeable.sol";
 import "../curve/ICurvePoolUpgradeable.sol";
 import "../curve/ICurveMetaPoolUpgradeable.sol";
 import { BeanOracleStorage } from "./BeanOracleStorage.sol";
-import "@gnus.ai/contracts-upgradeable-diamond/contracts/proxy/utils/Initializable.sol";
+import "../utils/EIP2535Initializable.sol";
 
-contract BeanOracleUpgradeable is Initializable, IOracleUpgradeable {
+contract BeanOracleUpgradeable is EIP2535Initializable, IOracleUpgradeable {
     using BeanOracleStorage for BeanOracleStorage.Layout;
     // 1 BEAN amount with decimals
     uint256 constant ONE = 1e6;
