@@ -17,7 +17,7 @@ import { debug } from "debug";
 
 // other files suites to execute
 // other files suites to execute
-import * as IrrigationERC20Tests from "../test/IrrigationERC20Tests";
+import * as IrrigationERC20Tests from "./IrrigationERC20Tests";
 
 const debugging = (process.env.JB_IDE_HOST !== undefined);
 
