@@ -11,8 +11,6 @@ library SprinklerStorage {
 
   struct Layout {
 
-    // Water token address
-    address waterToken;
     // Beanstalk protocol contract
     IBeanstalkUpgradeable beanstalk;
     mapping(address => IOracleUpgradeable) priceOracles;

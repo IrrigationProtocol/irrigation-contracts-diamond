@@ -5,8 +5,8 @@ pragma experimental ABIEncoderV2;
 import "../core/SprinklerUpgradeable.sol";
 
 contract SprinklerUpgradeableWithInit is SprinklerUpgradeable {
-    constructor(address _waterToken, address _beanstalk) payable initializer {
-        __Sprinkler_init(_waterToken, _beanstalk);
+    constructor(address _beanstalk) payable initializer {
+        __Sprinkler_init(_beanstalk);
     }
 }
 import "../oracles/WaterOracleUpgradeable.sol";
@@ -19,20 +19,19 @@ contract WaterOracleUpgradeableWithInit is WaterOracleUpgradeable {
 import "../core/WaterTowerUpgradeable.sol";
 
 contract WaterTowerUpgradeableWithInit is WaterTowerUpgradeable {
-    constructor(address _waterToken) payable initializer {
-        __WaterTower_init(_waterToken);
+    constructor() payable initializer {
+        __WaterTower_init();
     }
 }
 import "../core/WaterFaucetUpgradeable.sol";
 
 contract WaterFaucetUpgradeableWithInit is WaterFaucetUpgradeable {
     constructor(
-        address _water,
         address _stalk,
         address _pods,
         address _fert
     ) payable initializer {
-        __WaterFaucet_init(_water, _stalk, _pods, _fert);
+        __WaterFaucet_init(_stalk, _pods, _fert);
     }
 }
 import "@gnus.ai/contracts-upgradeable-diamond/contracts/token/ERC1155/ERC1155Upgradeable.sol";
