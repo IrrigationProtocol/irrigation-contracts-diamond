@@ -10,10 +10,7 @@ library WaterTowerStorage {
 
   struct Layout {
 
-    // Water token address
-    IERC20Upgradeable waterToken;
-
-    mapping(address => WaterTowerUpgradeable.UserInfo) userInfos;
+    mapping(address => WaterTowerUpgradeable.UserInfo) userInfo;
 
     uint256 totalDeposits;
 

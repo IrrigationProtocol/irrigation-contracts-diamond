@@ -23,36 +23,36 @@ contract WaterTowerUpgradeable is EIP2535Initializable, IrrigationAccessControl 
 
     uint256 constant DECIMALS = 1e18;
 
-    function WaterTower_initialize(address _waterToken) public initializer onlySuperAdminRole {
-        __WaterTower_init(_waterToken);
+    function WaterTower_initialize() public EIP2535Initializer onlySuperAdminRole {
+        __WaterTower_init();
     }
 
-    function __WaterTower_init(address _waterToken) internal onlyInitializing {
-        WaterTowerStorage.layout().waterToken = IERC20Upgradeable(_waterToken);
+    function __WaterTower_init() internal onlyInitializing {
+        __IrrigationAccessControl_init_unchained();
     }
 
     function deposit(uint amount) external {
-        WaterTowerStorage.layout().waterToken.safeTransferFrom(msg.sender, address(this), amount);
+        IERC20Upgradeable(address(this)).safeTransferFrom(msg.sender, address(this), amount);
 
         _deposit(msg.sender, amount);
     }
 
     function withdraw(uint amount) external {
-        WaterTowerStorage.layout().waterToken.safeTransfer(msg.sender, amount);
+        IERC20Upgradeable(address(this)).safeTransfer(msg.sender, amount);
 
         _withdraw(msg.sender, amount);
     }
 
     function claim(uint amount) external {
-        UserInfo storage userInfo = WaterTowerStorage.layout().userInfos[msg.sender];
-        userInfo.pending += WaterTowerStorage.layout().sharePerWater * userInfo.amount - userInfo.debt;
+        UserInfo storage curUserInfo = WaterTowerStorage.layout().userInfo[msg.sender];
+        curUserInfo.pending += WaterTowerStorage.layout().sharePerWater * curUserInfo.amount - curUserInfo.debt;
 
-        userInfo.debt = WaterTowerStorage.layout().sharePerWater * userInfo.amount;
+        curUserInfo.debt = WaterTowerStorage.layout().sharePerWater * curUserInfo.amount;
 
         if (amount == type(uint).max) {
-            amount = userInfo.pending / DECIMALS;
+            amount = curUserInfo.pending / DECIMALS;
         }
-        userInfo.pending -= amount * DECIMALS;
+        curUserInfo.pending -= amount * DECIMALS;
 
         (bool success, ) = msg.sender.call{value: amount}("");
         require(success, "Claim failed");
@@ -69,40 +69,36 @@ contract WaterTowerUpgradeable is EIP2535Initializable, IrrigationAccessControl 
     }
 
     function _deposit(address user, uint amount) internal {
-        UserInfo storage userInfo = WaterTowerStorage.layout().userInfos[user];
-        userInfo.pending += WaterTowerStorage.layout().sharePerWater * userInfo.amount - userInfo.debt;
+        UserInfo storage curUserInfo = WaterTowerStorage.layout().userInfo[user];
+        curUserInfo.pending += WaterTowerStorage.layout().sharePerWater * curUserInfo.amount - curUserInfo.debt;
 
-        userInfo.amount += amount;
-        userInfo.debt = WaterTowerStorage.layout().sharePerWater * userInfo.amount;
+        curUserInfo.amount += amount;
+        curUserInfo.debt = WaterTowerStorage.layout().sharePerWater * curUserInfo.amount;
 
         emit Deposited(user, amount);
     }
 
     function _withdraw(address user, uint amount) internal {
-        UserInfo storage userInfo = WaterTowerStorage.layout().userInfos[user];
-        userInfo.pending += WaterTowerStorage.layout().sharePerWater * userInfo.amount - userInfo.debt;
+        UserInfo storage curUserInfo = WaterTowerStorage.layout().userInfo[user];
+        curUserInfo.pending += WaterTowerStorage.layout().sharePerWater * curUserInfo.amount - curUserInfo.debt;
 
-        userInfo.amount -= amount;
-        userInfo.debt = WaterTowerStorage.layout().sharePerWater * userInfo.amount;
+        curUserInfo.amount -= amount;
+        curUserInfo.debt = WaterTowerStorage.layout().sharePerWater * curUserInfo.amount;
 
         emit Withdrawn(user, amount);
     }
-    // generated getter for ${varDecl.name}
-    function waterToken() public view returns(IERC20Upgradeable) {
-        return WaterTowerStorage.layout().waterToken;
+
+    // generated getter for usersInfos
+    function userInfo(address arg0) public view returns(UserInfo memory) {
+        return WaterTowerStorage.layout().userInfo[arg0];
     }
 
-    // generated getter for ${varDecl.name}
-    function userInfos(address arg0) public view returns(UserInfo memory) {
-        return WaterTowerStorage.layout().userInfos[arg0];
-    }
-
-    // generated getter for ${varDecl.name}
+    // generated getter for totalDeposits
     function totalDeposits() public view returns(uint256) {
         return WaterTowerStorage.layout().totalDeposits;
     }
 
-    // generated getter for ${varDecl.name}
+    // generated getter for sharePerWater
     function sharePerWater() public view returns(uint256) {
         return WaterTowerStorage.layout().sharePerWater;
     }

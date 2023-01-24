@@ -11,7 +11,6 @@ library WaterFaucetStorage {
 
   struct Layout {
 
-    IERC20Upgradeable waterToken;
     IERC20Upgradeable stalkToken;
     IERC20Upgradeable podsToken;
     IERC1155Upgradeable fertToken;
