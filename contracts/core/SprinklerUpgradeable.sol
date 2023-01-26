@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.17;
 
+import "./WaterCommonStorage.sol";
 import "@gnus.ai/contracts-upgradeable-diamond/contracts/token/ERC20/IERC20Upgradeable.sol";
 import "@gnus.ai/contracts-upgradeable-diamond/contracts/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "../interfaces/IOracleUpgradeable.sol";
@@ -21,19 +22,6 @@ contract SprinklerUpgradeable is EIP2535Initializable, IrrigationAccessControl {
         uint256 waterAmount,
         bool isTemporarily
     );
-
-    function Sprinkler_initialize(address _beanstalk) public EIP2535Initializer onlySuperAdminRole {
-        __Sprinkler_init(_beanstalk);
-    }
-
-    function __Sprinkler_init(address _beanstalk) internal onlyInitializing {
-        __IrrigationAccessControl_init_unchained();
-        __Sprinkler_init_unchained(_beanstalk);
-    }
-
-    function __Sprinkler_init_unchained(address _beanstalk) internal onlyInitializing {
-        SprinklerStorage.layout().beanstalk = IBeanstalkUpgradeable(_beanstalk);
-    }
 
     /**
      * @notice Set price oracle
@@ -101,7 +89,7 @@ contract SprinklerUpgradeable is EIP2535Initializable, IrrigationAccessControl {
     ) external returns (uint256 waterAmount) {
 
         // plot input will be validated in the transferPlot function.
-        SprinklerStorage.layout().beanstalk.transferPlot(
+        WaterCommonStorage.layout().beanstalk.transferPlot(
             msg.sender,
             address(this),
             _plotId,
@@ -111,11 +99,6 @@ contract SprinklerUpgradeable is EIP2535Initializable, IrrigationAccessControl {
 
         uint256 amount = _plotEnd - _plotStart;
         return amount;
-    }
-
-    // generated getter for beanstalk
-    function beanstalk() public view returns(IBeanstalkUpgradeable) {
-        return SprinklerStorage.layout().beanstalk;
     }
 
     // generated getter for priceOracles

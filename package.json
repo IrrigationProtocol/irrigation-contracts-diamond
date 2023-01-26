@@ -11,6 +11,7 @@
   "author": "",
   "license": "ISC",
   "devDependencies": {
+    "@foundry-rs/hardhat-anvil": "^0.1.7",
     "@gnus.ai/contracts-upgradeable-diamond": "^4.8.1",
     "@nomiclabs/hardhat-ethers": "^2.1.1",
     "@nomiclabs/hardhat-etherscan": "^3.1.0",

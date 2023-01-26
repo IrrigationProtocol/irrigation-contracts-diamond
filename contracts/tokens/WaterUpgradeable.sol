@@ -7,8 +7,9 @@ import "../utils/IrrigationAccessControl.sol";
 
 contract WaterUpgradeable is EIP2535Initializable, ERC20Upgradeable, IrrigationAccessControl {
 
-    function Water_initialize() public initializer onlySuperAdminRole {
+    function Water_Initialize() public initializer onlySuperAdminRole {
         __Water_init();
+        LibDiamond.diamondStorage().supportedInterfaces[type(IERC20Upgradeable).interfaceId] = true;
     }
 
     /**

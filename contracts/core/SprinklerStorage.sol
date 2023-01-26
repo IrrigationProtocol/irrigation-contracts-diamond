@@ -11,14 +11,12 @@ library SprinklerStorage {
 
   struct Layout {
 
-    // Beanstalk protocol contract
-    IBeanstalkUpgradeable beanstalk;
     mapping(address => IOracleUpgradeable) priceOracles;
     mapping(address => uint256) tokenMultiplier;
 
   }
 
-  bytes32 internal constant STORAGE_SLOT = keccak256('openzeppelin.contracts.storage.Sprinkler');
+  bytes32 internal constant STORAGE_SLOT = keccak256('irrigation.contracts.storage.Sprinkler');
 
   function layout() internal pure returns (Layout storage l) {
     bytes32 slot = STORAGE_SLOT;

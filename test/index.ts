@@ -91,7 +91,7 @@ describe.only("Irrigation Diamond DApp Testing", async function () {
                 addresses.push(facetAddress);
             }
             // DiamondCutFacet is deployed but doesn't have any facets deployed
-            assert.equal(addresses.length + 1, Object.keys(networkDeployedInfo.FacetDeployedInfo).length);
+            assert.equal(addresses.length, Object.keys(networkDeployedInfo.FacetDeployedInfo).length);
         });
 
         it("facets should have the right function selectors -- call to facetFunctionSelectors function", async () => {

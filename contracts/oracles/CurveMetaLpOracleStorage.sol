@@ -14,7 +14,7 @@ library CurveMetaLpOracleStorage {
 
   }
 
-  bytes32 internal constant STORAGE_SLOT = keccak256('openzeppelin.contracts.storage.CurveMetaLpOracle');
+  bytes32 internal constant STORAGE_SLOT = keccak256('irrigation.contracts.storage.CurveMetaLpOracle');
 
   function layout() internal pure returns (Layout storage l) {
     bytes32 slot = STORAGE_SLOT;

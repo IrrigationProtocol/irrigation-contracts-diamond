@@ -15,21 +15,7 @@ contract WaterTowerUpgradeable is EIP2535Initializable, IrrigationAccessControl 
     event Withdrawn(address indexed user, uint amount);
     event Claimed(address indexed user, uint amount);
 
-    struct UserInfo {
-        uint256 amount;
-        uint256 debt;
-        uint256 pending;
-    }
-
     uint256 constant DECIMALS = 1e18;
-
-    function WaterTower_initialize() public EIP2535Initializer onlySuperAdminRole {
-        __WaterTower_init();
-    }
-
-    function __WaterTower_init() internal onlyInitializing {
-        __IrrigationAccessControl_init_unchained();
-    }
 
     function deposit(uint amount) external {
         IERC20Upgradeable(address(this)).safeTransferFrom(msg.sender, address(this), amount);
@@ -44,7 +30,7 @@ contract WaterTowerUpgradeable is EIP2535Initializable, IrrigationAccessControl 
     }
 
     function claim(uint amount) external {
-        UserInfo storage curUserInfo = WaterTowerStorage.layout().userInfo[msg.sender];
+        WaterTowerStorage.UserInfo storage curUserInfo = WaterTowerStorage.layout().userInfo[msg.sender];
         curUserInfo.pending += WaterTowerStorage.layout().sharePerWater * curUserInfo.amount - curUserInfo.debt;
 
         curUserInfo.debt = WaterTowerStorage.layout().sharePerWater * curUserInfo.amount;
@@ -69,7 +55,7 @@ contract WaterTowerUpgradeable is EIP2535Initializable, IrrigationAccessControl 
     }
 
     function _deposit(address user, uint amount) internal {
-        UserInfo storage curUserInfo = WaterTowerStorage.layout().userInfo[user];
+        WaterTowerStorage.UserInfo storage curUserInfo = WaterTowerStorage.layout().userInfo[user];
         curUserInfo.pending += WaterTowerStorage.layout().sharePerWater * curUserInfo.amount - curUserInfo.debt;
 
         curUserInfo.amount += amount;
@@ -79,7 +65,7 @@ contract WaterTowerUpgradeable is EIP2535Initializable, IrrigationAccessControl 
     }
 
     function _withdraw(address user, uint amount) internal {
-        UserInfo storage curUserInfo = WaterTowerStorage.layout().userInfo[user];
+        WaterTowerStorage.UserInfo storage curUserInfo = WaterTowerStorage.layout().userInfo[user];
         curUserInfo.pending += WaterTowerStorage.layout().sharePerWater * curUserInfo.amount - curUserInfo.debt;
 
         curUserInfo.amount -= amount;
@@ -89,7 +75,7 @@ contract WaterTowerUpgradeable is EIP2535Initializable, IrrigationAccessControl 
     }
 
     // generated getter for usersInfos
-    function userInfo(address arg0) public view returns(UserInfo memory) {
+    function userInfo(address arg0) public view returns(WaterTowerStorage.UserInfo memory) {
         return WaterTowerStorage.layout().userInfo[arg0];
     }
 

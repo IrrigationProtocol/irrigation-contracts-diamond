@@ -9,6 +9,7 @@ import "@typechain/hardhat";
 import "hardhat-gas-reporter";
 import "solidity-coverage";
 import "@nomiclabs/hardhat-ethers";
+import "@foundry-rs/hardhat-anvil";
 
 dotenv.config();
 

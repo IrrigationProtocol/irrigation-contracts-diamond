@@ -8,9 +8,15 @@ import { IERC20Upgradeable } from "@gnus.ai/contracts-upgradeable-diamond/contra
 
 library WaterTowerStorage {
 
+  struct UserInfo {
+    uint256 amount;
+    uint256 debt;
+    uint256 pending;
+  }
+
   struct Layout {
 
-    mapping(address => WaterTowerUpgradeable.UserInfo) userInfo;
+    mapping(address => UserInfo) userInfo;
 
     uint256 totalDeposits;
 
@@ -18,7 +24,7 @@ library WaterTowerStorage {
 
   }
 
-  bytes32 internal constant STORAGE_SLOT = keccak256('openzeppelin.contracts.storage.WaterTower');
+  bytes32 internal constant STORAGE_SLOT = keccak256('irrigation.contracts.storage.WaterTower');
 
   function layout() internal pure returns (Layout storage l) {
     bytes32 slot = STORAGE_SLOT;

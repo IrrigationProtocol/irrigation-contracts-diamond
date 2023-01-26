@@ -40,7 +40,7 @@ export async function deployIrrigationDiamond (networkDeployInfo: INetworkDeploy
     dc._IrrigationDiamond = irrigationDiamond;
     networkDeployInfo.DiamondAddress = irrigationDiamond.address;
 
-    dc.IrrigationDiamond = (await ethers.getContractFactory("hardhat-diamond-abi/IrrigationDiamond.sol:IrrigationDiamond")).attach(irrigationDiamond.address);
+    dc.IrrigationDiamond = (await ethers.getContractFactory("hardhat-diamond-abi/HardhatDiamondABI.sol:IrrigationDiamond")).attach(irrigationDiamond.address);
 
     // update deployed info for DiamondCutFacet since Diamond contract constructor already adds DiamondCutFacet::diamondCut
     const funcSelectors = getSelectors(diamondCutFacet);
