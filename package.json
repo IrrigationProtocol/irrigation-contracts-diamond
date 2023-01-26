@@ -13,6 +13,7 @@
   "devDependencies": {
     "@foundry-rs/hardhat-anvil": "^0.1.7",
     "@gnus.ai/contracts-upgradeable-diamond": "^4.8.1",
+    "@openzeppelin/contracts": "^4.8.1",
     "@nomiclabs/hardhat-ethers": "^2.1.1",
     "@nomiclabs/hardhat-etherscan": "^3.1.0",
     "@nomiclabs/hardhat-waffle": "^2.0.3",
@@ -35,7 +36,7 @@
     "typescript": "^4.7.4"
   },
   "dependencies": {
-    "@gnus.ai/upgrade-safe-transpiler-diamond": "^0.3.19-a",
+    "@gnus.ai/upgrade-safe-transpiler-diamond": "^0.3.19-a",    
     "@types/chai": "^4.3.4",
     "@types/chai-as-promised": "^7.1.5",
     "chai-as-promised": "^7.1.1",
