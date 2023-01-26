@@ -6,9 +6,10 @@ export const Facets: FacetToDeployInfo = {
   DiamondLoupeFacet: { priority: 20 },
   OwnershipFacet: { priority: 30 },
   SprinklerUpgradeable: { priority: 40  },
-  WaterFaucetUpgradeable: { priority: 50  },
-  WaterTowerUpgradeable: { priority: 60  },
-  WaterUpgradeable: { priority: 70, versions: { 0.0: { init: "Water_Initialize" } } },
+  MockWaterCommonUpgradeable: { priority: 50 }, // use mock until WaterCommonUpgradeable is completed.
+  WaterFaucetUpgradeable: { priority: 60  },
+  WaterTowerUpgradeable: { priority: 70  },
+  WaterUpgradeable: { priority: 80, versions: { 0.0: { init: "Water_Initialize" } } },
 };
 
 export async function LoadFacetDeployments () {

@@ -272,8 +272,7 @@ export async function deployDiamondFacets (networkDeployInfo: INetworkDeployInfo
             };
             log(`${name} deployed: ${facet.address} tx_hash: ${facet.deployTransaction.hash}`);
         }
-    }
-
+    }    
     log("Completed Facet deployments\n");
 }
 

@@ -27,7 +27,7 @@ export function suite () {
 
     it("Testing Irrigation ERC20 transfer", async () => {
       const gnusSupply = await irrigationDiamond["totalSupply()"]();
-      assert(gnusSupply.eq(toWei(100000000)), `Irrigation Supply should be 4000, but is ${ethers.utils.formatEther(gnusSupply)}`);
+      assert(gnusSupply.eq(toWei(100000000)), `Irrigation Supply should be 100000000, but is ${ethers.utils.formatEther(gnusSupply)}`);
 
       const ownerSupply = await irrigationDiamond["balanceOf(address)"](owner);
       assert(ownerSupply.gt(toWei(100)), `Owner balanceOf should be > 100, but is ${ethers.utils.formatEther(ownerSupply)}`);
