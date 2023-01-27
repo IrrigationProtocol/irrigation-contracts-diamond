@@ -8,6 +8,7 @@ import {
   WaterFaucetUpgradeable,
   WaterUpgradeable,
 } from '../../typechain-types';
+import { BEANSTALK } from '../../scripts/shared';
 
 export function suite() {
   describe('Irrigation WaterFaucet Testing', async function () {
@@ -33,12 +34,16 @@ export function suite() {
         'MockWaterCommonUpgradeable',
         irrigationDiamond.address,
       );
-      const beanstalkContract = await ethers.getContractFactory('MockBeanstalk');
-      const beanstalk: MockBeanstalk = await beanstalkContract.deploy();
+      // const beanstalkContract = await ethers.getContractFactory('MockBeanstalk');
+      // const beanstalk: MockBeanstalk = await beanstalkContract.deploy();
+      const beanstalk = await ethers.getContractAt('IBeanstalkUpgradeable', BEANSTALK);
       const fertizerContract = await ethers.getContractFactory('Mock1155Upgradeable');
       const fertilizer = await fertizerContract.deploy();
       await fertilizer.mint(1, 1000);
-      await beanstalk.mockSetStalkBalance(sender.address, toWei(2));
+      await fertilizer
+        .connect(owner)
+        .safeTransferFrom(owner.address, sender.address, 1, 100, '0x');
+      // await beanstalk.mockSetStalkBalance(sender.address, toWei(2));
       await waterCommon.mockSetBeanstalk(beanstalk.address, fertilizer.address);
     });
 
@@ -59,6 +64,7 @@ export function suite() {
     it('Testing WaterFaucet claim', async () => {
       let updatedBalance = await water.balanceOf(sender.address);
       let tx = await waterFaucet.connect(sender).claim(0, 1);
+      // console.log(tx);
       await expect(tx)
         .to.emit(irrigationDiamond, 'EpochClaimed')
         .withArgs(0, sender.address, toWei(2));
