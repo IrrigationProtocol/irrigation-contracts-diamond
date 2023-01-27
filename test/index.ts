@@ -19,6 +19,7 @@ import { debug } from "debug";
 import * as IrrigationERC20Tests from "./IrrigationERC20Tests";
 // suites for facets
 import * as SprinklerTests from "./facets/SprinklerTests";
+import * as WaterFaucetTests from "./facets/WaterFaucetTests";
 
 const debugging = (process.env.JB_IDE_HOST !== undefined);
 
@@ -110,6 +111,7 @@ describe.only("Irrigation Diamond DApp Testing", async function () {
         after(() => {
             IrrigationERC20Tests.suite();
             SprinklerTests.suite();
+            WaterFaucetTests.suite();
         });
 
     });
