@@ -9,7 +9,7 @@ import "@nomiclabs/hardhat-ethers";
 import { getSelectors, Selectors, getInterfaceID, FacetCutAction } from '../scripts/FacetSelectors';
 import { afterDeployCallbacks, deployAndInitDiamondFacets, deployDiamondFacets, deployFuncSelectors, deployIrrigationDiamond } from '../scripts/deploy';
 import { IrrigationDiamond } from '../typechain-types/hardhat-diamond-abi/HardhatDiamondABI.sol';
-import { dc, debuglog, assert, INetworkDeployInfo } from "../scripts/common";
+import { dc, debuglog, assert, INetworkDeployInfo, facetDeployedInfo } from "../scripts/common";
 import { LoadFacetDeployments } from "../scripts/facets";
 import { deployments } from "../scripts/deployments";
 import util from "util";
@@ -20,6 +20,7 @@ import * as IrrigationERC20Tests from "./IrrigationERC20Tests";
 // suites for facets
 import * as SprinklerTests from "./facets/SprinklerTests";
 import * as WaterFaucetTests from "./facets/WaterFaucetTests";
+import * as WaterTowerTests from "./facets/WaterTowerTests";
 
 const debugging = (process.env.JB_IDE_HOST !== undefined);
 
@@ -77,7 +78,7 @@ describe.only("Irrigation Diamond DApp Testing", async function () {
 
         await afterDeployCallbacks(networkDeployedInfo);
         debuglog(`${util.inspect(networkDeployedInfo, { depth: null })}`);
-
+        facetDeployedInfo = networkDeployedInfo.FacetDeployedInfo;
         debuglog('Facets Deployed');
     });
 
@@ -112,6 +113,7 @@ describe.only("Irrigation Diamond DApp Testing", async function () {
             IrrigationERC20Tests.suite();
             SprinklerTests.suite();
             WaterFaucetTests.suite();
+            WaterTowerTests.suite();
         });
 
     });

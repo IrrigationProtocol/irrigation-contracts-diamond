@@ -60,7 +60,7 @@ contract WaterTowerUpgradeable is EIP2535Initializable, IrrigationAccessControl 
 
         curUserInfo.amount += amount;
         curUserInfo.debt = WaterTowerStorage.layout().sharePerWater * curUserInfo.amount;
-
+        WaterTowerStorage.layout().totalDeposits += amount;
         emit Deposited(user, amount);
     }
 
@@ -70,7 +70,7 @@ contract WaterTowerUpgradeable is EIP2535Initializable, IrrigationAccessControl 
 
         curUserInfo.amount -= amount;
         curUserInfo.debt = WaterTowerStorage.layout().sharePerWater * curUserInfo.amount;
-
+        WaterTowerStorage.layout().totalDeposits -= amount;
         emit Withdrawn(user, amount);
     }
 

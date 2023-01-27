@@ -76,6 +76,10 @@ export function toWei(value: number | string): BigNumber {
     return ethers.utils.parseEther(value.toString());
 }
 
+export function fromWei(value: number | string | BigNumber): string {
+    return ethers.utils.formatEther(value);
+}
+
 export function getSighash(funcSig: string) : string {
     return ethers.utils.Interface.getSighash(Fragment.fromString(funcSig));
 }
@@ -88,3 +92,5 @@ export function writeDeployedInfo(deployments: { [key: string]: INetworkDeployIn
 export type DeployedContracts = Record<string, BaseContract >;
 
 export const dc: DeployedContracts = {};
+
+export let facetDeployedInfo: FacetDeployedInfo = undefined;
