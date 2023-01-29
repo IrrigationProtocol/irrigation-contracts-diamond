@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.17;
 
-import { ERC20Upgradeable } from "@gnus.ai/contracts-upgradeable-diamond/contracts/token/ERC20/ERC20Upgradeable.sol";
+import {ERC20Upgradeable} from "@gnus.ai/contracts-upgradeable-diamond/contracts/token/ERC20/ERC20Upgradeable.sol";
 import "../utils/EIP2535Initializable.sol";
 
 contract MockERC20Upgradeable is EIP2535Initializable, ERC20Upgradeable {
@@ -20,5 +20,13 @@ contract MockERC20Upgradeable is EIP2535Initializable, ERC20Upgradeable {
         uint256 supply
     ) internal onlyInitializing {
         _mint(msg.sender, supply);
+    }
+
+    function Token_Initialize(
+        string memory _name,
+        string memory _symbol,
+        uint256 supply
+    ) public initializer {
+        __MockERC20_init(_name, _symbol, supply);
     }
 }
