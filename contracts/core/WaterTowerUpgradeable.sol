@@ -48,11 +48,8 @@ contract WaterTowerUpgradeable is EIP2535Initializable, IrrigationAccessControl 
 
     function compound(uint amount) external {}
 
-    receive() external payable {
-        require(WaterTowerStorage.layout().totalDeposits != 0, "no deposits");
-
-        WaterTowerStorage.layout().sharePerWater += (msg.value * DECIMALS) / WaterTowerStorage.layout().totalDeposits;
-    }
+    // can't call app storage in this function 
+    receive() external payable {}
 
     function _deposit(address user, uint amount) internal {
         WaterTowerStorage.UserInfo storage curUserInfo = WaterTowerStorage.layout().userInfo[user];
