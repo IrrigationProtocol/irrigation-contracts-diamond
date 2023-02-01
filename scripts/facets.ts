@@ -10,6 +10,7 @@ export const Facets: FacetToDeployInfo = {
   WaterFaucetUpgradeable: { priority: 60  },
   WaterTowerUpgradeable: { priority: 70  },
   WaterUpgradeable: { priority: 80, versions: { 0.0: { init: "Water_Initialize" } } },
+  AuctionUpgradeable: { priority: 90  },
 };
 
 export async function LoadFacetDeployments () {

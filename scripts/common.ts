@@ -92,5 +92,3 @@ export function writeDeployedInfo(deployments: { [key: string]: INetworkDeployIn
 export type DeployedContracts = Record<string, BaseContract >;
 
 export const dc: DeployedContracts = {};
-
-export let facetDeployedInfo: FacetDeployedInfo = undefined;
