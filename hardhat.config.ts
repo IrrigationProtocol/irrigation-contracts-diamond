@@ -77,6 +77,16 @@ const config: HardhatUserConfig = {
         : undefined,
       chainId: 1337,
     },
+    anvil: {
+      url: 'http://localhost:8545',
+      forking: process.env.FORK_URL
+        ? {
+            url: process.env.FORK_URL,
+            blockNumber: parseInt(process.env.FORK_BLOCK_NUMBER) || undefined,
+          }
+        : undefined,
+      chainId: 31337
+    },
     ropsten: {
       url: process.env.ROPSTEN_URL || '',
       accounts: process.env.PRIVATE_KEY !== undefined ? [process.env.PRIVATE_KEY] : [],
