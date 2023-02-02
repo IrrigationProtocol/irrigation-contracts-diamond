@@ -14,7 +14,6 @@ export function suite() {
     const irrigationDiamond = dc.IrrigationDiamond as IrrigationDiamond;
     let water: WaterUpgradeable;
     let waterTower: WaterTowerUpgradeable;
-    let waterTowerFacetAddress: string;
     const provider = irrigationDiamond.provider;
 
     before(async () => {
@@ -25,7 +24,6 @@ export function suite() {
       gdAddr1 = await irrigationDiamond.connect(signers[1]);
       water = await ethers.getContractAt('WaterUpgradeable', irrigationDiamond.address);
       waterTower = await ethers.getContractAt('WaterTowerUpgradeable', irrigationDiamond.address);
-      waterTowerFacetAddress = facetDeployedInfo['WaterTowerUpgradeable']?.address;
     });
 
     it('Testing WaterTower deposit', async () => {

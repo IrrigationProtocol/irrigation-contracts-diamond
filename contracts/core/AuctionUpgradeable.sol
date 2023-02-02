@@ -5,28 +5,22 @@ import "./AuctionStorage.sol";
 import "../utils/EIP2535Initializable.sol";
 import "../utils/IrrigationAccessControl.sol";
 import "../libraries/TransferHelper.sol";
-import "../libraries/SafeMathUpgradeable96.sol";
+import "@gnus.ai/contracts-upgradeable-diamond/contracts/interfaces/IERC20MetadataUpgradeable.sol";
 
 contract AuctionUpgradeable is EIP2535Initializable, IrrigationAccessControl {
-    using SafeMathUpgradeable96 for uint96;
     using AuctionStorage for AuctionStorage.Layout;
 
-    event FixedAuctionCreated(
-        address indexed creator,
-        address indexed tokenAddressToSell,
-        uint256 tokenAmountToSell,
-        uint256 auctionDuration,
+    event AuctionCreated(
+        address indexed seller,
+        uint256 startTime,
+        uint256 duration,
+        address sellToken,
+        uint256 sellAmount,
+        uint256 minBidAmount,
         uint256 fixedPrice,
-        uint256 auctionId
-    );
-
-    event TimedAuctionCreated(
-        address indexed creator,
-        address indexed tokenAddressToSell,
-        uint256 tokenAmountToSell,
-        uint256 auctionDuration,
         uint256 priceRangeStart,
         uint256 priceRangeEnd,
+        AuctionType auctionType,
         uint256 auctionId
     );
 
@@ -42,8 +36,8 @@ contract AuctionUpgradeable is EIP2535Initializable, IrrigationAccessControl {
         uint256 amountToBid,
         address indexed purchaseToken,
         uint256 bidPrice,
-        uint256 auctionId
-        // uint256 bidId
+        uint256 auctionId,
+        uint256 bidId
     );
 
     event UpdateAuctionBid(
@@ -51,157 +45,154 @@ contract AuctionUpgradeable is EIP2535Initializable, IrrigationAccessControl {
         address indexed purchaseToken,
         uint256 bidPrice,
         uint256 auctionId,
-        uint256 bidId
+        uint256 bidId,
+        uint256 updatedBidId
     );
 
+    uint256 public constant FEE_DENOMINATOR = 1000;
+
     function createAuction(
-        AuctionType auctionType,
-        address sellToken,
-        uint256 sellAmount,
-        uint256 minBidAmount,
+        uint96 startTime,
         uint96 duration,
-        uint256 fixedPrice,
-        uint256 priceRangeStart,
-        uint256 priceRangeEnd
+        address sellToken,
+        uint128 sellAmount,
+        uint128 minBidAmount,
+        uint128 fixedPrice,
+        uint128 priceRangeStart,
+        uint128 priceRangeEnd,
+        AuctionType auctionType
     ) external returns (uint256) {
-        TransferHelper.safeTransferFrom(sellToken, msg.sender, address(this), sellAmount);
-        AuctionStorage.layout().currentAuctionId++;
-        AuctionStorage.AuctionData memory auction = AuctionStorage.AuctionData(
+        TransferHelper.safeTransferFrom(
+            sellToken,
             msg.sender,
-            auctionType,
+            address(this),
+            (uint256(sellAmount) * (FEE_DENOMINATOR + AuctionStorage.layout().feeNumerator)) /
+                FEE_DENOMINATOR
+        );
+        require(sellAmount > 0, "cannot zero sell amount");
+        require(startTime == 0 || startTime >= block.timestamp, "start time must be in the future");
+        require(minBidAmount > 0 && minBidAmount <= sellAmount, "invalid minBidAmount");
+
+        AuctionStorage.layout().currentAuctionId = AuctionStorage.layout().currentAuctionId + 1;
+        uint96 localStartTime = startTime == 0 ? uint96(block.timestamp) : startTime;
+        AuctionData memory auction = AuctionData(
+            msg.sender,
+            localStartTime,
+            duration,
             sellToken,
             sellAmount,
             minBidAmount,
-            duration,
             fixedPrice,
             priceRangeStart,
             priceRangeEnd,
             sellAmount,
             0,
-            address(0),
-            AuctionStatus.Open
+            AuctionStatus.Open,
+            auctionType
         );
         AuctionStorage.layout().auctions[AuctionStorage.layout().currentAuctionId] = auction;
-        if (auctionType == AuctionType.FixedPrice || auctionType == AuctionType.TimedAndFixed)
-            emit FixedAuctionCreated(
-                msg.sender,
-                sellToken,
-                sellAmount,
-                duration,
-                fixedPrice,
-                AuctionStorage.layout().currentAuctionId
-            );
-        if (auctionType == AuctionType.TimedAuction || auctionType == AuctionType.TimedAndFixed)
-            emit TimedAuctionCreated(
-                msg.sender,
-                sellToken,
-                sellAmount,
-                duration,
-                priceRangeStart,
-                priceRangeEnd,
-                AuctionStorage.layout().currentAuctionId
-            );
+        emit AuctionCreated(
+            msg.sender,
+            localStartTime,
+            duration,
+            sellToken,
+            sellAmount,
+            minBidAmount,
+            fixedPrice,
+            priceRangeStart,
+            priceRangeEnd,
+            auctionType,
+            AuctionStorage.layout().currentAuctionId
+        );
         return AuctionStorage.layout().currentAuctionId;
     }
 
-    function buyNow(uint256 auctionId, uint256 purchaseAmount, address purchaseToken) external {
+    function buyNow(
+        uint256 auctionId,
+        uint128 purchaseAmount,
+        address purchaseToken
+    ) external supportedPurchase(purchaseToken) {
+        AuctionData memory auction = AuctionStorage.layout().auctions[auctionId];
         require(
-            AuctionStorage.layout().supportedPurchaseTokens[purchaseToken] == true,
-            "invalid token"
+            auction.auctionType != AuctionType.TimedAuction && auction.seller != address(0),
+            "invalid auction for buyNow"
         );
-        AuctionStorage.AuctionData memory auction = AuctionStorage.layout().auctions[auctionId];
-        require(auction.seller != address(0), "invalid auction");
         require(purchaseAmount <= auction.reserve, "big amount");
-        require(auction.auctionType != AuctionType.TimedAuction, "big amount");
 
         // need auction conditions
         // consider decimals of purchase token and sell token
-        TransferHelper.safeTransferFrom(
+        uint256 payAmount = getPayAmount(
             purchaseToken,
-            msg.sender,
-            auction.seller,
-            (purchaseAmount * auction.fixedPrice) / 1e18
+            purchaseAmount,
+            auction.fixedPrice,
+            auction.sellToken
         );
+        TransferHelper.safeTransferFrom(purchaseToken, msg.sender, auction.seller, payAmount);
         TransferHelper.safeTransfer(auction.sellToken, msg.sender, purchaseAmount);
-        auction.reserve -= purchaseAmount;
+        AuctionStorage.layout().auctions[auctionId].reserve = auction.reserve - purchaseAmount;
         emit AuctionBuy(msg.sender, purchaseAmount, purchaseToken, auctionId);
     }
 
     function placeBid(
         uint256 auctionId,
-        uint256 amountToBid,
+        uint128 bidAmount,
         address purchaseToken,
-        uint256 bidPrice
-    ) external {
-        AuctionStorage.AuctionData memory auction = AuctionStorage.layout().auctions[auctionId];
+        uint128 bidPrice
+    ) external supportedPurchase(purchaseToken) returns (uint256) {
+        AuctionData memory auction = AuctionStorage.layout().auctions[auctionId];
         require(
             auction.seller != address(0) && auction.auctionType != AuctionType.FixedPrice,
             "invalid auction"
         );
-        require(auction.minBidAmount <= amountToBid, "too small amount");
+        require(auction.minBidAmount <= bidAmount, "too small bid amount");
         // should add condition for timed
-        uint96 currentTime = uint96(block.timestamp);
-        if (auction.lastBidder == address(0)) {
-            // no bid
-            uint96 endTime = currentTime.add(auction.duration);
-            AuctionStorage.layout().auctions[auctionId].endTime = endTime;
-            require(bidPrice < auction.priceRangeStart, "low Bid");
+        // no bid
+        if (auction.curBidId == 0) {
+            require(bidPrice >= auction.priceRangeStart, "low Bid");
         } else {
-            require(msg.sender != auction.lastBidder, "already win bidder");
-            AuctionStorage.Bid memory lastBid = AuctionStorage.layout().bids[auctionId][
-                auction.lastBidder
-            ];
-            require(bidPrice <= lastBid.bidPrice, "low Bid");
-            // cancel last hight bid
-            TransferHelper.safeTransfer(
-                purchaseToken,
-                auction.lastBidder,
-                (lastBid.amount * lastBid.bidPrice) / 1e18
-            );
+            Bid memory lastBid = AuctionStorage.layout().bids[auctionId][auction.curBidId];
+            require(bidPrice >= lastBid.bidPrice, "low Bid");
         }
-        uint256 purchaseTokenAmount = (amountToBid * bidPrice) / 1e18;
-        TransferHelper.safeTransferFrom(
-            purchaseToken,
-            msg.sender,
-            address(this),
-            purchaseTokenAmount
-        );
-        AuctionStorage.Bid memory bid = AuctionStorage.Bid(
-            amountToBid,
-            // msg.sender,
-            bidPrice,
-            purchaseToken
-        );
-        AuctionStorage.layout().auctions[auctionId].lastBidder = msg.sender;
-        AuctionStorage.layout().bids[auctionId][msg.sender] = bid;
-        emit AuctionBid(msg.sender, amountToBid, purchaseToken, bidPrice, auctionId);
+        uint256 payAmount = getPayAmount(purchaseToken, bidAmount, bidPrice, auction.sellToken);
+
+        TransferHelper.safeTransferFrom(purchaseToken, msg.sender, address(this), payAmount);
+        Bid memory bid = Bid({
+            bidder: msg.sender,
+            bidAmount: bidAmount,
+            bidPrice: bidPrice,
+            purchaseToken: purchaseToken,
+            bCleared: false
+        });
+        uint256 currentBidId = auction.curBidId + 1;
+        AuctionStorage.layout().auctions[auctionId].curBidId = currentBidId;
+        AuctionStorage.layout().bids[auctionId][auction.curBidId] = bid;
+        emit AuctionBid(msg.sender, bidAmount, purchaseToken, bidPrice, auctionId, currentBidId);
+        return currentBidId;
     }
 
     function closeAuction(uint256 auctionId) external {
-        AuctionStorage.AuctionData memory auction = AuctionStorage.layout().auctions[auctionId];
+        AuctionData memory auction = AuctionStorage.layout().auctions[auctionId];
         uint96 currentTime = uint96(block.timestamp);
         require(
             auction.seller != address(0) &&
-                currentTime >= auction.endTime &&
+                currentTime >= auction.startTime + auction.duration &&
                 auction.status != AuctionStatus.Closed,
-            "invalid auction"
+            "auction can't be closed"
         );
         _sattleAuction(auctionId);
     }
 
     function _sattleAuction(uint256 auctionId) internal {
-        AuctionStorage.AuctionData memory auction = AuctionStorage.layout().auctions[auctionId];
-        AuctionStorage.Bid memory lastBid = AuctionStorage.layout().bids[auctionId][
-            auction.lastBidder
-        ];
-        require(lastBid.amount <= auction.reserve, "insufficient ");
+        AuctionData memory auction = AuctionStorage.layout().auctions[auctionId];
+        Bid memory lastBid = AuctionStorage.layout().bids[auctionId][auction.curBidId];
+        require(lastBid.bidAmount <= auction.reserve, "insufficient ");
         TransferHelper.safeTransferFrom(
             auction.sellToken,
             address(this),
-            auction.lastBidder,
-            lastBid.amount
+            lastBid.bidder,
+            lastBid.bidAmount
         );
-        AuctionStorage.layout().auctions[auctionId].reserve -= lastBid.amount;
+        AuctionStorage.layout().auctions[auctionId].reserve -= lastBid.bidAmount;
         AuctionStorage.layout().auctions[auctionId].status = AuctionStatus.Closed;
     }
 
@@ -214,10 +205,32 @@ contract AuctionUpgradeable is EIP2535Initializable, IrrigationAccessControl {
         AuctionStorage.layout().supportedSellTokens[_token] = _bEnable;
     }
 
+    function setAuctionFee(
+        uint256 _newFeeNumerator,
+        address _newfeeReceiver
+    ) external onlySuperAdminRole {
+        require(_newFeeNumerator <= 25, "Fee higher than 2.5%");
+        // caution: for currently running auctions, the feeReceiver is changing as well.
+        AuctionStorage.layout().feeReceiver = _newfeeReceiver;
+        AuctionStorage.layout().feeNumerator = _newFeeNumerator;
+    }
+
     // getters
-    function getAuction(
-        uint256 _auctionId
-    ) public view returns (AuctionStorage.AuctionData memory) {
+    function getPayAmount(
+        address purchaseToken,
+        uint128 purchaseAmount,
+        uint128 price,
+        address sellToken
+    ) public view returns (uint256) {
+        uint256 payAmount = (uint256(purchaseAmount) * uint256(price)) /
+            (10 **
+                (18 -
+                    IERC20MetadataUpgradeable(sellToken).decimals() +
+                    IERC20MetadataUpgradeable(purchaseToken).decimals()));
+        return payAmount;
+    }
+
+    function getAuction(uint256 _auctionId) public view returns (AuctionData memory) {
         return AuctionStorage.layout().auctions[_auctionId];
     }
 
@@ -226,6 +239,14 @@ contract AuctionUpgradeable is EIP2535Initializable, IrrigationAccessControl {
     }
 
     // modifiers
+    modifier supportedPurchase(address tokenAddress) {
+        require(
+            AuctionStorage.layout().supportedPurchaseTokens[tokenAddress],
+            "no supported purchase"
+        );
+        _;
+    }
+
     /// @dev returns true if auction in progress, false otherwise
     function checkAuctionInProgress(address seller, uint endTime, uint startTime) internal view {
         require(
