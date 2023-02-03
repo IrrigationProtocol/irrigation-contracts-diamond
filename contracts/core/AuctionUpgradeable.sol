@@ -5,6 +5,7 @@ import "./AuctionStorage.sol";
 import "../utils/EIP2535Initializable.sol";
 import "../utils/IrrigationAccessControl.sol";
 import "../libraries/TransferHelper.sol";
+import "../libraries/FullMath.sol";
 import "@gnus.ai/contracts-upgradeable-diamond/contracts/interfaces/IERC20MetadataUpgradeable.sol";
 
 contract AuctionUpgradeable is EIP2535Initializable, IrrigationAccessControl {
@@ -145,13 +146,14 @@ contract AuctionUpgradeable is EIP2535Initializable, IrrigationAccessControl {
             "invalid auction"
         );
         require(auction.minBidAmount <= bidAmount, "too small bid amount");
+        require(bidAmount <= auction.reserve, "too big amount than reverse");
         // should add condition for timed
         // no bid
         if (auction.curBidId == 0) {
             require(bidPrice >= auction.priceRangeStart, "low Bid");
         } else {
             Bid memory lastBid = AuctionStorage.layout().bids[auctionId][auction.curBidId];
-            require(bidPrice >= lastBid.bidPrice, "low Bid");
+            require(bidPrice > lastBid.bidPrice, "low Bid");
         }
         uint256 payAmount = getPayAmount(purchaseToken, bidAmount, bidPrice, auction.sellToken);
 
@@ -165,7 +167,7 @@ contract AuctionUpgradeable is EIP2535Initializable, IrrigationAccessControl {
         });
         uint256 currentBidId = auction.curBidId + 1;
         AuctionStorage.layout().auctions[auctionId].curBidId = currentBidId;
-        AuctionStorage.layout().bids[auctionId][auction.curBidId] = bid;
+        AuctionStorage.layout().bids[auctionId][currentBidId] = bid;
         emit AuctionBid(msg.sender, bidAmount, purchaseToken, bidPrice, auctionId, currentBidId);
         return currentBidId;
     }
@@ -222,20 +224,32 @@ contract AuctionUpgradeable is EIP2535Initializable, IrrigationAccessControl {
         uint128 price,
         address sellToken
     ) public view returns (uint256) {
-        uint256 payAmount = (uint256(purchaseAmount) * uint256(price)) /
-            (10 **
-                (18 -
-                    IERC20MetadataUpgradeable(sellToken).decimals() +
-                    IERC20MetadataUpgradeable(purchaseToken).decimals()));
-        return payAmount;
+        // uint256 payAmount =  (uint256(purchaseAmount) * uint256(price)) /
+        //     (10 **
+        //         (18 -
+        //             IERC20MetadataUpgradeable(purchaseToken).decimals() +
+        //             IERC20MetadataUpgradeable(sellToken).decimals()));
+        uint256 denominator = (10 **
+            (18 -
+                IERC20MetadataUpgradeable(purchaseToken).decimals() +
+                IERC20MetadataUpgradeable(sellToken).decimals()));
+        return FullMath.mulDivRoundingUp(purchaseAmount, price, denominator);
     }
 
-    function getAuction(uint256 _auctionId) public view returns (AuctionData memory) {
-        return AuctionStorage.layout().auctions[_auctionId];
+    function getAuction(uint256 auctionId) public view returns (AuctionData memory) {
+        return AuctionStorage.layout().auctions[auctionId];
+    }
+
+    function getBid(uint256 auctionId, uint256 bidId) public view returns (Bid memory) {
+        return AuctionStorage.layout().bids[auctionId][bidId];
     }
 
     function getAuctionsCount() public view returns (uint256 totalAuctionsCount) {
         return AuctionStorage.layout().currentAuctionId;
+    }
+
+    function isSupportedPurchaseToken(address tokenAddress) external view returns (bool) {
+        return AuctionStorage.layout().supportedPurchaseTokens[tokenAddress];
     }
 
     // modifiers
