@@ -1,4 +1,7 @@
 import { ethers } from 'hardhat';
+import * as networkHelpers from '@nomicfoundation/hardhat-network-helpers';
+import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
+
 import {
   dc,
   assert,
@@ -9,7 +12,6 @@ import {
   toBN,
   mulDivRoundingUp,
 } from '../../scripts/common';
-import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { IrrigationDiamond } from '../../typechain-types/hardhat-diamond-abi/HardhatDiamondABI.sol';
 import { AuctionUpgradeable, MockERC20Upgradeable } from '../../typechain-types';
 import { AuctionType } from '../types';
@@ -138,7 +140,7 @@ export function suite() {
 
       await dai.connect(owner).transfer(secondBidder.address, toWei(100));
       await dai.connect(secondBidder).approve(auctionContract.address, toWei(100));
-      await auctionContract.connect(secondBidder).placeBid(1, toWei(30), dai.address, toWei(0.21));   
+      await auctionContract.connect(secondBidder).placeBid(1, toWei(30), dai.address, toWei(0.21));
       expectedDAIBalance = expectedDAIBalance.sub(toWei(30).mul(toWei(0.2)).div(toWei(1)));
       expect((await dai.balanceOf(sender.address)).toString()).to.be.equal(
         expectedDAIBalance.toString(),
@@ -150,10 +152,49 @@ export function suite() {
       expect((await token1.balanceOf(auctionContract.address)).toString()).to.be.equal(
         toWei(100 - 40 - 8.155 - 8.151).toString(),
       );
-      
-      await expect(auctionContract.connect(secondBidder).placeBid(1, toWei(30), dai.address, toWei(0.21))).to.be.revertedWith('low Bid');
-      await expect(auctionContract.connect(secondBidder).placeBid(1, toWei(50), dai.address, toWei(0.21523))).to.be.revertedWith('too big amount than reverse');
-      await expect(auctionContract.connect(secondBidder).placeBid(1, toWei(19), dai.address, toWei(0.21523))).to.be.revertedWith('too small bid amount');
+
+      // failed bidding
+      await expect(
+        auctionContract.connect(secondBidder).placeBid(1, toWei(30), dai.address, toWei(0.21)),
+      ).to.be.revertedWith('low Bid');
+      await expect(
+        auctionContract.connect(secondBidder).placeBid(1, toWei(50), dai.address, toWei(0.21523)),
+      ).to.be.revertedWith('too big amount than reverse');
+      await expect(
+        auctionContract.connect(secondBidder).placeBid(1, toWei(19), dai.address, toWei(0.21523)),
+      ).to.be.revertedWith('too small bid amount');
+      // set the timestamp of the next block but don't mine a new block
+      await networkHelpers.time.setNextBlockTimestamp(Math.floor(Date.now() / 1000) + 86400 * 2);
+      await expect(
+        auctionContract.connect(secondBidder).placeBid(1, toWei(20), dai.address, toWei(0.21523)),
+      ).to.be.revertedWith('auction is inactive');
+    });
+
+    it('Test Auction close', async () => {
+      await auctionContract.connect(sender).closeAuction(1);
+      await expect(auctionContract.connect(sender).closeAuction(1)).to.be.rejectedWith(
+        "auction can't be closed",
+      );
+    });
+
+    it('Test Auction claim canceled bid', async () => {
+      const bid = await auctionContract.getBid(1, 1);
+      const payAmount = await auctionContract.getPayAmount(
+        dai.address,
+        bid.bidAmount,
+        bid.bidPrice,
+        token1.address,
+      );
+      // bid with dai is only one 
+      expect(await dai.balanceOf(auctionContract.address)).to.be.equal(payAmount);
+      await auctionContract.connect(sender).claimForCanceledBid(1, 1);
+      expect(await dai.balanceOf(auctionContract.address)).to.be.equal(0);
+      await expect(auctionContract.connect(sender).claimForCanceledBid(1, 1)).to.be.rejectedWith(
+        'already sattled bid',
+      );
+      await expect(auctionContract.connect(sender).claimForCanceledBid(1, 2)).to.be.rejectedWith(
+        'bidder only can claim',
+      );
     });
   });
 }

@@ -51,6 +51,8 @@ contract AuctionUpgradeable is EIP2535Initializable, IrrigationAccessControl {
     );
 
     uint256 public constant FEE_DENOMINATOR = 1000;
+    // when auction is closed, max 200 bids can be sattled
+    uint256 public constant MAX_CHECK_BID_COUNT = 200;
 
     function createAuction(
         uint96 startTime,
@@ -145,6 +147,10 @@ contract AuctionUpgradeable is EIP2535Initializable, IrrigationAccessControl {
             auction.seller != address(0) && auction.auctionType != AuctionType.FixedPrice,
             "invalid auction"
         );
+        checkAuctionInProgress(
+            uint256(auction.startTime + auction.duration),
+            uint256(auction.startTime)
+        );
         require(auction.minBidAmount <= bidAmount, "too small bid amount");
         require(bidAmount <= auction.reserve, "too big amount than reverse");
         // should add condition for timed
@@ -184,18 +190,52 @@ contract AuctionUpgradeable is EIP2535Initializable, IrrigationAccessControl {
         _sattleAuction(auctionId);
     }
 
+    function claimForCanceledBid(uint256 auctionId, uint256 bidId) external {
+        AuctionData memory auction = AuctionStorage.layout().auctions[auctionId];
+        Bid memory bid = AuctionStorage.layout().bids[auctionId][bidId];
+        require(auction.status == AuctionStatus.Closed, "no closed auction");
+        require(bid.bidder == msg.sender, "bidder only can claim");
+        require(!bid.bCleared, "already sattled bid");        
+        TransferHelper.safeTransfer(
+            bid.purchaseToken,
+            bid.bidder,
+            getPayAmount(bid.purchaseToken, bid.bidAmount, bid.bidPrice, auction.sellToken)
+        );
+        AuctionStorage.layout().bids[auctionId][bidId].bCleared = true;
+    }
+
     function _sattleAuction(uint256 auctionId) internal {
         AuctionData memory auction = AuctionStorage.layout().auctions[auctionId];
-        Bid memory lastBid = AuctionStorage.layout().bids[auctionId][auction.curBidId];
-        require(lastBid.bidAmount <= auction.reserve, "insufficient ");
-        TransferHelper.safeTransferFrom(
-            auction.sellToken,
-            address(this),
-            lastBid.bidder,
-            lastBid.bidAmount
-        );
-        AuctionStorage.layout().auctions[auctionId].reserve -= lastBid.bidAmount;
+        // no bid
+        if (auction.curBidId == 0) {
+            TransferHelper.safeTransfer(auction.sellToken, auction.seller, auction.reserve);
+            AuctionStorage.layout().auctions[auctionId].status = AuctionStatus.Closed;
+            return;
+        }
+        for (
+            uint256 bidId = auction.curBidId;
+            bidId >
+            (auction.curBidId < MAX_CHECK_BID_COUNT ? 0 : auction.curBidId - MAX_CHECK_BID_COUNT);
+            --bidId
+        ) {
+            Bid memory bid = AuctionStorage.layout().bids[auctionId][bidId];
+            if (auction.reserve < bid.bidAmount) break;
+            _sattleBid(auction.sellToken, auction.seller, bid);
+            AuctionStorage.layout().bids[auctionId][bidId].bCleared = true;
+            auction.reserve -= bid.bidAmount;
+        }
+        TransferHelper.safeTransfer(auction.sellToken, auction.seller, auction.reserve);
+        AuctionStorage.layout().auctions[auctionId].reserve = 0;
         AuctionStorage.layout().auctions[auctionId].status = AuctionStatus.Closed;
+    }
+
+    function _sattleBid(address sellToken, address seller, Bid memory bid) internal {
+        TransferHelper.safeTransfer(sellToken, bid.bidder, bid.bidAmount);
+        TransferHelper.safeTransfer(
+            bid.purchaseToken,
+            seller,
+            getPayAmount(bid.purchaseToken, bid.bidAmount, bid.bidPrice, sellToken)
+        );
     }
 
     // admin setters
@@ -224,16 +264,13 @@ contract AuctionUpgradeable is EIP2535Initializable, IrrigationAccessControl {
         uint128 price,
         address sellToken
     ) public view returns (uint256) {
-        // uint256 payAmount =  (uint256(purchaseAmount) * uint256(price)) /
-        //     (10 **
-        //         (18 -
-        //             IERC20MetadataUpgradeable(purchaseToken).decimals() +
-        //             IERC20MetadataUpgradeable(sellToken).decimals()));
         uint256 denominator = (10 **
             (18 -
                 IERC20MetadataUpgradeable(purchaseToken).decimals() +
                 IERC20MetadataUpgradeable(sellToken).decimals()));
-        return FullMath.mulDivRoundingUp(purchaseAmount, price, denominator);
+        return FullMath.mulDivRoundingUp128(purchaseAmount, price, denominator);
+        // old code without rounding
+        // return (uint256(purchaseAmount) * uint256(price)) / denominator;
     }
 
     function getAuction(uint256 auctionId) public view returns (AuctionData memory) {
@@ -262,11 +299,8 @@ contract AuctionUpgradeable is EIP2535Initializable, IrrigationAccessControl {
     }
 
     /// @dev returns true if auction in progress, false otherwise
-    function checkAuctionInProgress(address seller, uint endTime, uint startTime) internal view {
-        require(
-            seller != address(0) && _checkAuctionRangeTime(endTime, startTime),
-            "auction is inactive"
-        );
+    function checkAuctionInProgress(uint endTime, uint startTime) internal view {
+        require(_checkAuctionRangeTime(endTime, startTime), "auction is inactive");
     }
 
     function _checkAuctionRangeTime(uint endTime, uint startTime) internal view returns (bool) {

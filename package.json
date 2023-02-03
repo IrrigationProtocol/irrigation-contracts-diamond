@@ -36,6 +36,7 @@
   },
   "dependencies": {
     "@gnus.ai/upgrade-safe-transpiler-diamond": "^0.3.19-a",
+    "@nomicfoundation/hardhat-network-helpers": "^1.0.7",
     "@types/chai": "^4.3.4",
     "@types/chai-as-promised": "^7.1.5",
     "chai-as-promised": "^7.1.1",
