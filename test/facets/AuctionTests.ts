@@ -57,7 +57,7 @@ export function suite() {
         86400 * 2,
         token1.address,
         toWei(100),
-        toWei(20),
+        toWei(10),
         toWei(0.9574),
         toWei(0.1),
         toWei(0.5),
@@ -69,7 +69,7 @@ export function suite() {
         86400 * 2,
         token1.address,
         toWei(100),
-        toWei(20),
+        toWei(10),
         toWei(0.9574),
         toWei(0.1),
         toWei(0.5),
@@ -136,12 +136,21 @@ export function suite() {
       await dai.transfer(sender.address, toWei(100));
       await dai.connect(sender).approve(auctionContract.address, toWei(100));
       let expectedDAIBalance = await dai.balanceOf(sender.address);
-      await auctionContract.connect(sender).placeBid(1, toWei(30), dai.address, toWei(0.2));
+      await auctionContract.connect(sender).placeBid(1, toWei(19), dai.address, toWei(0.2));
+      await auctionContract.connect(sender).placeBid(1, toWei(11), dai.address, toWei(0.205));
 
       await dai.connect(owner).transfer(secondBidder.address, toWei(100));
       await dai.connect(secondBidder).approve(auctionContract.address, toWei(100));
-      await auctionContract.connect(secondBidder).placeBid(1, toWei(30), dai.address, toWei(0.21));
-      expectedDAIBalance = expectedDAIBalance.sub(toWei(30).mul(toWei(0.2)).div(toWei(1)));
+      await usdc.connect(owner).transfer(secondBidder.address, toD6(100));
+      await usdc.connect(secondBidder).approve(auctionContract.address, toD6(100));
+      await auctionContract.connect(secondBidder).placeBid(1, toWei(20), dai.address, toWei(0.21));
+      await auctionContract
+        .connect(secondBidder)
+        .placeBid(1, toWei(10), usdc.address, toWei(0.2101));
+
+      expectedDAIBalance = expectedDAIBalance
+        .sub(toWei(19).mul(toWei(0.2)).div(toWei(1)))
+        .sub(toWei(11).mul(toWei(0.205)).div(toWei(1)));
       expect((await dai.balanceOf(sender.address)).toString()).to.be.equal(
         expectedDAIBalance.toString(),
       );
@@ -161,7 +170,7 @@ export function suite() {
         auctionContract.connect(secondBidder).placeBid(1, toWei(50), dai.address, toWei(0.21523)),
       ).to.be.revertedWith('too big amount than reverse');
       await expect(
-        auctionContract.connect(secondBidder).placeBid(1, toWei(19), dai.address, toWei(0.21523)),
+        auctionContract.connect(secondBidder).placeBid(1, toWei(9), dai.address, toWei(0.21524)),
       ).to.be.revertedWith('too small bid amount');
       // set the timestamp of the next block but don't mine a new block
       await networkHelpers.time.setNextBlockTimestamp(Math.floor(Date.now() / 1000) + 86400 * 2);
@@ -185,14 +194,20 @@ export function suite() {
         bid.bidPrice,
         token1.address,
       );
-      // bid with dai is only one 
+      // bid with dai is only one
       expect(await dai.balanceOf(auctionContract.address)).to.be.equal(payAmount);
-      await auctionContract.connect(sender).claimForCanceledBid(1, 1);
+      // bids with usdc are all done
+      await auctionContract.connect(sender).claimForCanceledBid(1, 1);      
       expect(await dai.balanceOf(auctionContract.address)).to.be.equal(0);
+      expect(await usdc.balanceOf(auctionContract.address)).to.be.equal(0);
+      console.log(await dai.balanceOf(owner.address));
       await expect(auctionContract.connect(sender).claimForCanceledBid(1, 1)).to.be.rejectedWith(
-        'already sattled bid',
+        'already settled bid',
       );
       await expect(auctionContract.connect(sender).claimForCanceledBid(1, 2)).to.be.rejectedWith(
+        'already settled bid',
+      );
+      await expect(auctionContract.connect(sender).claimForCanceledBid(1, 3)).to.be.rejectedWith(
         'bidder only can claim',
       );
     });

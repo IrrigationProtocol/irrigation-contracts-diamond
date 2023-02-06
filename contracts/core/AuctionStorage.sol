@@ -2,10 +2,6 @@
 
 pragma solidity ^0.8.17;
 
-import {SprinklerUpgradeable} from "./SprinklerUpgradeable.sol";
-import {IBeanstalkUpgradeable} from "../beanstalk/IBeanstalkUpgradeable.sol";
-import {IOracleUpgradeable} from "../interfaces/IOracleUpgradeable.sol";
-
 enum AuctionType {
     TimedAuction,
     FixedPrice,

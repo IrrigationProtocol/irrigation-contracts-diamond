@@ -51,7 +51,7 @@ contract AuctionUpgradeable is EIP2535Initializable, IrrigationAccessControl {
     );
 
     uint256 public constant FEE_DENOMINATOR = 1000;
-    // when auction is closed, max 200 bids can be sattled
+    // when auction is closed, max 200 bids can be settled
     uint256 public constant MAX_CHECK_BID_COUNT = 200;
 
     function createAuction(
@@ -120,7 +120,8 @@ contract AuctionUpgradeable is EIP2535Initializable, IrrigationAccessControl {
             auction.auctionType != AuctionType.TimedAuction && auction.seller != address(0),
             "invalid auction for buyNow"
         );
-        require(purchaseAmount <= auction.reserve, "big amount");
+        uint128 availableAmount = auction.reserve;
+        require(purchaseAmount <= availableAmount, "big amount");
 
         // need auction conditions
         // consider decimals of purchase token and sell token
@@ -130,9 +131,9 @@ contract AuctionUpgradeable is EIP2535Initializable, IrrigationAccessControl {
             auction.fixedPrice,
             auction.sellToken
         );
+        AuctionStorage.layout().auctions[auctionId].reserve = availableAmount - purchaseAmount;
         TransferHelper.safeTransferFrom(purchaseToken, msg.sender, auction.seller, payAmount);
         TransferHelper.safeTransfer(auction.sellToken, msg.sender, purchaseAmount);
-        AuctionStorage.layout().auctions[auctionId].reserve = auction.reserve - purchaseAmount;
         emit AuctionBuy(msg.sender, purchaseAmount, purchaseToken, auctionId);
     }
 
@@ -187,7 +188,7 @@ contract AuctionUpgradeable is EIP2535Initializable, IrrigationAccessControl {
                 auction.status != AuctionStatus.Closed,
             "auction can't be closed"
         );
-        _sattleAuction(auctionId);
+        _settleAuction(auctionId);
     }
 
     function claimForCanceledBid(uint256 auctionId, uint256 bidId) external {
@@ -195,7 +196,7 @@ contract AuctionUpgradeable is EIP2535Initializable, IrrigationAccessControl {
         Bid memory bid = AuctionStorage.layout().bids[auctionId][bidId];
         require(auction.status == AuctionStatus.Closed, "no closed auction");
         require(bid.bidder == msg.sender, "bidder only can claim");
-        require(!bid.bCleared, "already sattled bid");        
+        require(!bid.bCleared, "already settled bid");
         TransferHelper.safeTransfer(
             bid.purchaseToken,
             bid.bidder,
@@ -204,32 +205,36 @@ contract AuctionUpgradeable is EIP2535Initializable, IrrigationAccessControl {
         AuctionStorage.layout().bids[auctionId][bidId].bCleared = true;
     }
 
-    function _sattleAuction(uint256 auctionId) internal {
+    function _settleAuction(uint256 auctionId) internal {
         AuctionData memory auction = AuctionStorage.layout().auctions[auctionId];
         // no bid
         if (auction.curBidId == 0) {
             TransferHelper.safeTransfer(auction.sellToken, auction.seller, auction.reserve);
+            AuctionStorage.layout().auctions[auctionId].reserve = 0;
             AuctionStorage.layout().auctions[auctionId].status = AuctionStatus.Closed;
             return;
         }
-        for (
-            uint256 bidId = auction.curBidId;
-            bidId >
-            (auction.curBidId < MAX_CHECK_BID_COUNT ? 0 : auction.curBidId - MAX_CHECK_BID_COUNT);
-            --bidId
-        ) {
-            Bid memory bid = AuctionStorage.layout().bids[auctionId][bidId];
-            if (auction.reserve < bid.bidAmount) break;
-            _sattleBid(auction.sellToken, auction.seller, bid);
-            AuctionStorage.layout().bids[auctionId][bidId].bCleared = true;
-            auction.reserve -= bid.bidAmount;
-        }
-        TransferHelper.safeTransfer(auction.sellToken, auction.seller, auction.reserve);
+        uint256 availableAmount = uint256(auction.reserve);
+        uint256 satteledBidCount = MAX_CHECK_BID_COUNT;
+        uint256 curBidId = auction.curBidId;
+        do {
+            Bid memory bid = AuctionStorage.layout().bids[auctionId][curBidId];
+            if (availableAmount < bid.bidAmount) {
+                --curBidId;
+                continue;
+            }
+            _settleBid(auction.sellToken, auction.seller, bid);
+            availableAmount -= bid.bidAmount;
+            AuctionStorage.layout().bids[auctionId][curBidId].bCleared = true;
+            --curBidId;
+            --satteledBidCount;
+        } while (curBidId > 0 && satteledBidCount > 0 && availableAmount >= auction.minBidAmount);
+        TransferHelper.safeTransfer(auction.sellToken, auction.seller, availableAmount);
         AuctionStorage.layout().auctions[auctionId].reserve = 0;
         AuctionStorage.layout().auctions[auctionId].status = AuctionStatus.Closed;
     }
 
-    function _sattleBid(address sellToken, address seller, Bid memory bid) internal {
+    function _settleBid(address sellToken, address seller, Bid memory bid) internal {
         TransferHelper.safeTransfer(sellToken, bid.bidder, bid.bidAmount);
         TransferHelper.safeTransfer(
             bid.purchaseToken,
