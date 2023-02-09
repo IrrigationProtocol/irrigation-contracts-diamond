@@ -14,17 +14,15 @@ contract ZSCUpgradeable {
     using ZSCStorage for ZSCStorage.Layout;
 
     uint256 private constant MAX = 4294967295; // 2^32 - 1 // no sload for constants...!
+    uint256 private constant EPOCHLENGTH = 4;
 
     event TransferOccurred(Utils.G1Point[] parties, Utils.G1Point beneficiary);
 
     // arg is still necessary for transfers---not even so much to know when you received a transfer, as to know when you got rolled over.
 
-    constructor(uint256 _epochLength) {
+    constructor() {
         // epoch length, like block.time, is in _seconds_. 4 is the minimum!!! (To allow a withdrawal to go through.)
-        // coin = MockERC20Upgradeable(_coin);
-        // zetherVerifier = ZetherVerifier(_zether);
-        // burnVerifier = BurnVerifier(_burn);
-        ZSCStorage.layout().epochLength = _epochLength;
+        ZSCStorage.layout().epochLength = EPOCHLENGTH;
         ZSCStorage.layout().fee = ZetherVerifier.fee;
         Utils.G1Point memory empty;
         ZSCStorage.layout().pending[keccak256(abi.encode(empty))][1] = Utils.g(); // "register" the empty account...
@@ -130,9 +128,7 @@ contract ZSCUpgradeable {
         bytes32 beneficiaryHash = keccak256(abi.encode(beneficiary));
         require(registered(beneficiaryHash), "Miner's account is not yet registered."); // necessary so that receiving a fee can't "backdoor" you into registration.
         rollOver(beneficiaryHash);
-        Utils.G1Point memory beneficiaryPending = ZSCStorage.layout().pending[beneficiaryHash][
-            0
-        ];
+        Utils.G1Point memory beneficiaryPending = ZSCStorage.layout().pending[beneficiaryHash][0];
         ZSCStorage.layout().pending[beneficiaryHash][0] = beneficiaryPending.add(
             Utils.g().mul(ZSCStorage.layout().fee)
         );

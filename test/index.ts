@@ -10,6 +10,7 @@ import { getSelectors } from '../scripts/FacetSelectors';
 import {
   afterDeployCallbacks,
   deployDiamondFacets,
+  deployExternalLibraries,
   deployFuncSelectors,
   deployIrrigationDiamond,
 } from '../scripts/deploy';
@@ -74,7 +75,7 @@ describe.only('Irrigation Diamond DApp Testing', async function () {
     irrigationDiamond = dc.IrrigationDiamond as IrrigationDiamond;
 
     debuglog('Diamond Deployed');
-
+    await deployExternalLibraries(networkDeployedInfo);
     // do deployment of facets in 3 steps
     await deployDiamondFacets(networkDeployedInfo);
     debuglog(`${util.inspect(networkDeployedInfo, { depth: null })}`);

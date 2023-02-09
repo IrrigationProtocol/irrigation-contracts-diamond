@@ -200,7 +200,7 @@ export function suite() {
       await auctionContract.connect(sender).claimForCanceledBid(1, 1);      
       expect(await dai.balanceOf(auctionContract.address)).to.be.equal(0);
       expect(await usdc.balanceOf(auctionContract.address)).to.be.equal(0);
-      console.log(await dai.balanceOf(owner.address));
+      // console.log(await dai.balanceOf(owner.address));
       await expect(auctionContract.connect(sender).claimForCanceledBid(1, 1)).to.be.rejectedWith(
         'already settled bid',
       );
