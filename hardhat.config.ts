@@ -10,6 +10,7 @@ import 'hardhat-gas-reporter';
 import 'solidity-coverage';
 import '@nomiclabs/hardhat-ethers';
 import '@foundry-rs/hardhat-anvil';
+import '@nomiclabs/hardhat-web3';
 
 dotenv.config();
 
@@ -63,7 +64,7 @@ const config: HardhatUserConfig = {
     settings: {
       optimizer: {
         enabled: true,
-        runs: 1000,
+        runs: 200,
       },
     },
   },  
@@ -75,6 +76,10 @@ const config: HardhatUserConfig = {
             blockNumber: parseInt(process.env.FORK_BLOCK_NUMBER) || undefined,
           }
         : undefined,
+      chainId: 1337,
+    },
+    local: {
+      url: 'http://localhost:8545',
       chainId: 1337,
     },
     anvil: {

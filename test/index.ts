@@ -28,6 +28,7 @@ import * as SprinklerTests from './facets/SprinklerTests';
 import * as WaterFaucetTests from './facets/WaterFaucetTests';
 import * as WaterTowerTests from './facets/WaterTowerTests';
 import * as AuctionTests from './facets/AuctionTests';
+import * as ZscTests from './facets/ZscTests';
 
 const debugging = process.env.JB_IDE_HOST !== undefined;
 
@@ -118,11 +119,12 @@ describe.only('Irrigation Diamond DApp Testing', async function () {
     });
 
     after(() => {
-      IrrigationERC20Tests.suite();
-      SprinklerTests.suite();
-      WaterFaucetTests.suite();
-      WaterTowerTests.suite();
-      AuctionTests.suite();
+      // IrrigationERC20Tests.suite();
+      // SprinklerTests.suite();
+      // WaterFaucetTests.suite();
+      // WaterTowerTests.suite();
+      // AuctionTests.suite();
+      ZscTests.suite();
     });
   });
 });

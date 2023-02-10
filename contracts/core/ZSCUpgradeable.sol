@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import "../mock/MockERC20Upgradeable.sol";
 import "../utils/Utils.sol";
 import "../libraries/ZkVerifier/ZetherVerifier.sol";
 import "../libraries/ZkVerifier/BurnVerifier.sol";
@@ -14,13 +13,13 @@ contract ZSCUpgradeable {
     using ZSCStorage for ZSCStorage.Layout;
 
     uint256 private constant MAX = 4294967295; // 2^32 - 1 // no sload for constants...!
-    uint256 private constant EPOCHLENGTH = 4;
+    uint256 private constant EPOCHLENGTH = 6;
 
     event TransferOccurred(Utils.G1Point[] parties, Utils.G1Point beneficiary);
 
     // arg is still necessary for transfers---not even so much to know when you received a transfer, as to know when you got rolled over.
 
-    constructor() {
+    function init() external {
         // epoch length, like block.time, is in _seconds_. 4 is the minimum!!! (To allow a withdrawal to go through.)
         ZSCStorage.layout().epochLength = EPOCHLENGTH;
         ZSCStorage.layout().fee = ZetherVerifier.fee;
@@ -95,7 +94,7 @@ contract ZSCUpgradeable {
         ZSCStorage.layout().pending[yHash][1] = Utils.g();
     }
 
-    function fund(Utils.G1Point memory y, uint32 bTransfer) public {
+    function zDeposit(Utils.G1Point memory y, uint32 bTransfer) public {
         bytes32 yHash = keccak256(abi.encode(y));
         require(registered(yHash), "Account not yet registered.");
         rollOver(yHash);
@@ -112,7 +111,7 @@ contract ZSCUpgradeable {
         // require(coin.balanceOf(address(this)) <= MAX, "Fund pushes contract past maximum value.");
     }
 
-    function transferFunds(
+    function zTransfer(
         Utils.G1Point[] memory C,
         Utils.G1Point memory D,
         Utils.G1Point[] memory y,
@@ -175,7 +174,7 @@ contract ZSCUpgradeable {
         emit TransferOccurred(y, beneficiary);
     }
 
-    function withdrawFunds(
+    function zWithdraw(
         Utils.G1Point memory y,
         uint256 bTransfer,
         Utils.G1Point memory u,
@@ -210,5 +209,21 @@ contract ZSCUpgradeable {
             "Burn proof verification failed!"
         );
         TransferHelper.safeTransfer(ZSCStorage.layout().tokenAddress, msg.sender, bTransfer);
+    }
+
+    function getEpochLength() public view returns (uint256) {
+        return ZSCStorage.layout().epochLength;
+    }
+
+    function getFee() public view returns (uint256) {
+        return ZSCStorage.layout().fee;
+    }
+
+    function setToken(address _token) external {
+        ZSCStorage.layout().tokenAddress = _token;
+    }
+
+    function getToken() public view returns(address) {
+        return ZSCStorage.layout().tokenAddress;
     }
 }

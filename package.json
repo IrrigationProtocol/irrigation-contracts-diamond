@@ -35,8 +35,10 @@
     "typescript": "^4.7.4"
   },
   "dependencies": {
-    "@gnus.ai/upgrade-safe-transpiler-diamond": "^0.3.19-a",
+    "@gnus.ai/upgrade-safe-transpiler-diamond": "^0.3.19-a",    
+    "@irrigation/zk-utils": "git+https://github.com/IrrigationProtocol/zk-utils#1f3a2854cee4081593b0348b6aa62fca0a84e77c",
     "@nomicfoundation/hardhat-network-helpers": "^1.0.7",
+    "@nomiclabs/hardhat-web3": "^2.0.0",
     "@types/chai": "^4.3.4",
     "@types/chai-as-promised": "^7.1.5",
     "chai-as-promised": "^7.1.1",
