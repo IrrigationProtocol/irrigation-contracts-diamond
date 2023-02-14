@@ -536,9 +536,9 @@
     minimist "^1.2.5"
     solidity-ast "github:GeniusVentures/solidity-ast#fast-node-lookup"
 
-"@irrigation/zk-utils@git+https://github.com/IrrigationProtocol/zk-utils#1f3a2854cee4081593b0348b6aa62fca0a84e77c":
+"@irrigation/zk-utils@git+https://github.com/IrrigationProtocol/zk-utils#bca2f351be73ea55be1777c0b4ca0be873eb99a6":
   version "0.1.0"
-  resolved "git+https://github.com/IrrigationProtocol/zk-utils#1f3a2854cee4081593b0348b6aa62fca0a84e77c"
+  resolved "git+https://github.com/IrrigationProtocol/zk-utils#bca2f351be73ea55be1777c0b4ca0be873eb99a6"
   dependencies:
     bn.js "^5.1.1"
     elliptic "^6.5.1"

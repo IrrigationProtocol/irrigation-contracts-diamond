@@ -19,10 +19,11 @@ contract ZSCUpgradeable {
 
     // arg is still necessary for transfers---not even so much to know when you received a transfer, as to know when you got rolled over.
 
-    function init() external {
+    function init(address _token, uint256 _epochLength) external {
         // epoch length, like block.time, is in _seconds_. 4 is the minimum!!! (To allow a withdrawal to go through.)
-        ZSCStorage.layout().epochLength = EPOCHLENGTH;
+        ZSCStorage.layout().epochLength = _epochLength;
         ZSCStorage.layout().fee = ZetherVerifier.fee;
+        ZSCStorage.layout().tokenAddress = _token;
         Utils.G1Point memory empty;
         ZSCStorage.layout().pending[keccak256(abi.encode(empty))][1] = Utils.g(); // "register" the empty account...
     }
@@ -217,10 +218,6 @@ contract ZSCUpgradeable {
 
     function getFee() public view returns (uint256) {
         return ZSCStorage.layout().fee;
-    }
-
-    function setToken(address _token) external {
-        ZSCStorage.layout().tokenAddress = _token;
     }
 
     function getToken() public view returns(address) {

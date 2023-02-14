@@ -1,5 +1,6 @@
-import { ethers, web3 } from 'hardhat';
+import { ethers, web3, network } from 'hardhat';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
+import { time } from '@nomicfoundation/hardhat-network-helpers';
 
 import {
   dc,
@@ -16,7 +17,15 @@ import { MockERC20Upgradeable, ZSCUpgradeable } from '../../typechain-types';
 import { MockERC20D6Upgradeable } from '../../typechain-types/contracts/mock/MockERC20D6Upgradeable';
 
 import Client from '@irrigation/zk-utils/src/client';
-
+import { delaySecond, getCurrentTime } from '../utils';
+/**
+ * simulate block time similar as real network because the block.timestamp value in the Hardhat network will not reflect the current time.
+ */
+const setSimulatedTime = async () => {
+  let nowTime = Date.now();
+  if (network.name === 'hardhat')
+    await time.setNextBlockTimestamp(Math.floor((nowTime + 1000 + Math.random() * 2000) / 1000));
+};
 export function suite() {
   describe('Irrigation Zsc Testing', async function () {
     let signers: SignerWithAddress[];
@@ -47,23 +56,25 @@ export function suite() {
       sender = signers[1];
       secondBidder = signers[2];
       zscContract = await ethers.getContractAt('ZSCUpgradeable', irrigationDiamond.address);
-      await zscContract.init();
-      await zscContract.setToken(token1.address);      
-      zscClient = new Client(web3, zscContract, owner.address, signers);
-      // expect(await auctionContract.isSupportedPurchaseToken(usdc.address)).to.be.eq(true);
+      await zscContract.init(token1.address, 16);
+      zscClient = new Client(web3, zscContract, owner, signers);
     });
 
     it('Testing Zsc register', async () => {
-      await zscClient.register();      
+      await zscClient.register();
     });
     it('Testing Zsc deposit', async () => {
       await token1.approve(zscContract.address, toWei(1000));
+      await delaySecond(10);
+      await setSimulatedTime();
       await zscClient.deposit(100);
-      expect((await token1.balanceOf(owner.address))).be.to.equal(toWei(100_000_000).sub(100));
+      expect(await token1.balanceOf(owner.address)).be.to.equal(toWei(100_000_000).sub(100));
     });
-    it('Testing Zsc withdraw', async () => {      
-      await zscClient.withdraw(10);
-      expect((await token1.balanceOf(owner.address))).be.to.equal(toWei(100_000_000).sub(90));
+    it('Testing Zsc withdraw', async () => {
+      await delaySecond(10);
+      // await setSimulatedTime(); // instead of calling here, call directly before withraw function of contract
+      await zscClient.withdraw(10, setSimulatedTime);
+      expect(await token1.balanceOf(owner.address)).be.to.equal(toWei(100_000_000).sub(90));
     });
   });
 }

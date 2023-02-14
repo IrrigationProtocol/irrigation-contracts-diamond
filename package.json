@@ -36,7 +36,7 @@
   },
   "dependencies": {
     "@gnus.ai/upgrade-safe-transpiler-diamond": "^0.3.19-a",    
-    "@irrigation/zk-utils": "git+https://github.com/IrrigationProtocol/zk-utils#1f3a2854cee4081593b0348b6aa62fca0a84e77c",
+    "@irrigation/zk-utils": "git+https://github.com/IrrigationProtocol/zk-utils#bca2f351be73ea55be1777c0b4ca0be873eb99a6",
     "@nomicfoundation/hardhat-network-helpers": "^1.0.7",
     "@nomiclabs/hardhat-web3": "^2.0.0",
     "@types/chai": "^4.3.4",
