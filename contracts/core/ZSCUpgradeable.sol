@@ -6,20 +6,21 @@ import "../libraries/ZkVerifier/ZetherVerifier.sol";
 import "../libraries/ZkVerifier/BurnVerifier.sol";
 import "../libraries/TransferHelper.sol";
 import "./ZSCStorage.sol";
+import "../utils/EIP2535Initializable.sol";
+import "../utils/IrrigationAccessControl.sol";
 
-contract ZSCUpgradeable {
+contract ZSCUpgradeable is EIP2535Initializable, IrrigationAccessControl {
     using Utils for uint256;
     using Utils for Utils.G1Point;
     using ZSCStorage for ZSCStorage.Layout;
 
     uint256 private constant MAX = 4294967295; // 2^32 - 1 // no sload for constants...!
-    uint256 private constant EPOCHLENGTH = 6;
 
     event TransferOccurred(Utils.G1Point[] parties, Utils.G1Point beneficiary);
 
     // arg is still necessary for transfers---not even so much to know when you received a transfer, as to know when you got rolled over.
 
-    function init(address _token, uint256 _epochLength) external {
+    function init(address _token, uint256 _epochLength) onlySuperAdminRole external {
         // epoch length, like block.time, is in _seconds_. 4 is the minimum!!! (To allow a withdrawal to go through.)
         ZSCStorage.layout().epochLength = _epochLength;
         ZSCStorage.layout().fee = ZetherVerifier.fee;

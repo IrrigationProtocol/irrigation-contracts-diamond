@@ -24,14 +24,14 @@ library InnerVerifier {
     function verifyInnerProduct(
         Utils.G1Point[] memory hs,
         Utils.G1Point memory u,
-        Utils.G1Point memory P,
+        Utils.G1Point memory p,
         InnerProductProof memory proof,
         uint256 salt
     ) public view returns (bool) {
         InnerProductStatement memory statement;
         statement.hs = hs;
         statement.u = u;
-        statement.P = P;
+        statement.P = p;
 
         return verify(statement, proof, salt);
     }
