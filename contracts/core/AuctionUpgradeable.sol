@@ -263,6 +263,11 @@ contract AuctionUpgradeable is EIP2535Initializable, IrrigationAccessControl {
     }
 
     // getters
+    function getAuctionFee() public view returns(uint256 numerator, uint256 dominator) {
+        numerator = AuctionStorage.layout().feeNumerator;
+        dominator = FEE_DENOMINATOR;
+    }
+
     function getPayAmount(
         address purchaseToken,
         uint128 purchaseAmount,

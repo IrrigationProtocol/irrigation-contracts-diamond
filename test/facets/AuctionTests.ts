@@ -16,6 +16,7 @@ import { IrrigationDiamond } from '../../typechain-types/hardhat-diamond-abi/Har
 import { AuctionUpgradeable, MockERC20Upgradeable } from '../../typechain-types';
 import { AuctionType } from '../types';
 import { MockERC20D6Upgradeable } from '../../typechain-types/contracts/mock/MockERC20D6Upgradeable';
+import { BigNumber } from 'ethers';
 
 export function suite() {
   describe('Irrigation Auction Testing', async function () {
@@ -50,6 +51,9 @@ export function suite() {
       await auctionContract.setPurchaseToken(dai.address, true);
       await auctionContract.setPurchaseToken(usdc.address, true);
       expect(await auctionContract.isSupportedPurchaseToken(usdc.address)).to.be.eq(true);
+      // 1.5% auction fee
+      await auctionContract.setAuctionFee(15, signers[2].address);
+      expect((await auctionContract.getAuctionFee()).numerator).to.be.eq(BigNumber.from(15));      
     });
 
     it('Testing Auction create', async () => {
@@ -63,7 +67,7 @@ export function suite() {
         toWei(0.5),
         AuctionType.TimedAndFixed,
       ];
-      await token1.approve(auctionContract.address, toWei(100));
+      await token1.approve(auctionContract.address, toWei(1000));
       const tx = await auctionContract.createAuction(
         0,
         86400 * 2,
@@ -77,8 +81,8 @@ export function suite() {
       );
       expect(tx)
         .to.emit(auctionContract, 'AuctionCreated')
-        .withArgs(owner.address, Math.round(Date.now() / 1000), ...params, 1);
-      expect(await token1.balanceOf(auctionContract.address)).to.be.equal(toWei(100));
+        .withArgs(owner.address, Math.round(Date.now() / 1000), ...params, 1);      
+      expect(await token1.balanceOf(auctionContract.address)).to.be.equal(toWei(100 + 100 * 15/1000));
       const createdAuction = await auctionContract.getAuction(1);
       assert(
         createdAuction.sellToken === token1.address,
@@ -159,7 +163,7 @@ export function suite() {
         toWei(100 - 40 - 8.155 - 8.151).toString(),
       );
       expect((await token1.balanceOf(auctionContract.address)).toString()).to.be.equal(
-        toWei(100 - 40 - 8.155 - 8.151).toString(),
+        toWei(101.5 - 40 - 8.155 - 8.151).toString(),
       );
 
       // failed bidding
@@ -176,7 +180,7 @@ export function suite() {
       await networkHelpers.time.setNextBlockTimestamp(Math.floor(Date.now() / 1000) + 86400 * 2);
       await expect(
         auctionContract.connect(secondBidder).placeBid(1, toWei(20), dai.address, toWei(0.21523)),
-      ).to.be.revertedWith('auction is inactive');
+      ).to.be.revertedWith('auction is inactive');      
     });
 
     it('Test Auction close', async () => {
