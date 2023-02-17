@@ -6,9 +6,10 @@ import "@gnus.ai/contracts-upgradeable-diamond/contracts/token/ERC20/IERC20Upgra
 import "@gnus.ai/contracts-upgradeable-diamond/contracts/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "../interfaces/IOracleUpgradeable.sol";
 import "../beanstalk/IBeanstalkUpgradeable.sol";
-import { SprinklerStorage } from "./SprinklerStorage.sol";
+import {SprinklerStorage} from "./SprinklerStorage.sol";
 import "../utils/EIP2535Initializable.sol";
 import "../utils/IrrigationAccessControl.sol";
+import "../libraries/TransferHelper.sol";
 
 contract SprinklerUpgradeable is EIP2535Initializable, IrrigationAccessControl {
     using SprinklerStorage for SprinklerStorage.Layout;
@@ -29,10 +30,7 @@ contract SprinklerUpgradeable is EIP2535Initializable, IrrigationAccessControl {
      * @param _token underlying token address
      * @param _oracle price oracle address
      */
-    function setPriceOracle(address _token, address _oracle)
-        external
-        onlySuperAdminRole
-    {
+    function setPriceOracle(address _token, address _oracle) external onlySuperAdminRole {
         SprinklerStorage.layout().priceOracles[_token] = IOracleUpgradeable(_oracle);
         emit PriceOracleUpdated(_token, _oracle);
     }
@@ -42,10 +40,7 @@ contract SprinklerUpgradeable is EIP2535Initializable, IrrigationAccessControl {
      * @param _token underlying token address
      * @param _multiplier price oracle address
      */
-    function setTokenMultiplier(address _token, uint256 _multiplier)
-        external
-        onlySuperAdminRole
-    {
+    function setTokenMultiplier(address _token, uint256 _multiplier) external onlySuperAdminRole {
         SprinklerStorage.layout().tokenMultiplier[_token] = _multiplier;
     }
 
@@ -72,8 +67,8 @@ contract SprinklerUpgradeable is EIP2535Initializable, IrrigationAccessControl {
             waterPrice;
         require(waterAmount != 0, "No water output");
 
-        IERC20Upgradeable(_token).safeTransferFrom(msg.sender, address(this), _amount);
-        IERC20Upgradeable(_waterToken).safeTransfer(msg.sender, waterAmount);
+        TransferHelper.safeTransferFrom(_token, msg.sender, address(this), _amount);
+        TransferHelper.safeTransfer(_waterToken, msg.sender, waterAmount);
 
         emit WaterExchanged(msg.sender, _token, _amount, waterAmount, false);
     }
@@ -87,7 +82,6 @@ contract SprinklerUpgradeable is EIP2535Initializable, IrrigationAccessControl {
         uint256 _plotStart,
         uint256 _plotEnd
     ) external returns (uint256 waterAmount) {
-
         // plot input will be validated in the transferPlot function.
         WaterCommonStorage.layout().beanstalk.transferPlot(
             msg.sender,
@@ -102,13 +96,12 @@ contract SprinklerUpgradeable is EIP2535Initializable, IrrigationAccessControl {
     }
 
     // generated getter for priceOracles
-    function priceOracles(address arg0) public view returns(IOracleUpgradeable) {
+    function priceOracles(address arg0) public view returns (IOracleUpgradeable) {
         return SprinklerStorage.layout().priceOracles[arg0];
     }
 
     // generated getter for tokenMultipler
-    function tokenMultiplier(address arg0) public view returns(uint256) {
+    function tokenMultiplier(address arg0) public view returns (uint256) {
         return SprinklerStorage.layout().tokenMultiplier[arg0];
     }
-
 }
