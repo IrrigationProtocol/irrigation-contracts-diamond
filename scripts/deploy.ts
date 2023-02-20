@@ -298,9 +298,12 @@ export async function deployExternalLibraries(networkDeployedInfo: INetworkDeplo
     },
   });
   const zetherVerifier = await zetherVerifierContract.deploy();
+  const LibEncryptionContract = await ethers.getContractFactory('libEncryption');
+  const libEncryption = await LibEncryptionContract.deploy();
   networkDeployedInfo.ExternalLibraries = {};
   networkDeployedInfo.ExternalLibraries['BurnVerifier'] = burnVerifier.address;
   networkDeployedInfo.ExternalLibraries['ZetherVerifier'] = zetherVerifier.address;
+  networkDeployedInfo.ExternalLibraries['libEncryption'] = libEncryption.address;
 }
 
 export async function deployDiamondFacets(

@@ -17,7 +17,9 @@ import { MockERC20Upgradeable, ZSCUpgradeable } from '../../typechain-types';
 import { MockERC20D6Upgradeable } from '../../typechain-types/contracts/mock/MockERC20D6Upgradeable';
 
 import Client from '@irrigation/zk-utils/src/client';
+import bn128 from '@irrigation/zk-utils/src/utils/bn128';
 import { delaySecond, getCurrentTime } from '../utils';
+import { BigNumber } from 'ethers';
 /**
  * simulate block time similar as real network because the block.timestamp value in the Hardhat network will not reflect the current time.
  */
@@ -39,6 +41,7 @@ export function suite() {
     let secondBidder: SignerWithAddress;
     let zscContract: ZSCUpgradeable;
     let zscClient: Client;
+    let secretKey;
     before(async () => {
       signers = await ethers.getSigners();
       owner = signers[0];
@@ -63,18 +66,34 @@ export function suite() {
     it('Testing Zsc register', async () => {
       await zscClient.register();
     });
+
+    it('Testing Zsc setting max public keys', async () => {
+      await expect(zscContract.setMaxKeys(3)).to.be.revertedWith(
+        'Max Number of Public Keys need to be a power of 2',
+      );
+      secretKey = bn128.randomScalar();
+      const pubKey = bn128.curve.g.mul(secretKey);
+      await zscContract.setPublicKeys(1, 0, [bn128.serialize(pubKey)]);
+    });
+
     it('Testing Zsc deposit', async () => {
       await token1.approve(zscContract.address, toWei(1000));
-      await delaySecond(10);
       await setSimulatedTime();
       await zscClient.deposit(100);
       expect(await token1.balanceOf(owner.address)).be.to.equal(toWei(100_000_000).sub(100));
     });
+
     it('Testing Zsc withdraw', async () => {
       await delaySecond(10);
       // await setSimulatedTime(); // instead of calling here, call directly before withraw function of contract
       await zscClient.withdraw(10, setSimulatedTime);
       expect(await token1.balanceOf(owner.address)).be.to.equal(toWei(100_000_000).sub(90));
     });
+
+    it('Testing Zsc decrypt', async () => {
+      const decrypted = await zscContract.decrypt(BigNumber.from(secretKey.fromRed().toString()), bn128.serialize(zscClient.account.keypair.y));
+            
+    });
+    
   });
 }

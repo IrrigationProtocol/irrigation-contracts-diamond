@@ -21,7 +21,7 @@ contract ZSCUpgradeable is EIP2535Initializable, IrrigationAccessControl {
 
     // arg is still necessary for transfers---not even so much to know when you received a transfer, as to know when you got rolled over.
 
-    function init(address _token, uint256 _epochLength) onlySuperAdminRole external {
+    function init(address _token, uint256 _epochLength) external onlySuperAdminRole {
         // epoch length, like block.time, is in _seconds_. 4 is the minimum!!! (To allow a withdrawal to go through.)
         ZSCStorage.layout().epochLength = _epochLength;
         ZSCStorage.layout().fee = ZetherVerifier.fee;
@@ -106,7 +106,15 @@ contract ZSCUpgradeable is EIP2535Initializable, IrrigationAccessControl {
         require(registered(yHash), "Account not yet registered.");
         rollOver(yHash);
         uint256 amount = uint256(bTransfer);
-        uint256 seed = uint256(keccak256(abi.encodePacked(block.timestamp ^ 0xdeadc0de, blockhash((block.number - 1) ^ 0xdeadbeef), amount)));
+        uint256 seed = uint256(
+            keccak256(
+                abi.encodePacked(
+                    block.timestamp ^ 0xdeadc0de,
+                    blockhash((block.number - 1) ^ 0xdeadbeef),
+                    amount
+                )
+            )
+        );
 
         Utils.G1Point memory scratch = ZSCStorage.layout().pending[yHash][0];
         scratch = scratch.add(Utils.g().mul(amount));
@@ -224,6 +232,23 @@ contract ZSCUpgradeable is EIP2535Initializable, IrrigationAccessControl {
         TransferHelper.safeTransfer(ZSCStorage.layout().tokenAddress, msg.sender, bTransfer);
     }
 
+    function setMaxKeys(uint32 maxPublicKeys) public {
+        libEncryption.setMaxKeys(maxPublicKeys);
+    }
+
+    function setPublicKeys(
+        uint32 numKeys,
+        uint32 offset,
+        Utils.G1Point[] memory publicKeysIn
+    ) public {
+        libEncryption.setPublicKeys(numKeys, offset, publicKeysIn);
+    }
+
+    function decrypt(uint256 privateKey, Utils.G1Point memory y) public view returns (uint256 plainValue) {
+        bytes32 yHash = keccak256(abi.encode(y));        
+        plainValue = libEncryption.decryptWithSavedData(privateKey, yHash);
+    }
+
     function getEpochLength() public view returns (uint256) {
         return ZSCStorage.layout().epochLength;
     }
@@ -232,7 +257,7 @@ contract ZSCUpgradeable is EIP2535Initializable, IrrigationAccessControl {
         return ZSCStorage.layout().fee;
     }
 
-    function getToken() public view returns(address) {
+    function getToken() public view returns (address) {
         return ZSCStorage.layout().tokenAddress;
     }
 }
