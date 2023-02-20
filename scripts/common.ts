@@ -83,8 +83,8 @@ export function toD6(value: number | string): BigNumber {
   return ethers.utils.parseUnits(value.toString(), 6);
 }
 
-export function fromWei(value: number | string | BigNumber): string {
-  return ethers.utils.formatEther(value);
+export function fromWei(value: number | string | BigNumber): number {
+  return Number(ethers.utils.formatEther(value));
 }
 
 export function fromD6(value: number | string | BigNumber): string {

@@ -123,7 +123,7 @@ export function suite() {
         `expected seller ${owner.address}, but ${createdAuction.seller}`,
       );
       assert(
-        fromWei(createdAuction.fixedPrice) === '0.9574',
+        fromWei(createdAuction.fixedPrice) === 0.9574,
         `expected duration ${0.9574}, but ${createdAuction.fixedPrice}`,
       );
       assert(
@@ -207,7 +207,9 @@ export function suite() {
         auctionContract.connect(secondBidder).placeBid(1, toWei(9), dai.address, toWei(0.21524)),
       ).to.be.revertedWith('too small bid amount');
       // set the timestamp of the next block but don't mine a new block
-      await networkHelpers.time.setNextBlockTimestamp(Math.floor(Date.now() / 1000) + 86400 * 2 + 3601);
+      await networkHelpers.time.setNextBlockTimestamp(
+        Math.floor(Date.now() / 1000) + 86400 * 2 + 3601,
+      );
       await expect(
         auctionContract.connect(secondBidder).placeBid(1, toWei(20), dai.address, toWei(0.21523)),
       ).to.be.revertedWith('auction is inactive');
@@ -244,6 +246,55 @@ export function suite() {
       await expect(auctionContract.connect(sender).claimForCanceledBid(1, 3)).to.be.rejectedWith(
         'bidder only can claim',
       );
+    });
+
+    it('Testing Auction with fixed price', async () => {
+      const params = [
+        86400 * 2,
+        token1.address,
+        toWei(100),
+        toWei(10),
+        toWei(5),
+        toWei(2),
+        toWei(10),
+        AuctionType.FixedPrice,
+      ];
+      await token1.approve(auctionContract.address, toWei(1000));
+      // await networkHelpers.time.setNextBlockTimestamp(Math.floor(Date.now() / 1000) + 3600);
+      const tx = await auctionContract.createAuction(
+        0,
+        86400 * 2,
+        token1.address,
+        toWei(100),
+        toWei(10),
+        toWei(5),
+        toWei(2),
+        toWei(10),
+        AuctionType.FixedPrice,
+      );
+      expect(tx)
+        .to.emit(auctionContract, 'AuctionCreated')
+        .withArgs(owner.address, Math.round(Date.now() / 1000), ...params, 2);
+
+      expect(await token1.balanceOf(auctionContract.address)).to.be.equal(
+        toWei(100 + (100 * 30) / 1000),
+      );
+      const createdAuction = await auctionContract.getAuction(2);
+      assert(
+        createdAuction.sellToken === token1.address,
+        `expected token ${token1.address}, but ${createdAuction.sellToken}`,
+      );
+      assert(
+        createdAuction.seller === owner.address,
+        `expected seller ${owner.address}, but ${createdAuction.seller}`,
+      );
+      assert(
+        fromWei(createdAuction.fixedPrice) === 5,
+        `expected fixedPrice ${5}, but ${fromWei(createdAuction.fixedPrice)}`,
+      );
+      await dai.transfer(sender.address, toWei(50));
+      await dai.connect(sender).approve(auctionContract.address, toWei(50));
+      await auctionContract.connect(sender).buyNow(2, toWei(1), dai.address);
     });
   });
 }
