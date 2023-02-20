@@ -21,18 +21,27 @@ abstract contract IrrigationAccessControl is Initializable, AccessControlEnumera
         _grantRole(UPGRADER_ROLE, superAdmin);
     }
 
-    function renounceRole(bytes32 role, address account) public override(IAccessControlUpgradeable, AccessControlUpgradeable) {
+    function grantRole(bytes32 role, address account) public override(IAccessControlUpgradeable, AccessControlUpgradeable) onlySuperAdminRole {
+        super.grantRole(role, account);
+    }
+
+    function renounceRole(bytes32 role, address account) public override(IAccessControlUpgradeable, AccessControlUpgradeable) onlySuperAdminRole {
         require(!(hasRole(DEFAULT_ADMIN_ROLE, account) && (LibDiamond.diamondStorage().contractOwner == account)), "Cannot renounce superAdmin from Admin Role");
         super.renounceRole(role, account);
     }
 
-    function revokeRole(bytes32 role, address account) public override(IAccessControlUpgradeable, AccessControlUpgradeable) {
+    function revokeRole(bytes32 role, address account) public override(IAccessControlUpgradeable, AccessControlUpgradeable) onlySuperAdminRole {
         require(!(hasRole(DEFAULT_ADMIN_ROLE, account) && (LibDiamond.diamondStorage().contractOwner == account)), "Cannot revoke superAdmin from Admin Role");
         super.revokeRole(role, account);
     }
 
     modifier onlySuperAdminRole {
         require(LibDiamond.diamondStorage().contractOwner == msg.sender, "Only SuperAdmin allowed");
+        _;
+    }
+
+    modifier onlyUpgraderRole {
+        require(hasRole(UPGRADER_ROLE, msg.sender), "Account doesn't have upgrader role");
         _;
     }
 

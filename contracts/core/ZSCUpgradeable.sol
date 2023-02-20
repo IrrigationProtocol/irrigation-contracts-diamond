@@ -8,6 +8,7 @@ import "../libraries/TransferHelper.sol";
 import "./ZSCStorage.sol";
 import "../utils/EIP2535Initializable.sol";
 import "../utils/IrrigationAccessControl.sol";
+import "../libraries/Encryption/libEncryption.sol";
 
 contract ZSCUpgradeable is EIP2535Initializable, IrrigationAccessControl {
     using Utils for uint256;
@@ -27,6 +28,8 @@ contract ZSCUpgradeable is EIP2535Initializable, IrrigationAccessControl {
         ZSCStorage.layout().tokenAddress = _token;
         Utils.G1Point memory empty;
         ZSCStorage.layout().pending[keccak256(abi.encode(empty))][1] = Utils.g(); // "register" the empty account...
+        // make sure there
+        libEncryption.init();
     }
 
     function simulateAccounts(Utils.G1Point[] memory y, uint256 epoch)
@@ -86,6 +89,8 @@ contract ZSCUpgradeable is EIP2535Initializable, IrrigationAccessControl {
         uint256 c,
         uint256 s
     ) public {
+        // require sender and transaction address match
+        require(msg.sender == tx.origin, "Only actual wallet address allowed");
         // allows y to participate. c, s should be a Schnorr signature on "this"
         Utils.G1Point memory K = Utils.g().mul(s).add(y.mul(c.neg()));
         uint256 challenge = uint256(keccak256(abi.encode(address(this), y, K))).mod();
@@ -101,6 +106,8 @@ contract ZSCUpgradeable is EIP2535Initializable, IrrigationAccessControl {
         require(registered(yHash), "Account not yet registered.");
         rollOver(yHash);
         uint256 amount = uint256(bTransfer);
+        uint256 seed = uint256(keccak256(abi.encodePacked(block.timestamp ^ 0xdeadc0de, blockhash((block.number - 1) ^ 0xdeadbeef), amount)));
+
         Utils.G1Point memory scratch = ZSCStorage.layout().pending[yHash][0];
         scratch = scratch.add(Utils.g().mul(amount));
         ZSCStorage.layout().pending[yHash][0] = scratch;
@@ -110,6 +117,10 @@ contract ZSCUpgradeable is EIP2535Initializable, IrrigationAccessControl {
             address(this),
             amount
         );
+
+        // save any deposit from addresses (encrypted)
+        libEncryption.encryptAndSaveAddress(yHash, msg.sender, seed);
+
         // require(coin.balanceOf(address(this)) <= MAX, "Fund pushes contract past maximum value.");
     }
 

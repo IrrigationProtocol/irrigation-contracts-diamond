@@ -102,6 +102,10 @@ library Utils {
         return p1.x == p2.x && p1.y == p2.y;
     }
 
+    function isNull(G1Point memory p) internal pure returns (bool) {
+        return (p.x == 0 && p.y == 0);
+    }
+
     function g() internal pure returns (G1Point memory) {
         return G1Point(0x077da99d806abd13c9f15ece5398525119d11e11e9836b2ee7d23f6159ad87d4, 0x01485efa927f2ad41bff567eec88f32fb0a0f706588b4e41a8d587d008b7f875);
     }
@@ -138,4 +142,6 @@ library Utils {
             result := mload(m)
         }
     }
+
+
 }
