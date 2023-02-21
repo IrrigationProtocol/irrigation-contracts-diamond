@@ -26,23 +26,20 @@ library libEncryption {
         return ((encVal.c1.x == 0) && (encVal.c1.y == 0) && (encVal.c2.x == 0) && (encVal.c1.y == 0));
     }
 
-    function encrypt(Utils.G1Point memory publicKey, uint256 plainValue, uint256 additionalSeed) public view returns (Utils.G1Point memory c1, Utils.G1Point memory c2) {
+    function encrypt(Utils.G1Point memory pKey, uint256 plainValue, uint256 additionalSeed) public view returns (Utils.G1Point memory c1, Utils.G1Point memory c2) {
         uint256 seed = uint256(keccak256(abi.encodePacked(block.timestamp, blockhash(block.number - 1), additionalSeed)));
-        Utils.G1Point memory r = Utils.mapInto("zEncrypt", seed);
-
-        c1 = Utils.g().mul(Utils.fieldExp(seed, 2));
-        Utils.G1Point memory s = publicKey.mul(Utils.fieldExp(seed, 2));
-        Utils.G1Point memory t = r.mul(plainValue);
-        c2 = Utils.add(s, t);
+        Utils.G1Point memory r = Utils.mapInto(plainValue);
+        uint256 k = Utils.fieldExp(seed, 2);
+        c1 = Utils.g().mul(k);
+        Utils.G1Point memory s = pKey.mul(k);
+        c2 = Utils.add(s, r);
     }
 
     function decrypt(uint256 privateKey, Utils.G1Point memory c1, Utils.G1Point memory c2) public view returns (uint256 plainValue) {
-        Utils.G1Point memory r = Utils.mul(c1, privateKey);
+        Utils.G1Point memory r = c1.mul(privateKey);
         Utils.G1Point memory negR = Utils.neg(r);
-        uint256 y4 = uint256(Utils.mul(c2, Utils.fieldExp(uint256(negR.x), 1)).y);
-        uint256 y2 = uint256(r.y);
-        uint256 y2Inv = Utils.inv(y2);
-        plainValue = y4 * y2Inv % Utils.FIELD_ORDER;
+        Utils.G1Point memory result = Utils.add(c2, negR);
+        plainValue = uint256(result.x);
     }
 
     function decryptWithSavedData(uint256 privateKey, bytes32 yHash) public view returns (uint256 plainValue) {
