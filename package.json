@@ -11,6 +11,7 @@
   "author": "",
   "license": "ISC",
   "devDependencies": {
+    "@foundry-rs/hardhat-anvil": "^0.1.7",
     "@gnus.ai/contracts-upgradeable-diamond": "^4.8.1",
     "@nomiclabs/hardhat-ethers": "^2.1.1",
     "@nomiclabs/hardhat-etherscan": "^3.1.0",
@@ -18,6 +19,7 @@
     "@typechain/ethers-v5": "^10.1.0",
     "@typechain/hardhat": "^6.1.5",
     "@types/mocha": "^9.1.1",
+    "abi-to-sol": "^0.6.6",
     "chai": "^4.3.7",
     "dotenv": "^16.0.1",
     "ethereum-waffle": "^3.4.4",
@@ -33,7 +35,9 @@
     "typescript": "^4.7.4"
   },
   "dependencies": {
-    "@gnus.ai/upgrade-safe-transpiler-diamond": "^0.3.19-a",
+    "@irrigation/zk-utils": "github:IrrigationProtocol/zk-utils",
+    "@nomicfoundation/hardhat-network-helpers": "^1.0.7",
+    "@nomiclabs/hardhat-web3": "^2.0.0",
     "@types/chai": "^4.3.4",
     "@types/chai-as-promised": "^7.1.5",
     "chai-as-promised": "^7.1.1",

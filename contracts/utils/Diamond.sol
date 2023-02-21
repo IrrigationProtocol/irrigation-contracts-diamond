@@ -8,11 +8,10 @@ pragma solidity ^0.8.17;
 * Implementation of a diamond.
 /******************************************************************************/
 
-import { LibDiamond } from "../libraries/LibDiamond.sol";
-import { IDiamondCut } from "../interfaces/IDiamondCut.sol";
+import {LibDiamond} from "../libraries/LibDiamond.sol";
+import {IDiamondCut} from "../interfaces/IDiamondCut.sol";
 
 contract Diamond {
-
     constructor(address _contractOwner, address _diamondCutFacet) payable {
         LibDiamond.setContractOwner(_contractOwner);
 
@@ -50,14 +49,14 @@ contract Diamond {
             returndatacopy(0, 0, returndatasize())
             // return any return value or error back to the caller
             switch result
-                case 0 {
-                    revert(0, returndatasize())
-                }
-                default {
-                    return(0, returndatasize())
-                }
+            case 0 {
+                revert(0, returndatasize())
+            }
+            default {
+                return(0, returndatasize())
+            }
         }
     }
-
-    receive() external payable {}
+    // we define receive function in IrrigationDiamond
+    // receive() external payable {}
 }

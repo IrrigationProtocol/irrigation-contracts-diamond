@@ -31,15 +31,11 @@ export const getAirdropMerkleTree = (claimInfos: ClaimInfo[]): MerkleTree => {
 
 export const getCurrentTime = async (): Promise<BigNumber> =>
   BigNumber.from(
-    (await ethers.provider.getBlock(await ethers.provider.getBlockNumber()))
-      .timestamp,
+    (await ethers.provider.getBlock(await ethers.provider.getBlockNumber())).timestamp,
   );
 
 export const getCurrentBlock = async (): Promise<BigNumber> =>
-  BigNumber.from(
-    (await ethers.provider.getBlock(await ethers.provider.getBlockNumber()))
-      .number,
-  );
+  BigNumber.from((await ethers.provider.getBlock(await ethers.provider.getBlockNumber())).number);
 
 export const advanceBlocks = async (blocks: number): Promise<void> => {
   for (let i = 0; i < blocks; i++) {
@@ -51,3 +47,8 @@ export const increaseTime = async (seconds: BigNumberish): Promise<void> => {
   await ethers.provider.send('evm_increaseTime', [seconds]);
   await ethers.provider.send('evm_mine', []);
 };
+
+export const delaySecond = async (second: number): Promise<void> =>
+  new Promise((resolve) => {
+    setTimeout(resolve, second * 1000);
+  });

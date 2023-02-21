@@ -14,7 +14,7 @@ library WaterOracleStorage {
 
   }
 
-  bytes32 internal constant STORAGE_SLOT = keccak256('openzeppelin.contracts.storage.WaterOracle');
+  bytes32 internal constant STORAGE_SLOT = keccak256('irrigation.contracts.storage.WaterOracle');
 
   function layout() internal pure returns (Layout storage l) {
     bytes32 slot = STORAGE_SLOT;

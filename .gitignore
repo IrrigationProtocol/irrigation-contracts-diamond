@@ -13,5 +13,6 @@ typechain
 coverage.json
 coverage
 .DS_STORE
-yarn.lock
+# yarn.lock
 package-lock.json
+typechain-types
