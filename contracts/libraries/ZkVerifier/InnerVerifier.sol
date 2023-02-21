@@ -22,16 +22,16 @@ library InnerVerifier {
     }
 
     function verifyInnerProduct(
-        Utils.G1Point[] memory hs,
+        Utils.G1Point[] memory hs_in,
         Utils.G1Point memory u,
-        Utils.G1Point memory P,
+        Utils.G1Point memory p,
         InnerProductProof memory proof,
         uint256 salt
     ) public view returns (bool) {
         InnerProductStatement memory statement;
-        statement.hs = hs;
+        statement.hs = hs_in;
         statement.u = u;
-        statement.P = P;
+        statement.P = p;
 
         return verify(statement, proof, salt);
     }
@@ -421,6 +421,8 @@ library InnerVerifier {
                     0x243de1ee802dd7a3ca9a991ec228fbbfb4973260f905b5106e5f738183d5cacd,
                     0x133d25bb8dc9f54932b9d6ee98e0432676f5278e9878967fbbd8f5dfc46df4f8
                 );
+
+        return Utils.G1Point(0, 0);
     }
 
     function hs(uint256 i) public pure returns (Utils.G1Point memory) {
@@ -808,6 +810,8 @@ library InnerVerifier {
                     0x0b8871057f2a8bf0f794c099fba2481b9f39457d55d7e472e5dc994d69f0fbb8,
                     0x072c9e81fc2e118414a9fb6d9fff6e5b615f07fa980e3ce692a09bce95cc54f2
                 );
+
+        return Utils.G1Point(0, 0);
     }
 
     struct IPAuxiliaries {

@@ -1,31 +1,35 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import "../mock/MockERC20Upgradeable.sol";
 import "../utils/Utils.sol";
 import "../libraries/ZkVerifier/ZetherVerifier.sol";
 import "../libraries/ZkVerifier/BurnVerifier.sol";
 import "../libraries/TransferHelper.sol";
 import "./ZSCStorage.sol";
+import "../utils/EIP2535Initializable.sol";
+import "../utils/IrrigationAccessControl.sol";
+import "../libraries/Encryption/libEncryption.sol";
 
-contract ZSCUpgradeable {
+contract ZSCUpgradeable is EIP2535Initializable, IrrigationAccessControl {
     using Utils for uint256;
     using Utils for Utils.G1Point;
     using ZSCStorage for ZSCStorage.Layout;
 
     uint256 private constant MAX = 4294967295; // 2^32 - 1 // no sload for constants...!
-    uint256 private constant EPOCHLENGTH = 4;
 
     event TransferOccurred(Utils.G1Point[] parties, Utils.G1Point beneficiary);
 
     // arg is still necessary for transfers---not even so much to know when you received a transfer, as to know when you got rolled over.
 
-    constructor() {
+    function init(address _token, uint256 _epochLength) external onlySuperAdminRole {
         // epoch length, like block.time, is in _seconds_. 4 is the minimum!!! (To allow a withdrawal to go through.)
-        ZSCStorage.layout().epochLength = EPOCHLENGTH;
+        ZSCStorage.layout().epochLength = _epochLength;
         ZSCStorage.layout().fee = ZetherVerifier.fee;
+        ZSCStorage.layout().tokenAddress = _token;
         Utils.G1Point memory empty;
         ZSCStorage.layout().pending[keccak256(abi.encode(empty))][1] = Utils.g(); // "register" the empty account...
+        // make sure there
+        libEncryption.init();
     }
 
     function simulateAccounts(Utils.G1Point[] memory y, uint256 epoch)
@@ -85,6 +89,8 @@ contract ZSCUpgradeable {
         uint256 c,
         uint256 s
     ) public {
+        // require sender and transaction address match
+        require(msg.sender == tx.origin, "Only actual wallet address allowed");
         // allows y to participate. c, s should be a Schnorr signature on "this"
         Utils.G1Point memory K = Utils.g().mul(s).add(y.mul(c.neg()));
         uint256 challenge = uint256(keccak256(abi.encode(address(this), y, K))).mod();
@@ -95,11 +101,21 @@ contract ZSCUpgradeable {
         ZSCStorage.layout().pending[yHash][1] = Utils.g();
     }
 
-    function fund(Utils.G1Point memory y, uint32 bTransfer) public {
+    function zDeposit(Utils.G1Point memory y, uint32 bTransfer) public {
         bytes32 yHash = keccak256(abi.encode(y));
         require(registered(yHash), "Account not yet registered.");
         rollOver(yHash);
         uint256 amount = uint256(bTransfer);
+        uint256 seed = uint256(
+            keccak256(
+                abi.encodePacked(
+                    block.timestamp ^ 0xdeadc0de,
+                    blockhash((block.number - 1) ^ 0xdeadbeef),
+                    amount
+                )
+            )
+        );
+
         Utils.G1Point memory scratch = ZSCStorage.layout().pending[yHash][0];
         scratch = scratch.add(Utils.g().mul(amount));
         ZSCStorage.layout().pending[yHash][0] = scratch;
@@ -109,10 +125,14 @@ contract ZSCUpgradeable {
             address(this),
             amount
         );
+
+        // save any deposit from addresses (encrypted)
+        libEncryption.encryptAndSaveAddress(yHash, msg.sender, seed);
+
         // require(coin.balanceOf(address(this)) <= MAX, "Fund pushes contract past maximum value.");
     }
 
-    function transferFunds(
+    function zTransfer(
         Utils.G1Point[] memory C,
         Utils.G1Point memory D,
         Utils.G1Point[] memory y,
@@ -175,7 +195,7 @@ contract ZSCUpgradeable {
         emit TransferOccurred(y, beneficiary);
     }
 
-    function withdrawFunds(
+    function zWithdraw(
         Utils.G1Point memory y,
         uint256 bTransfer,
         Utils.G1Point memory u,
@@ -210,5 +230,35 @@ contract ZSCUpgradeable {
             "Burn proof verification failed!"
         );
         TransferHelper.safeTransfer(ZSCStorage.layout().tokenAddress, msg.sender, bTransfer);
+    }
+
+    function setMaxKeys(uint32 maxPublicKeys) public {
+        libEncryption.setMaxKeys(maxPublicKeys);
+    }
+
+    function setPublicKeys(
+        uint32 numKeys,
+        uint32 offset,
+        Utils.G1Point[] memory publicKeysIn
+    ) public {
+        libEncryption.setPublicKeys(numKeys, offset, publicKeysIn);
+    }
+
+    function decrypt(uint256 privateKey, Utils.G1Point memory y) public view returns (address userAddr) {
+        bytes32 yHash = keccak256(abi.encode(y));        
+        uint256 plainValue = libEncryption.decryptWithSavedData(privateKey, yHash);
+        userAddr = address(uint160(plainValue));
+    }
+
+    function getEpochLength() public view returns (uint256) {
+        return ZSCStorage.layout().epochLength;
+    }
+
+    function getFee() public view returns (uint256) {
+        return ZSCStorage.layout().fee;
+    }
+
+    function getToken() public view returns (address) {
+        return ZSCStorage.layout().tokenAddress;
     }
 }
