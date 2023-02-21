@@ -119,12 +119,12 @@ describe.only('Irrigation Diamond DApp Testing', async function () {
     });
 
     after(() => {
-      // IrrigationERC20Tests.suite();
-      // SprinklerTests.suite();
-      // WaterFaucetTests.suite();
-      // WaterTowerTests.suite();
-      // AuctionTests.suite();
+      IrrigationERC20Tests.suite();
       ZscTests.suite();
+      SprinklerTests.suite();
+      WaterFaucetTests.suite();
+      WaterTowerTests.suite();
+      AuctionTests.suite();
     });
   });
 });

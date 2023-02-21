@@ -84,7 +84,7 @@ export function suite() {
     });
 
     it('Testing Zsc withdraw', async () => {
-      await delaySecond(2);
+      await delaySecond(10);
       // await setSimulatedTime(); // instead of calling here, call directly before withraw function of contract
       await zscClient.withdraw(10, setSimulatedTime);
       expect(await token1.balanceOf(owner.address)).be.to.equal(toWei(100_000_000).sub(90));
