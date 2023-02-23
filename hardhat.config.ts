@@ -77,6 +77,7 @@ const config: HardhatUserConfig = {
           }
         : undefined,
       chainId: 1337,
+      hardfork: 'london'
     },
     local: {
       url: 'http://localhost:8545',

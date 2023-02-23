@@ -45,15 +45,31 @@ export async function deployIrrigationDiamond(networkDeployInfo: INetworkDeployI
     `DiamondCutFacet deployed: ${diamondCutFacet.deployTransaction.hash} tx_hash: ${diamondCutFacet.deployTransaction.hash}`,
   );
   dc.DiamondCutFacet = diamondCutFacet;
+  // we use the hash of 'irrigation' insteand of random number
+  const salt = ethers.utils.keccak256(ethers.utils.toUtf8Bytes('Irrigation'));
+  // deploy deployer Create3Factory
+  const Create3Factory = await ethers.getContractFactory('CREATE3Factory');
+  const deployer = await Create3Factory.deploy();
+  await deployer.deployed();
 
   // deploy Diamond
   const Diamond = await ethers.getContractFactory(
     'contracts/IrrigationDiamond.sol:IrrigationDiamond',
   );
-  const irrigationDiamond = await Diamond.deploy(contractOwner.address, diamondCutFacet.address);
-  await irrigationDiamond.deployed();
+  const constructCode = ethers.utils.defaultAbiCoder.encode(
+    ['address', 'address'],
+    [contractOwner.address, diamondCutFacet.address],
+  );
+  await deployer.deploy(salt, Diamond.bytecode, constructCode, { value: 0 });
+  const irrigationDiamondAddress = await deployer.getDeployed(contractOwner.address, salt);
+  log(`salt for contract creation: ${salt}, main contract address: ${irrigationDiamondAddress} `);
+
+  const irrigationDiamond = await ethers.getContractAt(
+    'contracts/IrrigationDiamond.sol:IrrigationDiamond',
+    irrigationDiamondAddress,
+  );
   dc._IrrigationDiamond = irrigationDiamond;
-  networkDeployInfo.DiamondAddress = irrigationDiamond.address;
+  networkDeployInfo.DiamondAddress = irrigationDiamondAddress;
 
   dc.IrrigationDiamond = (
     await ethers.getContractFactory('hardhat-diamond-abi/HardhatDiamondABI.sol:IrrigationDiamond')

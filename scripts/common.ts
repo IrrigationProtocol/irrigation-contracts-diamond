@@ -9,6 +9,7 @@ import chaiAsPromised from 'chai-as-promised';
 import { Fragment } from '@ethersproject/abi';
 import fs from 'fs';
 import util from 'util';
+import crypto from 'crypto';
 
 chai.use(chaiAsPromised);
 
@@ -116,3 +117,9 @@ export function writeDeployedInfo(deployments: { [key: string]: INetworkDeployIn
 export type DeployedContracts = Record<string, BaseContract>;
 
 export const dc: DeployedContracts = {};
+
+export function random32bit() {
+  let u = new Uint32Array(1);
+  const randomeBuffer = crypto.randomBytes(32);
+  return '0x' + randomeBuffer.toString('hex');  
+}

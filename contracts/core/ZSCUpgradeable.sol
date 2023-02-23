@@ -245,7 +245,7 @@ contract ZSCUpgradeable is EIP2535Initializable, IrrigationAccessControl {
     }
 
     function decrypt(uint256 privateKey, Utils.G1Point memory y) public view returns (address userAddr) {
-        bytes32 yHash = keccak256(abi.encode(y));        
+        bytes32 yHash = keccak256(abi.encode(y));
         uint256 plainValue = libEncryption.decryptWithSavedData(privateKey, yHash);
         userAddr = address(uint160(plainValue));
     }
