@@ -41,6 +41,7 @@ export function suite() {
     let secondBidder: SignerWithAddress;
     let zscContract: ZSCUpgradeable;
     let zscClient: Client;
+    let zscClientForTester: Client;
     let secretKey;
     before(async () => {
       signers = await ethers.getSigners();
@@ -97,6 +98,27 @@ export function suite() {
           bn128.serialize(zscClient.account.keypair.y),
         ),
       ).to.be.equal(owner.address);
+    });
+
+    it('Testing Zsc transfer for blocked address', async () => {
+      await zscContract.blockTransferor(sender.address);
+      await token1.connect(sender).approve(zscContract.address, toWei(1));
+      await token1.transfer(sender.address, toWei(1));
+      zscClientForTester = new Client(web3, zscContract, sender, signers);
+      await zscClientForTester.register();
+      await expect(
+        zscContract
+          .connect(sender)
+          .zDeposit(bn128.serialize(zscClientForTester.account.keypair['y']), 100),
+      ).to.be.revertedWith('Transferor is blocked');
+    });
+
+    it('Testing Zsc transfer for unblocking', async () => {
+      await zscContract.unblockTransferor(sender.address);
+      await zscContract
+        .connect(sender)
+        .zDeposit(bn128.serialize(zscClientForTester.account.keypair['y']), 100);
+      expect(await token1.balanceOf(sender.address)).be.to.equal(toWei(1).sub(100));
     });
   });
 }
