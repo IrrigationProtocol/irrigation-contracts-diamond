@@ -23,9 +23,6 @@ import { DiamondCutFacet, IDiamondCut } from '../typechain-types';
 import { deployments } from './deployments';
 import { Facets, LoadFacetDeployments } from './facets';
 import * as util from 'util';
-import { libraries } from '../typechain-types/contracts';
-import { InnerVerifier } from '../typechain-types/contracts/libraries/ZkVerifier/InnerVerifier';
-import { ZetherVerifier } from '../typechain-types/contracts/libraries/ZkVerifier/ZetherVerifier';
 
 const log: debug.Debugger = debug('IrrigationDeploy:log');
 log.color = '159';

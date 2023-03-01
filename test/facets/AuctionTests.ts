@@ -131,7 +131,7 @@ export function suite() {
         `expected duration ${86400 * 2}, but ${createdAuction.duration}`,
       );
     });
-    it('Tesing Auction buyNow', async () => {
+    it('Testing Auction buyNow', async () => {
       await dai.transfer(sender.address, toWei(50));
       await dai.connect(sender).approve(auctionContract.address, toWei(50));
       await auctionContract.connect(sender).buyNow(1, toWei(40), dai.address);
@@ -153,20 +153,10 @@ export function suite() {
       );
       expect((await usdc.balanceOf(sender.address)).toString()).to.be.equal(
         expectedUSDCBalance.toString(),
-      );
-      // console.log(
-      //   Number(
-      //     toWei(0.111)
-      //       .mul(toWei(0.9574))
-      //       .div(toBN(10).pow(18 - 6 + 18))
-      //       .mul(toBN(10).pow(12))
-      //       .sub(toWei(0.111 * 0.9574)),
-      //   ) /
-      //     10 ** 18,
-      // );
+      );      
     });
 
-    it('Tesing Auction Bid', async () => {
+    it('Testing Auction Bid', async () => {
       await dai.transfer(sender.address, toWei(100));
       await dai.connect(sender).approve(auctionContract.address, toWei(100));
       let expectedDAIBalance = await dai.balanceOf(sender.address);
@@ -215,14 +205,14 @@ export function suite() {
       ).to.be.revertedWith('auction is inactive');
     });
 
-    it('Test Auction close', async () => {
+    it('Testing Auction close', async () => {
       await auctionContract.connect(sender).closeAuction(1);
       await expect(auctionContract.connect(sender).closeAuction(1)).to.be.rejectedWith(
         "auction can't be closed",
       );
     });
 
-    it('Test Auction claim canceled bid', async () => {
+    it('Testing Auction claim canceled bid', async () => {
       const bid = await auctionContract.getBid(1, 1);
       const payAmount = await auctionContract.getPayAmount(
         dai.address,
