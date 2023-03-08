@@ -12,6 +12,7 @@ export const Facets: FacetToDeployInfo = {
   WaterUpgradeable: { priority: 80, versions: { 0.0: { init: 'Water_Initialize' } } },
   AuctionUpgradeable: { priority: 90 },
   ZSCUpgradeable: { priority: 100, libraries: ['BurnVerifier', 'ZetherVerifier'] },
+  PodsOracleUpgradeable: {priority: 101},
 };
 
 export async function LoadFacetDeployments() {

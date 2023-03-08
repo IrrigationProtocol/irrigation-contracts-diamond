@@ -29,6 +29,7 @@ import * as WaterFaucetTests from './facets/WaterFaucetTests';
 import * as WaterTowerTests from './facets/WaterTowerTests';
 import * as AuctionTests from './facets/AuctionTests';
 import * as ZscTests from './facets/ZscTests';
+import * as PodsOracleTests from './PodsOracleTests';
 
 const debugging = process.env.JB_IDE_HOST !== undefined;
 
@@ -125,6 +126,7 @@ describe.only('Irrigation Diamond DApp Testing', async function () {
       WaterFaucetTests.suite();
       WaterTowerTests.suite();
       AuctionTests.suite();
+      PodsOracleTests.suite();
     });
   });
 });

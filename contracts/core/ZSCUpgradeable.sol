@@ -6,11 +6,12 @@ import "../libraries/ZkVerifier/ZetherVerifier.sol";
 import "../libraries/ZkVerifier/BurnVerifier.sol";
 import "../libraries/TransferHelper.sol";
 import "./ZSCStorage.sol";
+import "./BanTransferor.sol";
 import "../utils/EIP2535Initializable.sol";
 import "../utils/IrrigationAccessControl.sol";
 import "../libraries/Encryption/libEncryption.sol";
 
-contract ZSCUpgradeable is EIP2535Initializable, IrrigationAccessControl {
+contract ZSCUpgradeable is EIP2535Initializable, IrrigationAccessControl, BanTransferor {
     using Utils for uint256;
     using Utils for Utils.G1Point;
     using ZSCStorage for ZSCStorage.Layout;
@@ -101,7 +102,7 @@ contract ZSCUpgradeable is EIP2535Initializable, IrrigationAccessControl {
         ZSCStorage.layout().pending[yHash][1] = Utils.g();
     }
 
-    function zDeposit(Utils.G1Point memory y, uint32 bTransfer) public {
+    function zDeposit(Utils.G1Point memory y, uint32 bTransfer) public onlyAllowedTransferor {
         bytes32 yHash = keccak256(abi.encode(y));
         require(registered(yHash), "Account not yet registered.");
         rollOver(yHash);
@@ -139,7 +140,7 @@ contract ZSCUpgradeable is EIP2535Initializable, IrrigationAccessControl {
         Utils.G1Point memory u,
         bytes memory proof,
         Utils.G1Point memory beneficiary
-    ) public {
+    ) public onlyAllowedTransferor {
         uint256 size = y.length;
         Utils.G1Point[] memory CLn = new Utils.G1Point[](size);
         Utils.G1Point[] memory CRn = new Utils.G1Point[](size);
@@ -200,7 +201,7 @@ contract ZSCUpgradeable is EIP2535Initializable, IrrigationAccessControl {
         uint256 bTransfer,
         Utils.G1Point memory u,
         bytes memory proof
-    ) public {
+    ) public onlyAllowedTransferor {
         bytes32 yHash = keccak256(abi.encode(y));
         require(registered(yHash), "Account not yet registered.");
         rollOver(yHash);
@@ -232,7 +233,7 @@ contract ZSCUpgradeable is EIP2535Initializable, IrrigationAccessControl {
         TransferHelper.safeTransfer(ZSCStorage.layout().tokenAddress, msg.sender, bTransfer);
     }
 
-    function setMaxKeys(uint32 maxPublicKeys) public {
+    function setMaxKeys(uint32 maxPublicKeys) external onlySuperAdminRole {
         libEncryption.setMaxKeys(maxPublicKeys);
     }
 
@@ -240,12 +241,16 @@ contract ZSCUpgradeable is EIP2535Initializable, IrrigationAccessControl {
         uint32 numKeys,
         uint32 offset,
         Utils.G1Point[] memory publicKeysIn
-    ) public {
+    ) external onlySuperAdminRole {
         libEncryption.setPublicKeys(numKeys, offset, publicKeysIn);
     }
 
-    function decrypt(uint256 privateKey, Utils.G1Point memory y) public view returns (address userAddr) {
-        bytes32 yHash = keccak256(abi.encode(y));        
+    function decrypt(uint256 privateKey, Utils.G1Point memory y)
+        public
+        view
+        returns (address userAddr)
+    {
+        bytes32 yHash = keccak256(abi.encode(y));
         uint256 plainValue = libEncryption.decryptWithSavedData(privateKey, yHash);
         userAddr = address(uint160(plainValue));
     }
