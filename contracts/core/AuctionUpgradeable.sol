@@ -244,10 +244,12 @@ contract AuctionUpgradeable is EIP2535Initializable, IrrigationAccessControl {
     }
 
     // admin setters
+    // enable or disable purchase tokens
     function setPurchaseToken(address _token, bool _bEnable) external onlySuperAdminRole {
         AuctionStorage.layout().supportedPurchaseTokens[_token] = _bEnable;
     }
 
+    // enable or diable sell tokens
     function setSellToken(address _token, bool _bEnable) external onlySuperAdminRole {
         AuctionStorage.layout().supportedSellTokens[_token] = _bEnable;
     }

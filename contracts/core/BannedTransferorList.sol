@@ -2,12 +2,12 @@
 
 pragma solidity ^0.8.17;
 
-library BlockTransferStorage {
+library BannedTransferorList {
     struct Layout {        
-        mapping(address => bool) blockedTransferors;
+        mapping(address => bool) bannedTransferors;
     }
 
-    bytes32 internal constant STORAGE_SLOT = keccak256("irrigation.contracts.storage.BlockTransfer");
+    bytes32 internal constant STORAGE_SLOT = keccak256("irrigation.contracts.storage.BannedTransferorList");
 
     function layout() internal pure returns (Layout storage l) {
         bytes32 slot = STORAGE_SLOT;

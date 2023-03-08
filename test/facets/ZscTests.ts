@@ -101,7 +101,7 @@ export function suite() {
     });
 
     it('Testing Zsc transfer for blocked address', async () => {
-      await zscContract.blockTransferor(sender.address);
+      await zscContract.banTransferor(sender.address);
       await token1.connect(sender).approve(zscContract.address, toWei(1));
       await token1.transfer(sender.address, toWei(1));
       zscClientForTester = new Client(web3, zscContract, sender, signers);
@@ -114,7 +114,7 @@ export function suite() {
     });
 
     it('Testing Zsc transfer for unblocking', async () => {
-      await zscContract.unblockTransferor(sender.address);
+      await zscContract.allowTransferor(sender.address);
       await zscContract
         .connect(sender)
         .zDeposit(bn128.serialize(zscClientForTester.account.keypair['y']), 100);

@@ -6,12 +6,12 @@ import "../libraries/ZkVerifier/ZetherVerifier.sol";
 import "../libraries/ZkVerifier/BurnVerifier.sol";
 import "../libraries/TransferHelper.sol";
 import "./ZSCStorage.sol";
-import "./BlockTransfer.sol";
+import "./BanTransferor.sol";
 import "../utils/EIP2535Initializable.sol";
 import "../utils/IrrigationAccessControl.sol";
 import "../libraries/Encryption/libEncryption.sol";
 
-contract ZSCUpgradeable is EIP2535Initializable, IrrigationAccessControl, BlockTransfer {
+contract ZSCUpgradeable is EIP2535Initializable, IrrigationAccessControl, BanTransferor {
     using Utils for uint256;
     using Utils for Utils.G1Point;
     using ZSCStorage for ZSCStorage.Layout;
@@ -102,7 +102,7 @@ contract ZSCUpgradeable is EIP2535Initializable, IrrigationAccessControl, BlockT
         ZSCStorage.layout().pending[yHash][1] = Utils.g();
     }
 
-    function zDeposit(Utils.G1Point memory y, uint32 bTransfer) public onlyUnBlockedTransfer {
+    function zDeposit(Utils.G1Point memory y, uint32 bTransfer) public onlyAllowedTransferor {
         bytes32 yHash = keccak256(abi.encode(y));
         require(registered(yHash), "Account not yet registered.");
         rollOver(yHash);
@@ -140,7 +140,7 @@ contract ZSCUpgradeable is EIP2535Initializable, IrrigationAccessControl, BlockT
         Utils.G1Point memory u,
         bytes memory proof,
         Utils.G1Point memory beneficiary
-    ) public onlyUnBlockedTransfer {
+    ) public onlyAllowedTransferor {
         uint256 size = y.length;
         Utils.G1Point[] memory CLn = new Utils.G1Point[](size);
         Utils.G1Point[] memory CRn = new Utils.G1Point[](size);
@@ -201,7 +201,7 @@ contract ZSCUpgradeable is EIP2535Initializable, IrrigationAccessControl, BlockT
         uint256 bTransfer,
         Utils.G1Point memory u,
         bytes memory proof
-    ) public onlyUnBlockedTransfer {
+    ) public onlyAllowedTransferor {
         bytes32 yHash = keccak256(abi.encode(y));
         require(registered(yHash), "Account not yet registered.");
         rollOver(yHash);
