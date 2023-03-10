@@ -8,6 +8,15 @@ import "../libraries/TransferHelper.sol";
 import "../libraries/FullMath.sol";
 import "@gnus.ai/contracts-upgradeable-diamond/contracts/interfaces/IERC20MetadataUpgradeable.sol";
 
+/// Auction Contract allows users sell allowed tokens or buy listed tokens with allowed purchase tokens(stable coins)
+/// 1. owner allow sell tokens and purchase tokens, and set auction fee
+/// 2. seller(auctioner) create auction
+/// *** auction has end time
+/// *** seller should have enough balance for sell tokens (sell amount + auction fee) *** ///
+/// 3. buyer buy listed tokens immediately or bid with any price in a range
+/// *** buyer shuold have enough balance for bid tokens (price * buy amount) *** ///
+/// 4. anyone(buyer or seller) close auction after end time
+
 contract AuctionUpgradeable is EIP2535Initializable, IrrigationAccessControl {
     using AuctionStorage for AuctionStorage.Layout;
 
@@ -41,17 +50,8 @@ contract AuctionUpgradeable is EIP2535Initializable, IrrigationAccessControl {
         uint256 bidId
     );
 
-    event UpdateAuctionBid(
-        address indexed buyer,
-        address indexed purchaseToken,
-        uint256 bidPrice,
-        uint256 auctionId,
-        uint256 bidId,
-        uint256 updatedBidId
-    );
-
     uint256 public constant FEE_DENOMINATOR = 1000;
-    // when auction is closed, max 200 bids can be settled
+    // when auction is closed, max 200 bids with highest price can be settled
     uint256 public constant MAX_CHECK_BID_COUNT = 200;
 
     function createAuction(

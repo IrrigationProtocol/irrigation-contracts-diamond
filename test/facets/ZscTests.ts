@@ -100,7 +100,7 @@ export function suite() {
       ).to.be.equal(owner.address);
     });
 
-    it('Testing Zsc transfer for blocked address', async () => {
+    it('Testing Zsc transfer for banned address', async () => {
       await zscContract.banTransferor(sender.address);
       await token1.connect(sender).approve(zscContract.address, toWei(1));
       await token1.transfer(sender.address, toWei(1));
@@ -113,7 +113,7 @@ export function suite() {
       ).to.be.revertedWith('Transferor is blocked');
     });
 
-    it('Testing Zsc transfer for unblocking', async () => {
+    it('Testing Zsc transfer for allowed address', async () => {
       await zscContract.allowTransferor(sender.address);
       await zscContract
         .connect(sender)

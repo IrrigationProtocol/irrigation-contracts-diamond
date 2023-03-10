@@ -3,9 +3,10 @@ pragma solidity 0.8.17;
 
 import "@gnus.ai/contracts-upgradeable-diamond/contracts/token/ERC20/IERC20Upgradeable.sol";
 import "@gnus.ai/contracts-upgradeable-diamond/contracts/token/ERC20/utils/SafeERC20Upgradeable.sol";
-import { WaterTowerStorage } from "./WaterTowerStorage.sol";
+import {WaterTowerStorage} from "./WaterTowerStorage.sol";
 import "../utils/EIP2535Initializable.sol";
 import "../utils/IrrigationAccessControl.sol";
+import "../libraries/TransferHelper.sol";
 
 contract WaterTowerUpgradeable is EIP2535Initializable, IrrigationAccessControl {
     using WaterTowerStorage for WaterTowerStorage.Layout;
@@ -17,21 +18,26 @@ contract WaterTowerUpgradeable is EIP2535Initializable, IrrigationAccessControl 
 
     uint256 constant DECIMALS = 1e18;
 
-    function deposit(uint amount) external {
-        IERC20Upgradeable(address(this)).safeTransferFrom(msg.sender, address(this), amount);
-
+    // deposit water token
+    function deposit(uint256 amount) external {
+        IERC20Upgradeable(address(this)).safeTransferFrom(msg.sender, address(this), amount);        
         _deposit(msg.sender, amount);
     }
 
-    function withdraw(uint amount) external {
+    // withdraw water token
+    function withdraw(uint256 amount) external {
         IERC20Upgradeable(address(this)).safeTransfer(msg.sender, amount);
-
         _withdraw(msg.sender, amount);
     }
 
-    function claim(uint amount) external {
-        WaterTowerStorage.UserInfo storage curUserInfo = WaterTowerStorage.layout().userInfo[msg.sender];
-        curUserInfo.pending += WaterTowerStorage.layout().sharePerWater * curUserInfo.amount - curUserInfo.debt;
+    function claim(uint256 amount) external {
+        WaterTowerStorage.UserInfo storage curUserInfo = WaterTowerStorage.layout().userInfo[
+            msg.sender
+        ];
+        curUserInfo.pending +=
+            WaterTowerStorage.layout().sharePerWater *
+            curUserInfo.amount -
+            curUserInfo.debt;
 
         curUserInfo.debt = WaterTowerStorage.layout().sharePerWater * curUserInfo.amount;
 
@@ -48,12 +54,15 @@ contract WaterTowerUpgradeable is EIP2535Initializable, IrrigationAccessControl 
 
     function compound(uint amount) external {}
 
-    // can't call app storage in this function 
+    // can't call app storage in this function
     receive() external payable {}
 
     function _deposit(address user, uint amount) internal {
         WaterTowerStorage.UserInfo storage curUserInfo = WaterTowerStorage.layout().userInfo[user];
-        curUserInfo.pending += WaterTowerStorage.layout().sharePerWater * curUserInfo.amount - curUserInfo.debt;
+        curUserInfo.pending +=
+            WaterTowerStorage.layout().sharePerWater *
+            curUserInfo.amount -
+            curUserInfo.debt;
 
         curUserInfo.amount += amount;
         curUserInfo.debt = WaterTowerStorage.layout().sharePerWater * curUserInfo.amount;
@@ -63,7 +72,10 @@ contract WaterTowerUpgradeable is EIP2535Initializable, IrrigationAccessControl 
 
     function _withdraw(address user, uint amount) internal {
         WaterTowerStorage.UserInfo storage curUserInfo = WaterTowerStorage.layout().userInfo[user];
-        curUserInfo.pending += WaterTowerStorage.layout().sharePerWater * curUserInfo.amount - curUserInfo.debt;
+        curUserInfo.pending +=
+            WaterTowerStorage.layout().sharePerWater *
+            curUserInfo.amount -
+            curUserInfo.debt;
 
         curUserInfo.amount -= amount;
         curUserInfo.debt = WaterTowerStorage.layout().sharePerWater * curUserInfo.amount;
@@ -72,18 +84,17 @@ contract WaterTowerUpgradeable is EIP2535Initializable, IrrigationAccessControl 
     }
 
     // generated getter for usersInfos
-    function userInfo(address arg0) public view returns(WaterTowerStorage.UserInfo memory) {
+    function userInfo(address arg0) public view returns (WaterTowerStorage.UserInfo memory) {
         return WaterTowerStorage.layout().userInfo[arg0];
     }
 
     // generated getter for totalDeposits
-    function totalDeposits() public view returns(uint256) {
+    function totalDeposits() public view returns (uint256) {
         return WaterTowerStorage.layout().totalDeposits;
     }
 
     // generated getter for sharePerWater
-    function sharePerWater() public view returns(uint256) {
+    function sharePerWater() public view returns (uint256) {
         return WaterTowerStorage.layout().sharePerWater;
     }
-
 }
