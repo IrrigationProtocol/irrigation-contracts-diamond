@@ -250,7 +250,6 @@ export function suite() {
         AuctionType.FixedPrice,
       ];
       await token1.approve(auctionContract.address, toWei(1000));
-      // await networkHelpers.time.setNextBlockTimestamp(Math.floor(Date.now() / 1000) + 3600);
       const tx = await auctionContract.createAuction(
         0,
         86400 * 2,

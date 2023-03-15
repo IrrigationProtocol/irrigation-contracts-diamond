@@ -24,31 +24,54 @@ contract AuctionUpgradeable is EIP2535Initializable, IrrigationAccessControl {
         address indexed seller,
         uint256 startTime,
         uint256 duration,
-        address sellToken,
+        address indexed sellToken,
         uint256 sellAmount,
         uint256 minBidAmount,
         uint256 fixedPrice,
         uint256 priceRangeStart,
         uint256 priceRangeEnd,
         AuctionType auctionType,
-        uint256 auctionId
+        uint256 indexed auctionId
     );
+
+    /// @notice Emitted by auction for buyNow
+    /// @param buyer The address call buyNow
+    /// @param amountIn Token amount paid by user to buy auctioning token
+    /// @param amountOut Auctioning token amount that user received
+    /// @param sellToken Auctioning token that auctionor listed to sell
+    /// @param purchaseToken token paid by user to buy auctioning token
+    /// @param auctionId Id of auction list
 
     event AuctionBuy(
         address indexed buyer,
-        uint256 amountToBuy,
-        address indexed purchaseToken,
-        uint256 auctionId
+        uint256 amountIn,
+        uint256 amountOut,
+        address indexed sellToken,
+        address purchaseToken,
+        uint256 indexed auctionId
     );
 
+    /// @notice Emitted by auction when bidder places a bid
+    /// @param bidder The address od bidder
+    /// @param amountToBid The auctioning token amount that user want to buy
+    /// @param purchaseToken The address of token paid by user to buy auctioning token
+    /// @param bidPrice The bid price
+    /// @param auctionId The id of auction list
+    /// @param bidId The id of bid list
+
     event AuctionBid(
-        address indexed buyer,
+        address indexed bidder,
         uint256 amountToBid,
-        address indexed purchaseToken,
+        address purchaseToken,
         uint256 bidPrice,
-        uint256 auctionId,
-        uint256 bidId
+        uint256 indexed auctionId,
+        uint256 indexed bidId
     );
+
+    /// @notice Emitted by auction when bidder or auctioneer closes a auction
+    /// @param unSoldAmount Amount of unsold auctioning token
+    /// @param auctionId Auction id
+    event AuctionClosed(uint256 unSoldAmount, uint256 indexed auctionId);
 
     uint256 public constant FEE_DENOMINATOR = 1000;
     // when auction is closed, max 200 bids with highest price can be settled
@@ -77,34 +100,43 @@ contract AuctionUpgradeable is EIP2535Initializable, IrrigationAccessControl {
         require(minBidAmount > 0 && minBidAmount <= sellAmount, "invalid minBidAmount");
 
         AuctionStorage.layout().currentAuctionId = AuctionStorage.layout().currentAuctionId + 1;
-        uint96 localStartTime = startTime == 0 ? uint96(block.timestamp) : startTime;
+        uint96 _startTime = startTime == 0 ? uint96(block.timestamp) : startTime;
+        uint96 _duration = duration;
+        address _sellToken = sellToken;
+        uint128 _sellAmount = sellAmount;
+        uint128 _minBidAmount = minBidAmount;
+        uint128 _fixedPrice = fixedPrice;
+        uint128 _priceRangeStart = priceRangeStart;
+        uint128 _priceRangeEnd = priceRangeEnd;
+        AuctionType _auctionType = auctionType;
+
         AuctionData memory auction = AuctionData(
             msg.sender,
-            localStartTime,
-            duration,
-            sellToken,
-            sellAmount,
-            minBidAmount,
-            fixedPrice,
-            priceRangeStart,
-            priceRangeEnd,
-            sellAmount,
+            _startTime,
+            _duration,
+            _sellToken,
+            _sellAmount,
+            _minBidAmount,
+            _fixedPrice,
+            _priceRangeStart,
+            _priceRangeEnd,
+            _sellAmount,
             0,
             AuctionStatus.Open,
-            auctionType
+            _auctionType
         );
         AuctionStorage.layout().auctions[AuctionStorage.layout().currentAuctionId] = auction;
         emit AuctionCreated(
             msg.sender,
-            localStartTime,
-            duration,
-            sellToken,
-            sellAmount,
-            minBidAmount,
-            fixedPrice,
-            priceRangeStart,
-            priceRangeEnd,
-            auctionType,
+            _startTime,
+            _duration,
+            _sellToken,
+            _sellAmount,
+            _minBidAmount,
+            _fixedPrice,
+            _priceRangeStart,
+            _priceRangeEnd,
+            _auctionType,
             AuctionStorage.layout().currentAuctionId
         );
         return AuctionStorage.layout().currentAuctionId;
@@ -134,7 +166,14 @@ contract AuctionUpgradeable is EIP2535Initializable, IrrigationAccessControl {
         AuctionStorage.layout().auctions[auctionId].reserve = availableAmount - purchaseAmount;
         TransferHelper.safeTransferFrom(purchaseToken, msg.sender, auction.seller, payAmount);
         TransferHelper.safeTransfer(auction.sellToken, msg.sender, purchaseAmount);
-        emit AuctionBuy(msg.sender, purchaseAmount, purchaseToken, auctionId);
+        emit AuctionBuy(
+            msg.sender,
+            payAmount,
+            purchaseAmount,
+            auction.sellToken,
+            purchaseToken,
+            auctionId
+        );
     }
 
     function placeBid(
@@ -207,39 +246,66 @@ contract AuctionUpgradeable is EIP2535Initializable, IrrigationAccessControl {
 
     function _settleAuction(uint256 auctionId) internal {
         AuctionData memory auction = AuctionStorage.layout().auctions[auctionId];
-        // no bid
+        // when there are no bids, all token amount will be transfered back to seller
         if (auction.curBidId == 0) {
             TransferHelper.safeTransfer(auction.sellToken, auction.seller, auction.reserve);
             AuctionStorage.layout().auctions[auctionId].reserve = 0;
             AuctionStorage.layout().auctions[auctionId].status = AuctionStatus.Closed;
+            emit AuctionClosed(auction.reserve, auctionId);
             return;
         }
-        uint256 availableAmount = uint256(auction.reserve);
-        uint256 satteledBidCount = MAX_CHECK_BID_COUNT;
+        uint128 availableAmount = auction.reserve;
+        uint256 settledBidCount = 0;
         uint256 curBidId = auction.curBidId;
         do {
             Bid memory bid = AuctionStorage.layout().bids[auctionId][curBidId];
-            if (availableAmount < bid.bidAmount) {
-                --curBidId;
-                continue;
-            }
-            _settleBid(auction.sellToken, auction.seller, bid);
-            availableAmount -= bid.bidAmount;
+            uint128 settledAmount = _settleBid(
+                auction.sellToken,
+                auction.seller,
+                bid,
+                availableAmount
+            );
+            availableAmount -= settledAmount;
             AuctionStorage.layout().bids[auctionId][curBidId].bCleared = true;
             --curBidId;
-            --satteledBidCount;
-        } while (curBidId > 0 && satteledBidCount > 0 && availableAmount >= auction.minBidAmount);
-        TransferHelper.safeTransfer(auction.sellToken, auction.seller, availableAmount);
+            ++settledBidCount;
+        } while (
+            curBidId > 0 &&
+                settledBidCount <= MAX_CHECK_BID_COUNT &&
+                availableAmount >= auction.minBidAmount
+        );
+        if (availableAmount > 0) {
+            TransferHelper.safeTransfer(auction.sellToken, auction.seller, availableAmount);
+        }
+
         AuctionStorage.layout().auctions[auctionId].reserve = 0;
         AuctionStorage.layout().auctions[auctionId].status = AuctionStatus.Closed;
+        emit AuctionClosed(availableAmount, auctionId);
     }
 
-    function _settleBid(address sellToken, address seller, Bid memory bid) internal {
-        TransferHelper.safeTransfer(sellToken, bid.bidder, bid.bidAmount);
+    /// @notice transfer autioning token to bidder and transfer puchase token to seller
+    function _settleBid(
+        address sellToken,
+        address seller,
+        Bid memory bid,
+        uint128 availableAmount
+    ) internal returns (uint128 settledAmount) {
+        settledAmount = bid.bidAmount;
+        uint128 repayAmount = 0;
+        if (availableAmount < settledAmount) {
+            repayAmount = settledAmount - availableAmount;
+            settledAmount = availableAmount;
+            TransferHelper.safeTransfer(
+                bid.purchaseToken,
+                bid.bidder,
+                getPayAmount(bid.purchaseToken, repayAmount, bid.bidPrice, sellToken)
+            );
+        }
+        TransferHelper.safeTransfer(sellToken, bid.bidder, settledAmount);
         TransferHelper.safeTransfer(
             bid.purchaseToken,
             seller,
-            getPayAmount(bid.purchaseToken, bid.bidAmount, bid.bidPrice, sellToken)
+            getPayAmount(bid.purchaseToken, settledAmount, bid.bidPrice, sellToken)
         );
     }
 
@@ -265,7 +331,7 @@ contract AuctionUpgradeable is EIP2535Initializable, IrrigationAccessControl {
     }
 
     // getters
-    function getAuctionFee() public view returns(uint256 numerator, uint256 dominator) {
+    function getAuctionFee() public view returns (uint256 numerator, uint256 dominator) {
         numerator = AuctionStorage.layout().feeNumerator;
         dominator = FEE_DENOMINATOR;
     }
