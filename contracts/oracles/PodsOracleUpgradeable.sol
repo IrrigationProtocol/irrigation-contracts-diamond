@@ -20,6 +20,8 @@ contract PodsOracleUpgradeable is IPodsOracleUpgradeable, IOracleUpgradeable {
         price = ONE;
     }
 
+    /// @notice returns unharvestable pods price in BDV(based on BEAN price)
+
     function latestPriceOfPods(
         uint256 placeInLine,
         uint256 pods

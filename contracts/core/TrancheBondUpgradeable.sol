@@ -2,6 +2,7 @@
 pragma solidity ^0.8.17;
 
 import "./TrancheBondStorage.sol";
+import "./TrancheTokenStorage.sol";
 import "./WaterCommonStorage.sol";
 import "../utils/EIP2535Initializable.sol";
 import "../utils/IrrigationAccessControl.sol";
@@ -13,6 +14,7 @@ import "../interfaces/IPodsOracleUpgradeable.sol";
 
 contract TrancheBondUpgradeable is EIP2535Initializable, IrrigationAccessControl {
     using TrancheBondStorage for TrancheBondStorage.Layout;
+    using TrancheTokenStorage for TrancheTokenStorage.Layout;
 
     uint256 public constant FMV_DENOMINATOR = 100;
     uint256 public constant MINIMUM_FMV = 20;
@@ -21,7 +23,7 @@ contract TrancheBondUpgradeable is EIP2535Initializable, IrrigationAccessControl
     /// @dev Errors
     error InvalidPods();
     error NotOwnerOfTranche();
-    error InvalidToAddress();
+
 
     /// @notice Create tranches by depositing group of pods
     /// @dev See transferPlot function in https://github.com/BeanstalkFarms/Beanstalk/blob/master/protocol/contracts/farm/facets/MarketplaceFacet/MarketplaceFacet.sol
@@ -47,7 +49,7 @@ contract TrancheBondUpgradeable is EIP2535Initializable, IrrigationAccessControl
                 starts[i],
                 ends[i]
             );
-            // Checked inside of transferPlot function
+            /// Checked inside of transferPlot function
             unchecked {
                 id = indexes[i] + starts[i];
                 podIndexes[i] = i;
@@ -63,44 +65,33 @@ contract TrancheBondUpgradeable is EIP2535Initializable, IrrigationAccessControl
         if (totalFMV < MINIMUM_FMV) revert InvalidPods();
         uint256 curDepositPodsCount = TrancheBondStorage.layout().curDepositPodsCount + 1;
 
-        // Register pods deposit
+        /// Register pods deposit
         TrancheBondStorage.layout().depositedPods[curDepositPodsCount] = DepositPods({
             underlyingPodIndexes: podIndexes,
             fmv: totalFMV,
             depositedAt: block.timestamp
         });
-        // Create tranche A, B, Z
-        createTrancheWithNotation(curDepositPodsCount, totalFMV, msg.sender);
+        /// Create tranche A, B, Z
+        createTrancheTokens(curDepositPodsCount, totalFMV, msg.sender);
         TrancheBondStorage.layout().curDepositPodsCount = curDepositPodsCount;
         emit CreateTranche(curDepositPodsCount, totalFMV, block.timestamp);
     }
 
-    function transferTrancheNotation(
-        uint256 trancheIndex,
-        uint256 notationRange,
-        address to
-    ) internal {
-        /// @dev owner only can send tranche now ??? will we allow transfer tranche on contract?
-        if (to == address(0)) revert InvalidToAddress();
-        TrancheBondStorage.layout().notations[trancheIndex][msg.sender] -= notationRange;
-        TrancheBondStorage.layout().notations[trancheIndex][to] += notationRange;
-    }
-
-    function createTrancheWithNotation(uint256 depositIndex, uint256 fmv, address owner) internal {
+    function createTrancheTokens(uint256 depositIndex, uint256 fmv, address owner) internal {
         uint256 beanPrice = 1;
         uint256[3] memory numeratorFMV = [uint256(20), 30, 50];
         TrancheLevel[3] memory levels = [TrancheLevel.A, TrancheLevel.B, TrancheLevel.Z];
         for (uint256 i = 0; i < 3; ) {
             uint256 fmvOfTranche = (fmv * numeratorFMV[i]) / FMV_DENOMINATOR;
-            /// calculate notation range as 1 usd unit with 0 decimals
-            uint256 maxNotation = (fmvOfTranche * beanPrice) / 1e18;
+            /// calculate total tranche token value as 1 usd unit with 1e18 decimals
+            uint256 totalSimulatedUsd = fmvOfTranche * beanPrice;
             TrancheBondStorage.layout().tranches[depositIndex * 3 + 2] = TranchePods({
                 depositPodsIndex: depositIndex,
                 level: levels[i],
                 fmv: fmvOfTranche
             });
-
-            TrancheBondStorage.layout().notations[depositIndex * 3 + i][owner] = maxNotation;
+            /// create tranche token with calculated usd value
+            TrancheTokenStorage.layout().balances[depositIndex * 3 + i][owner] = totalSimulatedUsd;
             unchecked {
                 ++i;
             }
@@ -123,15 +114,4 @@ contract TrancheBondUpgradeable is EIP2535Initializable, IrrigationAccessControl
         return (depositPods.fmv * numeratorFMV[uint256(tranches.level)]) / FMV_DENOMINATOR;
     }
 
-    /// @notice returns tranche value as 1 usd unit
-    /// @param fmv value of farmer market
-    /// @param beanPrice price of bean
-
-    function notationRangeByTrancheLevel(
-        uint256 fmv,
-        uint256 beanPrice
-    ) internal pure returns (uint256) {
-        /// returns notation range as 1 usd unit
-        return (fmv * beanPrice) / 1e18;
-    }
 }
