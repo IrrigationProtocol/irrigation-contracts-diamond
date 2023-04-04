@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.17;
 
-library TrancheTokenStorage {
+library TrancheNotationStorage {
     struct Layout {
         /// Mapping tranche index  => account => tranche token balance in usd unit
         mapping(uint256 => mapping(address => uint256)) balances;

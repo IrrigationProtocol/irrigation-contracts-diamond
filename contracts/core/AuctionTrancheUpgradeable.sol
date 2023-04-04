@@ -7,25 +7,17 @@ import "../utils/IrrigationAccessControl.sol";
 import "../libraries/TransferHelper.sol";
 import "../libraries/FullMath.sol";
 import "@gnus.ai/contracts-upgradeable-diamond/contracts/interfaces/IERC20MetadataUpgradeable.sol";
+import "../interfaces/ITrancheNotationUpgradeable.sol";
+/// @title Auction Market  for Tranche A, B
 
-/// @title Auction Market for whitelisted erc20 tokens
-/// @dev  Auction contract allows users sell allowed tokens or buy listed tokens with allowed purchase tokens(stable coins)
-///     1. owner allow sell tokens and purchase tokens, and set auction fee
-///     2. seller(auctioner) create auction
-///     * auction has end time
-///     * seller should have enough balance for sell tokens (sell amount + auction fee)
-///     3. buyer buy listed tokens immediately or bid with any price in a range
-///     * buyer shuold have enough balance for bid tokens (price * buy amount)
-///     4. anyone(buyer or seller) close auction after end time
-
-contract AuctionUpgradeable is EIP2535Initializable, IrrigationAccessControl {
+contract AuctionTrancheUpgradeable is EIP2535Initializable, IrrigationAccessControl {
     using AuctionStorage for AuctionStorage.Layout;
 
-    event AuctionCreated(
+    event AuctionTrancheCreated(
         address indexed seller,
         uint256 startTime,
         uint256 duration,
-        address indexed sellToken,
+        uint256 indexed sellTrancheIndex,
         uint256 sellAmount,
         uint256 minBidAmount,
         uint256 fixedPrice,
@@ -39,15 +31,15 @@ contract AuctionUpgradeable is EIP2535Initializable, IrrigationAccessControl {
     /// @param buyer The address call buyNow
     /// @param amountIn Token amount paid by user to buy auctioning token
     /// @param amountOut Auctioning token amount that user received
-    /// @param sellToken Auctioning token that auctionor listed to sell
+    /// @param trancheIndex Auctioning tranche index
     /// @param purchaseToken token paid by user to buy auctioning token
     /// @param auctionId Id of auction list
 
-    event AuctionBuy(
+    event AuctionTrancheBuy(
         address indexed buyer,
         uint256 amountIn,
         uint256 amountOut,
-        address indexed sellToken,
+        uint256 indexed trancheIndex,
         address purchaseToken,
         uint256 indexed auctionId
     );
@@ -78,44 +70,39 @@ contract AuctionUpgradeable is EIP2535Initializable, IrrigationAccessControl {
     // when auction is closed, max 200 bids with highest price can be settled
     uint256 public constant MAX_CHECK_BID_COUNT = 200;
 
-    function createAuction(
+    function createAuctionTranche(
         uint96 startTime,
         uint96 duration,
-        address sellToken,
+        uint256 trancheIndex,
         uint128 sellAmount,
         uint128 minBidAmount,
         uint128 fixedPrice,
         uint128 priceRangeStart,
         uint128 priceRangeEnd,
         AuctionType auctionType
-    ) external returns (uint256) {
-        TransferHelper.safeTransferFrom(
-            sellToken,
-            msg.sender,
-            address(this),
-            (uint256(sellAmount) * (FEE_DENOMINATOR + AuctionStorage.layout().feeNumerator)) /
-                FEE_DENOMINATOR
-        );
+    ) external returns (uint256) {        
+        ITrancheNotationUpgradeable(address(this)).transferTrNotation(trancheIndex, sellAmount, address(this));
+
         require(sellAmount > 0, "cannot zero sell amount");
         require(startTime == 0 || startTime >= block.timestamp, "start time must be in the future");
         require(minBidAmount > 0 && minBidAmount <= sellAmount, "invalid minBidAmount");
 
         AuctionStorage.layout().currentAuctionId = AuctionStorage.layout().currentAuctionId + 1;
         uint96 _startTime = startTime == 0 ? uint96(block.timestamp) : startTime;
-        uint96 _duration = duration;
-        address _sellToken = sellToken;
+        uint96 _duration = duration;        
         uint128 _sellAmount = sellAmount;
         uint128 _minBidAmount = minBidAmount;
         uint128 _fixedPrice = fixedPrice;
         uint128 _priceRangeStart = priceRangeStart;
         uint128 _priceRangeEnd = priceRangeEnd;
+        uint256 _trancheIndex = trancheIndex;
         AuctionType _auctionType = auctionType;
 
         AuctionData memory auction = AuctionData(
             msg.sender,
             _startTime,
             _duration,
-            _sellToken,
+            address(0),
             _sellAmount,
             _minBidAmount,
             _fixedPrice,
@@ -123,17 +110,17 @@ contract AuctionUpgradeable is EIP2535Initializable, IrrigationAccessControl {
             _priceRangeEnd,
             _sellAmount,
             0,
-            0,
+            _trancheIndex,
             AuctionStatus.Open,
             _auctionType,
-            AssetType.ERC20
+            AssetType.Tranche
         );
         AuctionStorage.layout().auctions[AuctionStorage.layout().currentAuctionId] = auction;
-        emit AuctionCreated(
+        emit AuctionTrancheCreated(
             msg.sender,
             _startTime,
             _duration,
-            _sellToken,
+            _trancheIndex,
             _sellAmount,
             _minBidAmount,
             _fixedPrice,
@@ -145,15 +132,15 @@ contract AuctionUpgradeable is EIP2535Initializable, IrrigationAccessControl {
         return AuctionStorage.layout().currentAuctionId;
     }
 
-    function buyNow(
+    function buyNowTranche(
         uint256 auctionId,
         uint128 purchaseAmount,
         address purchaseToken
-    ) external supportedPurchase(purchaseToken) {
+    ) external supportedPurchase(purchaseToken) {        
         AuctionData memory auction = AuctionStorage.layout().auctions[auctionId];
         require(
-            auction.auctionType != AuctionType.TimedAuction && auction.seller != address(0),
-            "invalid auction for buyNow"
+            auction.auctionType != AuctionType.TimedAuction && auction.seller != address(0) && auction.listedAssetType == AssetType.Tranche,
+            "invalid auction for buyNowTranche"
         );
         uint128 availableAmount = auction.reserve;
         require(purchaseAmount <= availableAmount, "big amount");
@@ -169,11 +156,11 @@ contract AuctionUpgradeable is EIP2535Initializable, IrrigationAccessControl {
         AuctionStorage.layout().auctions[auctionId].reserve = availableAmount - purchaseAmount;
         TransferHelper.safeTransferFrom(purchaseToken, msg.sender, auction.seller, payAmount);
         TransferHelper.safeTransfer(auction.sellToken, msg.sender, purchaseAmount);
-        emit AuctionBuy(
+        emit AuctionTrancheBuy(
             msg.sender,
             payAmount,
             purchaseAmount,
-            auction.sellToken,
+            auction.trancheIndex,
             purchaseToken,
             auctionId
         );

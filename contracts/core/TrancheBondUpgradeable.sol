@@ -2,19 +2,20 @@
 pragma solidity ^0.8.17;
 
 import "./TrancheBondStorage.sol";
-import "./TrancheTokenStorage.sol";
+// import "./TrancheNotationStorage.sol";
 import "./WaterCommonStorage.sol";
 import "../utils/EIP2535Initializable.sol";
 import "../utils/IrrigationAccessControl.sol";
 import "../libraries/FullMath.sol";
 import "../interfaces/IPodsOracleUpgradeable.sol";
+import "../interfaces/ITrancheNotationUpgradeable.sol";
 
 /// @title TrancheBond Contract
 /// @dev Allows users deposit pods and receive tranches
 
 contract TrancheBondUpgradeable is EIP2535Initializable, IrrigationAccessControl {
     using TrancheBondStorage for TrancheBondStorage.Layout;
-    using TrancheTokenStorage for TrancheTokenStorage.Layout;
+    // using TrancheNotationStorage for TrancheNotationStorage.Layout;
 
     uint256 public constant FMV_DENOMINATOR = 100;
     uint256 public constant MINIMUM_FMV = 20;
@@ -91,7 +92,8 @@ contract TrancheBondUpgradeable is EIP2535Initializable, IrrigationAccessControl
                 fmv: fmvOfTranche
             });
             /// create tranche token with calculated usd value
-            TrancheTokenStorage.layout().balances[depositIndex * 3 + i][owner] = totalSimulatedUsd;
+            ITrancheNotationUpgradeable(address(this)).mintTrNotation(depositIndex* 3 + i, totalSimulatedUsd, owner);
+            // TrancheTokenStorage.layout().balances[depositIndex* 3 + i][owner] = totalSimulatedUsd;
             unchecked {
                 ++i;
             }
