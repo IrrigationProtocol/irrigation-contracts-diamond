@@ -19,6 +19,7 @@ enum AuctionStatus {
     Open,
     Closed
 }
+
 struct Bid {
     uint128 bidAmount;
     uint128 bidPrice;
@@ -26,6 +27,8 @@ struct Bid {
     address purchaseToken;
     bool bCleared;
 }
+
+/// @dev Contains all data for auction erc20 token and tranche
 struct AuctionData {
     address seller;
     uint96 startTime;

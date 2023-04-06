@@ -11,10 +11,6 @@ interface ITrancheNotationUpgradeable {
         address indexed from,
         address indexed to
     );
-    /// @dev Errors
-    error InvalidToAddress();
-    error InsufficientTrancheNotation();
-    error CallOutIrrigation();
 
     /// @notice Transfer tranche token
     /// @dev    Only owner of tranche can transfer tranche token

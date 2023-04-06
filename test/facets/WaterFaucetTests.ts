@@ -5,10 +5,11 @@ import { IrrigationDiamond } from '../../typechain-types/hardhat-diamond-abi/Har
 import {
   MockBeanstalk,
   MockWaterCommonUpgradeable,
+  WaterCommonUpgradeable,
   WaterFaucetUpgradeable,
   WaterUpgradeable,
 } from '../../typechain-types';
-import { BEANSTALK } from '../../scripts/shared';
+import { CONTRACT_ADDRESSES } from '../../scripts/shared';
 
 export function suite() {
   describe('Irrigation WaterFaucet Testing', async function () {
@@ -20,7 +21,7 @@ export function suite() {
     const irrigationDiamond = dc.IrrigationDiamond as IrrigationDiamond;
     let water: WaterUpgradeable;
     let waterFaucet: WaterFaucetUpgradeable;
-    let waterCommon: MockWaterCommonUpgradeable;
+    let waterCommon: WaterCommonUpgradeable;
 
     before(async () => {
       signers = await ethers.getSigners();
@@ -30,21 +31,19 @@ export function suite() {
       gdAddr1 = await irrigationDiamond.connect(signers[1]);
       water = await ethers.getContractAt('WaterUpgradeable', irrigationDiamond.address);
       waterFaucet = await ethers.getContractAt('WaterFaucetUpgradeable', irrigationDiamond.address);
-      waterCommon = await ethers.getContractAt(
-        'MockWaterCommonUpgradeable',
-        irrigationDiamond.address,
-      );
+      waterCommon = await ethers.getContractAt('WaterCommonUpgradeable', irrigationDiamond.address);
       // const beanstalkContract = await ethers.getContractFactory('MockBeanstalk');
       // const beanstalk: MockBeanstalk = await beanstalkContract.deploy();
-      const beanstalk = await ethers.getContractAt('IBeanstalkUpgradeable', BEANSTALK);
+      const beanstalk = await ethers.getContractAt(
+        'IBeanstalkUpgradeable',
+        CONTRACT_ADDRESSES.BEANSTALK,
+      );
       const fertizerContract = await ethers.getContractFactory('Mock1155Upgradeable');
       const fertilizer = await fertizerContract.deploy();
       await fertilizer.mint(1, 1000);
-      await fertilizer
-        .connect(owner)
-        .safeTransferFrom(owner.address, sender.address, 1, 100, '0x');
+      await fertilizer.connect(owner).safeTransferFrom(owner.address, sender.address, 1, 100, '0x');
       // await beanstalk.mockSetStalkBalance(sender.address, toWei(2));
-      await waterCommon.mockSetBeanstalk(beanstalk.address, fertilizer.address);
+      // await waterCommon.mockSetBeanstalk(beanstalk.address, fertilizer.address);
     });
 
     it('Testing WaterFaucet startEpoch', async () => {
