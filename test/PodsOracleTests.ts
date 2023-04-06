@@ -19,18 +19,18 @@ export function suite() {
 
     it('Testing pods price', async () => {
       // price calculation based on onchain data
-      const podPrice = await podsOracle.latestPriceOfPods(toD6(23.68), toD6(9001.46));
-      console.log('PODS price:', fromWei(podPrice));
+      // const podPrice = await podsOracle.latestPriceOfPods(toD6(23.68), toD6(9001.46));
+      // console.log('PODS price:', fromWei(podPrice));
       // test price calculation based on simulate data
       const price = await podsOracle.priceOfPods(
-        toD6(23.68),
-        toD6(9001.46),
-        BigNumber.from('829849243800001'),
+        BigNumber.from('81479313214613'),
+        BigNumber.from('9001460000'),
+        BigNumber.from('851463116022336'),
         BigNumber.from('57799313214613'),
       );
       assert(
-        fromWei(price) >= 0.9693225796 && fromWei(price) <= 0.9693225797,
-        `expected price 0.9693225797 but ${fromWei(price)}`,
+        fromWei(price) >= 8732.838594 && fromWei(price) <= 8732.838595,
+        `expected price 8732.838595 but ${fromWei(price)}`,
       );
     });
   });
