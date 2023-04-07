@@ -4,6 +4,7 @@ pragma solidity ^0.8.17;
 import "./TrancheBondStorage.sol";
 // import "./TrancheNotationStorage.sol";
 import "./WaterCommonStorage.sol";
+import "./WaterTowerStorage.sol";
 import "../utils/EIP2535Initializable.sol";
 import "../utils/IrrigationAccessControl.sol";
 import "../libraries/FullMath.sol";
@@ -15,15 +16,20 @@ import "../interfaces/ITrancheNotationUpgradeable.sol";
 
 contract TrancheBondUpgradeable is EIP2535Initializable, IrrigationAccessControl {
     using TrancheBondStorage for TrancheBondStorage.Layout;
+    using WaterTowerStorage for WaterTowerStorage.Layout;
     // using TrancheNotationStorage for TrancheNotationStorage.Layout;
 
     uint256 public constant FMV_DENOMINATOR = 100;
     uint256 public constant MINIMUM_FMV = 1;
+    uint256 public constant MINIMUM_WATER = 32;
+
     /// @dev Events
     event CreateTranche(uint256 depositIndex, uint256 totalFMV, uint256 depositedAt);
+
     /// @dev Errors
     error InvalidPods();
     error NotOwnerOfTranche();
+    error NotEligible();
 
     /// @notice Create tranches by depositing group of pods
     /// @dev See transferPlot function in https://github.com/BeanstalkFarms/Beanstalk/blob/master/protocol/contracts/farm/facets/MarketplaceFacet/MarketplaceFacet.sol
@@ -35,7 +41,7 @@ contract TrancheBondUpgradeable is EIP2535Initializable, IrrigationAccessControl
         uint256[] calldata indexes,
         uint256[] calldata starts,
         uint256[] calldata ends
-    ) external {
+    ) external onlyWaterHolder {
         if (indexes.length != starts.length || indexes.length != ends.length) revert InvalidPods();
         uint256[] memory podIndexes = new uint256[](indexes.length);
         uint256 totalFMV;
@@ -119,5 +125,12 @@ contract TrancheBondUpgradeable is EIP2535Initializable, IrrigationAccessControl
             trancheIndex
         );
         return (depositPods.fmv * numeratorFMV[uint256(tranches.level)]) / FMV_DENOMINATOR;
+    }
+
+    /// @dev modifiers
+    modifier onlyWaterHolder() {
+        WaterTowerStorage.UserInfo memory userInfo = WaterTowerStorage.layout().userInfo[msg.sender];
+        if (userInfo.amount < MINIMUM_WATER * 1e18) revert NotEligible();
+        _;
     }
 }

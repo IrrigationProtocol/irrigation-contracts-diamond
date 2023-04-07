@@ -100,7 +100,7 @@ export function suite() {
       // await auctionContract.setAuctionFee(15, signers[2].address);
       // expect((await auctionContract.getAuctionFee()).numerator).to.be.eq(BigNumber.from(15));
     });
-    it('Create Tranche', async () => {
+    it('Testing Tranche create', async () => {
       usdc = await getUsdc();
       await mintUsdc(owner.address, toD6(100_000));
       /// buy beans and pods and assign
@@ -126,6 +126,16 @@ export function suite() {
       trancheNotation = await ethers.getContractAt('TrancheNotationUpgradeable', rootAddress);
       await beanstalk.approvePods(trancheBond.address, ethers.constants.MaxUint256);
       await trancheBond.createTranchesWithPods(podsGroup.indexes, [0, 0], podsGroup.amounts);
+      let trNotationBalance = await trancheNotation.balanceOfTrNotation(3, owner.address);
+      const tranchePods = await trancheBond.getTranchePods(3);
+      assert(fromWei(trNotationBalance) > 0, `notaion balance is ${trNotationBalance}`);
+      assert(
+        fromWei(trNotationBalance) === fromWei(tranchePods.depositPods.fmv.mul(20).div(100)),
+        `expected balance is ${fromWei(
+          tranchePods.depositPods.fmv.mul(20).div(100),
+        )}, but ${fromWei(trNotationBalance)} `,
+      );
+
       // console.log(await trancheBond.getTranchePods(3));
       // console.log(await trancheNotation.balanceOfTrNotation(3, owner.address));
     });
