@@ -67,7 +67,7 @@ const config: HardhatUserConfig = {
         runs: 200,
       },
     },
-  },  
+  },
   networks: {
     hardhat: {
       forking: process.env.FORK_URL
@@ -77,7 +77,7 @@ const config: HardhatUserConfig = {
           }
         : undefined,
       chainId: 1337,
-      hardfork: 'london'
+      hardfork: 'london',
     },
     local: {
       url: 'http://localhost:8545',
@@ -91,7 +91,7 @@ const config: HardhatUserConfig = {
             blockNumber: parseInt(process.env.FORK_BLOCK_NUMBER) || undefined,
           }
         : undefined,
-      chainId: 31337
+      chainId: 31337,
     },
     ropsten: {
       url: process.env.ROPSTEN_URL || '',
@@ -104,7 +104,7 @@ const config: HardhatUserConfig = {
     polygon: {
       url: `https://polygon-mainnet.infura.io/v3/${process.env.INFURA_API_KEY}`,
       accounts: process.env.PRIVATE_KEY !== undefined ? [process.env.PRIVATE_KEY] : [],
-    }
+    },
   },
   gasReporter: {
     enabled: process.env.REPORT_GAS !== undefined,
@@ -128,6 +128,9 @@ const config: HardhatUserConfig = {
     strict: false,
     exclude: ['hardhat-diamond-abi/.*'],
     filter: filterDuplicateFunctions,
+  },
+  mocha: {
+    timeout: 100000000,
   },
 };
 

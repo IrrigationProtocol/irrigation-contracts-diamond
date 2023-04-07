@@ -13,8 +13,13 @@ interface ITrancheNotationUpgradeable {
     );
 
     /// @notice Transfer tranche token
-    /// @dev    Only owner of tranche can transfer tranche token
-    function transferTrNotation(uint256 trancheIndex, uint256 amount, address to) external;
+    /// @dev    Only owner of tranche and irrigation contract can transfer tranche token
+    function transferFromTrNotation(
+        uint256 trancheIndex,
+        uint256 amount,
+        address from,
+        address to
+    ) external;
 
     function mintTrNotation(uint256 trancheIndex, uint256 amount, address minter) external;
 

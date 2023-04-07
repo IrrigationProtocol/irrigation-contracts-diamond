@@ -11,8 +11,8 @@ enum AuctionType {
 /// @dev we supports Tranche and ERC20 as listed assets
 
 enum AssetType {
-    Tranche,
-    ERC20
+    ERC20,
+    Tranche
 }
 
 enum AuctionStatus {
@@ -44,7 +44,7 @@ struct AuctionData {
     uint256 trancheIndex;
     AuctionStatus status;
     AuctionType auctionType;
-    AssetType listedAssetType;
+    AssetType assetType;
 }
 
 library AuctionStorage {

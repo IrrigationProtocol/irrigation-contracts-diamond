@@ -135,9 +135,30 @@ export function suite() {
           tranchePods.depositPods.fmv.mul(20).div(100),
         )}, but ${fromWei(trNotationBalance)} `,
       );
+    });
 
-      // console.log(await trancheBond.getTranchePods(3));
-      // console.log(await trancheNotation.balanceOfTrNotation(3, owner.address));
+    it('Testing Transfer TrNotation', async () => {
+      const trancheIndex = 3;
+      const trNotationBalance = await trancheNotation.balanceOfTrNotation(
+        trancheIndex,
+        owner.address,
+      );
+      await trancheNotation.transferFromTrNotation(
+        trancheIndex,
+        trNotationBalance,
+        owner.address,
+        sender.address,
+      );
+      const senderNotationBalance = await trancheNotation.balanceOfTrNotation(
+        trancheIndex,
+        sender.address,
+      );
+      assert(
+        trNotationBalance.eq(senderNotationBalance),
+        `expected balance after transfer, ${fromWei(trNotationBalance)} but ${fromWei(
+          senderNotationBalance,
+        )}`,
+      );
     });
   });
 }

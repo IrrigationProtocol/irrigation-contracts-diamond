@@ -32,19 +32,22 @@ contract TrancheNotationUpgradeable is
 
     /// @notice Transfer tranche token
     /// @dev    Only owner of tranche can transfer tranche token
-    function transferTrNotation(
+    function transferFromTrNotation(
         uint256 trancheIndex,
         uint256 amount,
+        address from,
         address to
     ) public virtual override {
-        if (to == address(0)) revert InvalidToAddress();
-        uint256 fromBalance = TrancheNotationStorage.layout().balances[trancheIndex][msg.sender];
+        /// should call inside this contract or by sender as same as from
+        if (to == address(0) || (msg.sender != from && msg.sender != address(this)))
+            revert InvalidToAddress();
+        uint256 fromBalance = TrancheNotationStorage.layout().balances[trancheIndex][from];
         if (fromBalance < amount) revert InsufficientTrancheNotation();
         unchecked {
-            TrancheNotationStorage.layout().balances[trancheIndex][msg.sender] -= amount;
+            TrancheNotationStorage.layout().balances[trancheIndex][from] -= amount;
         }
         TrancheNotationStorage.layout().balances[trancheIndex][to] += amount;
-        emit TranferTrancheNotation(trancheIndex, amount, msg.sender, to);
+        emit TranferTrancheNotation(trancheIndex, amount, from, to);
     }
 
     function mintTrNotation(
