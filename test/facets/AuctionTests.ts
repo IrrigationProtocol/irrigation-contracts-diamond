@@ -132,7 +132,7 @@ export function suite() {
         `expected duration ${86400 * 2}, but ${createdAuction.duration}`,
       );
     });
-    
+
     it('Testing Auction buyNow', async () => {
       await dai.transfer(sender.address, toWei(50));
       await dai.connect(sender).approve(auctionContract.address, toWei(50));
@@ -220,8 +220,7 @@ export function suite() {
         dai.address,
         bid.bidAmount,
         bid.bidPrice,
-        token1.address,
-        0
+        token1.address,        
       );
       // bid with dai is only one
       expect(await dai.balanceOf(auctionContract.address)).to.be.equal(payAmount);

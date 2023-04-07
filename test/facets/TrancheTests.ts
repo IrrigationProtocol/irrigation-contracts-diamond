@@ -90,19 +90,15 @@ export function suite() {
       }
 
       sender = signers[1];
-
-      // secondBidder = signers[2];
-      // auctionContract = await ethers.getContractAt('AuctionUpgradeable', irrigationDiamond.address);
-      // await auctionContract.setPurchaseToken(dai.address, true);
-      // await auctionContract.setPurchaseToken(usdc.address, true);
-      // expect(await auctionContract.isSupportedPurchaseToken(usdc.address)).to.be.eq(true);
-      // // 1.5% auction fee
-      // await auctionContract.setAuctionFee(15, signers[2].address);
-      // expect((await auctionContract.getAuctionFee()).numerator).to.be.eq(BigNumber.from(15));
-    });
-    it('Testing Tranche create', async () => {
       usdc = await getUsdc();
       await mintUsdc(owner.address, toD6(100_000));
+      // secondBidder = signers[2];
+      auctionContract = await ethers.getContractAt('AuctionUpgradeable', irrigationDiamond.address);
+      await auctionContract.setPurchaseToken(dai.address, true);
+      await auctionContract.setPurchaseToken(usdc.address, true);
+    });
+
+    it('Test Tranche create', async () => {
       /// buy beans and pods and assign
       const beanMetaPool = await getBeanMetapool();
       await usdc.approve(beanMetaPool.address, ethers.constants.MaxUint256);
@@ -137,7 +133,7 @@ export function suite() {
       );
     });
 
-    it('Testing Transfer TrNotation', async () => {
+    it('Test Tranche transfer', async () => {
       const trancheIndex = 3;
       const trNotationBalance = await trancheNotation.balanceOfTrNotation(
         trancheIndex,
@@ -158,6 +154,140 @@ export function suite() {
         `expected balance after transfer, ${fromWei(trNotationBalance)} but ${fromWei(
           senderNotationBalance,
         )}`,
+      );
+    });
+
+    it('Test Tranche Auction create', async () => {
+      let trancheIndex = 4;
+      let trNotationBalance = await trancheNotation.balanceOfTrNotation(
+        trancheIndex,
+        owner.address,
+      );
+      const tx = await auctionContract.createAuction(
+        0,
+        86400 * 2,
+        ethers.constants.AddressZero,
+        trancheIndex,
+        trNotationBalance,
+        toWei(0.0001),
+        toWei(0.6),
+        toWei(0.1),
+        toWei(0.5),
+        AuctionType.TimedAndFixed,
+      );
+      expect(await trancheNotation.balanceOfTrNotation(trancheIndex, rootAddress)).to.be.equal(
+        trNotationBalance,
+      );
+    });
+
+    it('Test Tranche Z auction', async () => {
+      const trancheIndex = 5;
+      const trNotationBalance = await trancheNotation.balanceOfTrNotation(
+        trancheIndex,
+        owner.address,
+      );
+      await expect(
+        auctionContract.createAuction(
+          0,
+          86400 * 2,
+          ethers.constants.AddressZero,
+          trancheIndex,
+          trNotationBalance,
+          toWei(0.0001),
+          toWei(0.6),
+          toWei(0.1),
+          toWei(0.5),
+          AuctionType.TimedAndFixed,
+        ),
+      ).to.be.revertedWith('not list Z tranche');
+    });
+
+    it('Test Tranche Auction buyNow', async () => {
+      const trancheIndex = 4;
+      const lastAuctionId = await auctionContract.getAuctionsCount();
+      let auction = await auctionContract.getAuction(lastAuctionId);
+      assert(
+        auction.trancheIndex.eq(trancheIndex),
+        `expected trancheIndex ${trancheIndex} but ${auction.trancheIndex}`,
+      );
+      assert(auction.assetType == 1, `expected assetType Tranche but ${auction.assetType}`);
+      await dai.transfer(sender.address, toWei(50));
+      await dai.connect(sender).approve(auctionContract.address, toWei(50));
+      const trBalance = await trancheNotation.balanceOfTrNotation(trancheIndex, rootAddress);
+      await auctionContract.connect(sender).buyNow(lastAuctionId, trBalance, dai.address);
+      const senderBalance = await trancheNotation.balanceOfTrNotation(trancheIndex, sender.address);
+      assert(
+        senderBalance.eq(trBalance),
+        `expected tranche notation ${fromWei(trBalance)} but ${fromWei(senderBalance)}`,
+      );
+      auction = await auctionContract.getAuction(lastAuctionId);
+      assert(auction.reserve.eq(0), `expected reserve amount is 0 but ${fromWei(auction.reserve)}`);
+    });
+
+    it('Test Tranche Auction bid', async () => {
+      const seller = sender;
+      const bidder = owner;
+      const trancheIndex = 4;
+      let trNotationBalance = await trancheNotation.balanceOfTrNotation(
+        trancheIndex,
+        seller.address,
+      );
+
+      await networkHelpers.time.setNextBlockTimestamp(Math.floor(Date.now() / 1000) + 86400 * 4 + 3600);
+
+      const tx = await auctionContract
+        .connect(seller)
+        .createAuction(
+          0,
+          86400 * 2,
+          ethers.constants.AddressZero,
+          trancheIndex,
+          trNotationBalance,
+          toWei(0.0001),
+          toWei(0.6),
+          toWei(0.1),
+          toWei(0.5),
+          AuctionType.TimedAndFixed,
+        );
+      const lastAuctionId = await auctionContract.getAuctionsCount();
+      let auction = await auctionContract.getAuction(lastAuctionId);
+      assert(
+        auction.trancheIndex.eq(trancheIndex),
+        `expected trancheIndex ${trancheIndex} but ${auction.trancheIndex}`,
+      );
+      assert(auction.assetType == 1, `expected assetType Tranche but ${auction.assetType}`);
+
+      await dai.connect(bidder).approve(auctionContract.address, toWei(50));
+      let daiBalance = await dai.balanceOf(owner.address);
+      const trBalance = await trancheNotation.balanceOfTrNotation(trancheIndex, rootAddress);
+      await auctionContract
+        .connect(owner)
+        .placeBid(lastAuctionId, trBalance, dai.address, toWei(2));
+      const daiBalanceAfteBidding = await dai.balanceOf(owner.address);
+      assert(
+        daiBalanceAfteBidding.eq(daiBalance.sub(trBalance.mul(2))),
+        `expected dai balance ${daiBalance.sub(trBalance.mul(2))}, but ${daiBalanceAfteBidding}`,
+      );      
+    });
+    it('Test Tranche Auction close', async () => {
+      await networkHelpers.time.setNextBlockTimestamp(
+        Math.floor(Date.now() / 1000) + 86400 * 6 + 3601,
+      );
+      const trancheIndex = 4;
+      const seller = sender;
+      const bidder = owner;      
+      const auctionId = await auctionContract.getAuctionsCount();
+      let bidderBalance = await trancheNotation.balanceOfTrNotation(trancheIndex, bidder.address);
+      assert(
+        bidderBalance.eq(0),
+        `expected tranche notation is 0, but ${bidderBalance}`,
+      );
+      await auctionContract.connect(sender).closeAuction(auctionId);
+      const auction = await auctionContract.getAuction(auctionId);
+      bidderBalance = await trancheNotation.balanceOfTrNotation(trancheIndex, bidder.address);
+      assert(
+        bidderBalance.gt(0) && bidderBalance.eq(auction.sellAmount),
+        `expected price ${auction.sellAmount}, but ${bidderBalance}`,
       );
     });
   });

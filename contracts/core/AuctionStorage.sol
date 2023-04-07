@@ -34,6 +34,7 @@ struct AuctionData {
     uint96 startTime;
     uint96 duration;
     address sellToken;
+    uint256 trancheIndex;
     uint128 sellAmount;
     uint128 minBidAmount;
     uint128 fixedPrice;
@@ -41,7 +42,6 @@ struct AuctionData {
     uint128 priceRangeEnd;
     uint128 reserve;
     uint256 curBidId;
-    uint256 trancheIndex;
     AuctionStatus status;
     AuctionType auctionType;
     AssetType assetType;
