@@ -83,6 +83,10 @@ const config: HardhatUserConfig = {
       url: 'http://localhost:8545',
       chainId: 1337,
     },
+    dev: {
+      url: process.env.DEV_RPC,
+      chainId: 1337,
+    },
     anvil: {
       url: 'http://localhost:8545',
       forking: process.env.FORK_URL

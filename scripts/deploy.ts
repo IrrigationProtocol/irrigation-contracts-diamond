@@ -59,7 +59,7 @@ export async function deployIrrigationDiamond(networkDeployInfo: INetworkDeployI
   );
   await deployer.deploy(salt, Diamond.bytecode, constructCode, { value: 0 });
   const irrigationDiamondAddress = await deployer.getDeployed(contractOwner.address, salt);
-  log(`salt for contract creation: ${salt}, main contract address: ${irrigationDiamondAddress} `);
+  log(`salt: ${salt}, owner: ${contractOwner.address}, main contract: ${irrigationDiamondAddress} `);
 
   const irrigationDiamond = await ethers.getContractAt(
     'contracts/IrrigationDiamond.sol:IrrigationDiamond',
@@ -398,6 +398,7 @@ async function main() {
     await deployIrrigationDiamond(networkDeployedInfo);
 
     log(`Contract address deployed is ${networkDeployedInfo.DiamondAddress}`);
+    await deployExternalLibraries(networkDeployedInfo);
 
     await deployAndInitDiamondFacets(networkDeployedInfo);
     log(

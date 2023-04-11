@@ -129,7 +129,9 @@ contract TrancheBondUpgradeable is EIP2535Initializable, IrrigationAccessControl
 
     /// @dev modifiers
     modifier onlyWaterHolder() {
-        WaterTowerStorage.UserInfo memory userInfo = WaterTowerStorage.layout().userInfo[msg.sender];
+        WaterTowerStorage.UserInfo memory userInfo = WaterTowerStorage.layout().userInfo[
+            msg.sender
+        ];
         if (userInfo.amount < MINIMUM_WATER * 1e18) revert NotEligible();
         _;
     }
