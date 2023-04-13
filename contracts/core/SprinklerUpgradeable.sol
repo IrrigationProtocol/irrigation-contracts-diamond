@@ -121,35 +121,34 @@ contract SprinklerUpgradeable is EIP2535Initializable, IrrigationAccessControl {
         emit WaterExchanged(msg.sender, _token, _amount, waterAmount, false);
     }
 
-    // /**
-    //  * @notice Exchange Pods to water
-    //  * @return waterAmount received water amount
-    //  * @dev remove exchangePods from sprinkler and move farmer market
-    //  */
-    // function exchangePodsToWater(
-    //     uint256 _plotId,
-    //     uint256 _plotStart,
-    //     uint256 _plotEnd
-    // ) external returns (uint256 waterAmount) {
-    //     // plot input will be validated in the transferPlot function.
-    //     WaterCommonStorage.layout().beanstalk.transferPlot(
-    //         msg.sender,
-    //         address(this),
-    //         _plotId,
-    //         _plotStart,
-    //         _plotEnd
-    //     );
+    /// getters
+    ///
+    /// @notice Get amount of water to exchange whitelisted asset(BEAN, BEAN:3CRV, Spot, and so on)
+    /// @param _token source token address
+    /// @param _amount source token amount
+    /// @return waterAmount received water amount
+    ///
+    function getWaterAmount(
+        address _token,
+        uint256 _amount
+    ) external view returns (uint256 waterAmount) {
+        uint256 multiplier = tokenMultiplier(_token);
+        uint256 tokenPrice = priceOracle(_token).latestPrice();
+        uint256 waterPrice = SprinklerStorage.layout().waterPriceOracle.latestPrice();
+        waterAmount = (_amount * tokenPrice * multiplier) / waterPrice;
+    }
 
-    //     uint256 amount = _plotEnd - _plotStart;
-    //     return amount;
-    // }
+    /// @notice get whitelisted token addresses
+    function getWhitelist() external view returns (address[] memory) {
+        return SprinklerStorage.layout().allWhiteList;
+    }
 
-    // generated getter for priceOracles
+    /// @notice get price oracle address
     function priceOracle(address _token) public view returns (IOracleUpgradeable) {
         return SprinklerStorage.layout().whitelistAssets[_token].priceOracle;
     }
 
-    // generated getter for tokenMultipler
+    /// @notice get token multiplier
     function tokenMultiplier(address _token) public view returns (uint256) {
         return SprinklerStorage.layout().whitelistAssets[_token].tokenMultiplier;
     }

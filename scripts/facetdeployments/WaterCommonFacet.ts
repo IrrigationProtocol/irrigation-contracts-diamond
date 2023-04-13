@@ -24,7 +24,8 @@ export const afterDeploy: AfterDeployInit = async (networkDeployInfo: INetworkDe
 
   const irrigationDiamond = dc.IrrigationDiamond as IrrigationDiamond;
   const networkName = hre.network.name;
-
+  // we will deploy moc tokens on goerli and init protocol with them.
+  if (networkName === 'goerli') return;
   // allow OpenSea Proxy Operator
   assert(
     networkName in BeanStalkProxyAddresses,

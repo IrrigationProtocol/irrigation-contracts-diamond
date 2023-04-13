@@ -5,7 +5,7 @@ import "../interfaces/IOracleUpgradeable.sol";
 
 contract MockPriceOracle is IOracleUpgradeable {
 
-    uint256 tempPrice;
+    uint256 private tempPrice;
     /**
      * @notice Get latest oracle price normalized to 1e18
      */

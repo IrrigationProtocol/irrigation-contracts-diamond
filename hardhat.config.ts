@@ -84,7 +84,7 @@ const config: HardhatUserConfig = {
       chainId: 1337,
     },
     dev: {
-      url: process.env.DEV_RPC,
+      url: process.env.DEV_RPC || '',
       chainId: 1337,
     },
     anvil: {
@@ -97,8 +97,8 @@ const config: HardhatUserConfig = {
         : undefined,
       chainId: 31337,
     },
-    ropsten: {
-      url: process.env.ROPSTEN_URL || '',
+    goerli: {
+      url: `https://goerli.infura.io/v3/${process.env.INFURA_API_KEY}`,
       accounts: process.env.PRIVATE_KEY !== undefined ? [process.env.PRIVATE_KEY] : [],
     },
     mumbai: {

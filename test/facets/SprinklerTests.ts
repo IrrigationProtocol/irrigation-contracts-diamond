@@ -8,11 +8,12 @@ import {
   SprinklerUpgradeable,
   WaterUpgradeable,
 } from '../../typechain-types';
+import { BigNumber } from 'ethers';
 
 export function suite() {
   describe('Irrigation Sprintkler Testing', async function () {
     let signers: SignerWithAddress[];
-    let owner: SignerWithAddress;    
+    let owner: SignerWithAddress;
     const irrigationDiamond = dc.IrrigationDiamond as IrrigationDiamond;
     let token1: MockERC20Upgradeable;
     let token2: MockERC20Upgradeable;
@@ -44,9 +45,17 @@ export function suite() {
       waterToken = await ethers.getContractAt('WaterUpgradeable', irrigationMainAddress);
     });
 
-    it('Testing Sprinkler price oracles', async () => {
+    it('Test Sprinkler Whitelist', async () => {
       await sprinkler.addAssetToWhiteList(token1.address, priceOracle1.address, 0);
       await sprinkler.addAssetToWhiteList(token2.address, priceOracle2.address, 0);
+      const whitelist = await sprinkler.getWhitelist();
+      assert(
+        whitelist[0] === token1.address && whitelist[1] === token2.address,
+        `expected whitelist 2 tokens, but ${whitelist}`,
+      );
+    });
+
+    it('Test Sprinkler price oracles', async () => {
       const priceOracleAddress1 = await sprinkler.priceOracle(token1.address);
       assert(
         priceOracleAddress1 === priceOracle1.address,
@@ -59,7 +68,26 @@ export function suite() {
       );
     });
 
-    it('Testing Sprinkler exchange token', async () => {
+    it('Test Sprinkler get amount to exchange', async () => {
+      await sprinkler.setWaterPriceOracle(priceOracleForWater.address);
+      await priceOracleForWater.mockSetPrice(toWei(3));
+      await priceOracle1.mockSetPrice(toWei(2));
+      const amount = await sprinkler.getWaterAmount(token1.address, toWei(100));
+      const token1Price = await priceOracle1.latestPrice();
+      const waterPrice = await priceOracleForWater.latestPrice();
+      const token1Multiplier = await sprinkler.tokenMultiplier(token1.address);
+      assert(
+        token1Multiplier.eq(BigNumber.from(1)),
+        `expected token multiplier is ${1}, but ${token1Multiplier}`,
+      );
+      const expectedWaterAmount = toWei(100).mul(token1Price).mul(token1Multiplier).div(waterPrice);
+      assert(
+        expectedWaterAmount.eq(amount),
+        `expected water is ${expectedWaterAmount}, received water amount is ${fromWei(amount)}`,
+      );
+    });
+
+    it('Test Sprinkler exchange token', async () => {
       // await gdOwner.setTokenMultiplier(token1.address, 2);
       await token1.connect(owner).transfer(sender.address, toWei(100));
       let balance1 = await token1.balanceOf(sender.address);
@@ -99,7 +127,7 @@ export function suite() {
       );
     });
 
-    it('Testing Sprinkler exchange token with decimals 6', async () => {
+    it('Test Sprinkler exchange token with decimals 6', async () => {
       await token2.connect(owner).transfer(tester2.address, toD6(250));
       let balance2 = await token2.balanceOf(tester2.address);
       assert(balance2.eq(toD6(250)), `sender balanceOf should be 100, but is ${fromD6(balance2)}`);
