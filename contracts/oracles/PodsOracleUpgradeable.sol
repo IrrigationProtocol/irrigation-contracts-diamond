@@ -9,7 +9,7 @@ import "../libraries/Oracle/LibPrice.sol";
 
 contract PodsOracleUpgradeable is IPodsOracleUpgradeable, IOracleUpgradeable {
     // decimals of price is 18
-    uint256 constant ONE = 1e18;
+    uint256 private constant ONE = 1e18;
 
     /**
      * @notice Get latest oracle price of BEAN normalized to 1e18

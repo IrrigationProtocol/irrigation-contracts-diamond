@@ -76,16 +76,16 @@ const config: HardhatUserConfig = {
             blockNumber: parseInt(process.env.FORK_BLOCK_NUMBER) || undefined,
           }
         : undefined,
-      chainId: 1337,
+      // chainId: 1337,
       hardfork: 'london',
     },
     local: {
-      url: 'http://localhost:8545',
-      chainId: 1337,
+      url: 'http://127.0.0.1:8545',
+      chainId: 31337,
     },
     dev: {
       url: process.env.DEV_RPC || '',
-      chainId: 1337,
+      chainId: 31337,
     },
     anvil: {
       url: 'http://localhost:8545',
@@ -134,7 +134,7 @@ const config: HardhatUserConfig = {
     filter: filterDuplicateFunctions,
   },
   mocha: {
-    timeout: 100000000,
+    timeout: 0,
   },
 };
 

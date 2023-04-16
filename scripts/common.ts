@@ -53,6 +53,7 @@ export interface INetworkDeployInfo {
   DeployerAddress: string;
   FacetDeployedInfo: FacetDeployedInfo;
   ExternalLibraries?: any;
+  FactoryAddress?: string;
 }
 
 export type AfterDeployInit = (networkDeployInfo: INetworkDeployInfo) => Promise<void | boolean>;

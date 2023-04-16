@@ -9,6 +9,7 @@ const BeanStalkProxyAddresses: { [key: string]: string } = {
   hardhat: '0xC1E088fC1323b20BCBee9bd1B9fC9546db5624C5', // for testing
   anvil: '0xC1E088fC1323b20BCBee9bd1B9fC9546db5624C5',
   dev: '0xC1E088fC1323b20BCBee9bd1B9fC9546db5624C5',
+  local: '0xC1E088fC1323b20BCBee9bd1B9fC9546db5624C5',
 };
 
 const FertilizerTokenAddresses: { [key: string]: string } = {
@@ -17,6 +18,7 @@ const FertilizerTokenAddresses: { [key: string]: string } = {
   hardhat: '0x402c84de2ce49af88f5e2ef3710ff89bfed36cb6', // for testing
   anvil: '0x402c84de2ce49af88f5e2ef3710ff89bfed36cb6',
   dev: '0x402c84de2ce49af88f5e2ef3710ff89bfed36cb6',
+  local: '0x402c84de2ce49af88f5e2ef3710ff89bfed36cb6',
 };
 
 export const afterDeploy: AfterDeployInit = async (networkDeployInfo: INetworkDeployInfo) => {
@@ -26,7 +28,7 @@ export const afterDeploy: AfterDeployInit = async (networkDeployInfo: INetworkDe
   const networkName = hre.network.name;
   // we will deploy moc tokens on goerli and init protocol with them.
   if (networkName === 'goerli') return;
-  // allow OpenSea Proxy Operator
+  // allow Beanstalk Proxy Operator
   assert(
     networkName in BeanStalkProxyAddresses,
     'Need valid beanstalk address to interface with the contract',

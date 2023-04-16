@@ -1,0 +1,66 @@
+[
+    {
+        "name": "Root",
+        "symbol": "ROOT",
+        "priceOracles": {
+            "local": "0x77280083A5b18F1522b6293bAc9Cf7155d216aA2",
+            "dev": "0x77280083A5b18F1522b6293bAc9Cf7155d216aA2"
+        },
+        "addresses": {
+            "local": "0x2Dc6a55aa30e3d3795fC630377e92574FCa27AC4",
+            "dev": "0x2Dc6a55aa30e3d3795fC630377e92574FCa27AC4"
+        }
+    },
+    {
+        "name": "Olympus",
+        "symbol": "GOHM",
+        "addresses": {
+            "local": "0xb94bdcf71eD17ab2E5B787cc544aD1212191c5d7",
+            "dev": "0xb94bdcf71eD17ab2E5B787cc544aD1212191c5d7"
+        },
+        "priceOracles": {
+            "local": "0x9C476c79B9d746E1A6d36c7f211417200aEc8A66",
+            "dev": "0x9C476c79B9d746E1A6d36c7f211417200aEc8A66"
+        }
+    },
+    {
+        "name": "LiquidPods",
+        "symbol": "PODS",
+        "addresses": {
+            "local": "0x3c302FBf5128Ed59b1EA67f09A45667E7824072a",
+            "dev": "0x3c302FBf5128Ed59b1EA67f09A45667E7824072a"
+        },
+        "priceOracles": {
+            "local": "0xa35BE9cE2b4Fb97b32Bf9b87F3c10b2635B44335",
+            "dev": "0xa35BE9cE2b4Fb97b32Bf9b87F3c10b2635B44335"
+        }
+    },
+    {
+        "name": "OHM Bonds",
+        "symbol": "BOND",
+        "addresses": {
+            "local": "0x8F586506ae69E6A3B6E6a70Bf1bb2a279442d835",
+            "dev": "0x8F586506ae69E6A3B6E6a70Bf1bb2a279442d835"
+        },
+        "priceOracles": {
+            "local": "0xC392c2089F2cA947f7c8EB6A6479734c8CFC1e85",
+            "dev": "0xC392c2089F2cA947f7c8EB6A6479734c8CFC1e85"
+        }
+    },
+    {
+        "name": "DAI Stable",
+        "symbol": "DAI",
+        "addresses": {
+            "local": "0x27A3aA4eCbc98d55E296FEF67A5CE9FCbB65F5Ca",
+            "dev": "0x27A3aA4eCbc98d55E296FEF67A5CE9FCbB65F5Ca"
+        }
+    },
+    {
+        "name": "USDT Stable",
+        "symbol": "USDT",
+        "addresses": {
+            "local": "0xaf7188F86fa26463c23cb6175fA42FAc46efFeab",
+            "dev": "0xaf7188F86fa26463c23cb6175fA42FAc46efFeab"
+        }
+    }
+]

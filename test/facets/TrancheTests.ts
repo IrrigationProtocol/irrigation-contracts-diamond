@@ -82,6 +82,9 @@ export function suite() {
       usdt = await mockTokenContract.deploy();
       await usdt.Token_Initialize('USDT Stable', 'USDT', toWei(100_000_000));
 
+      sender = signers[1];
+      usdc = await getUsdc();
+      await mintUsdc(owner.address, toD6(100_000));
       // sends tokens to UI work account
       fundAddress = process.env.ADDRESS_TO_FUND;
       if (fundAddress) {
@@ -89,9 +92,6 @@ export function suite() {
         expect(await usdc.balanceOf(fundAddress)).to.be.equal(toD6(1000));
       }
 
-      sender = signers[1];
-      usdc = await getUsdc();
-      await mintUsdc(owner.address, toD6(100_000));
       // secondBidder = signers[2];
       auctionContract = await ethers.getContractAt('AuctionUpgradeable', irrigationDiamond.address);
       await auctionContract.setPurchaseToken(dai.address, true);
@@ -233,7 +233,9 @@ export function suite() {
         seller.address,
       );
 
-      await networkHelpers.time.setNextBlockTimestamp(Math.floor(Date.now() / 1000) + 86400 * 4 + 3600);
+      await networkHelpers.time.setNextBlockTimestamp(
+        Math.floor(Date.now() / 1000) + 86400 * 4 + 3600,
+      );
 
       const tx = await auctionContract
         .connect(seller)
@@ -267,7 +269,7 @@ export function suite() {
       assert(
         daiBalanceAfteBidding.eq(daiBalance.sub(trBalance.mul(2))),
         `expected dai balance ${daiBalance.sub(trBalance.mul(2))}, but ${daiBalanceAfteBidding}`,
-      );      
+      );
     });
     it('Test Tranche Auction close', async () => {
       await networkHelpers.time.setNextBlockTimestamp(
@@ -275,13 +277,10 @@ export function suite() {
       );
       const trancheIndex = 4;
       const seller = sender;
-      const bidder = owner;      
+      const bidder = owner;
       const auctionId = await auctionContract.getAuctionsCount();
       let bidderBalance = await trancheNotation.balanceOfTrNotation(trancheIndex, bidder.address);
-      assert(
-        bidderBalance.eq(0),
-        `expected tranche notation is 0, but ${bidderBalance}`,
-      );
+      assert(bidderBalance.eq(0), `expected tranche notation is 0, but ${bidderBalance}`);
       await auctionContract.connect(sender).closeAuction(auctionId);
       const auction = await auctionContract.getAuction(auctionId);
       bidderBalance = await trancheNotation.balanceOfTrNotation(trancheIndex, bidder.address);
