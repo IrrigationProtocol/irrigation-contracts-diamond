@@ -105,14 +105,10 @@ contract SprinklerUpgradeable is EIP2535Initializable, IrrigationAccessControl {
         uint256 _amount
     ) external onlyListedAsset(_token) returns (uint256 waterAmount) {
         address _waterToken = address(this);
-        uint256 multiplier = tokenMultiplier(_token);
         require(_token != _waterToken, "Invalid token");
         require(_amount != 0, "Invalid amount");
 
-        uint256 tokenPrice = priceOracle(_token).latestPrice();
-        uint256 waterPrice = SprinklerStorage.layout().waterPriceOracle.latestPrice();
-
-        waterAmount = (_amount * tokenPrice * multiplier) / waterPrice;
+        waterAmount = getWaterAmount(_token, _amount);
         require(waterAmount != 0, "No water output"); // if price is 0, amount can be 0
 
         TransferHelper.safeTransferFrom(_token, msg.sender, address(this), _amount);
@@ -131,7 +127,7 @@ contract SprinklerUpgradeable is EIP2535Initializable, IrrigationAccessControl {
     function getWaterAmount(
         address _token,
         uint256 _amount
-    ) external view returns (uint256 waterAmount) {
+    ) public view returns (uint256 waterAmount) {
         uint256 multiplier = tokenMultiplier(_token);
         uint256 tokenPrice = priceOracle(_token).latestPrice();
         uint256 waterPrice = SprinklerStorage.layout().waterPriceOracle.latestPrice();

@@ -7,20 +7,25 @@ import {WaterTowerStorage} from "./WaterTowerStorage.sol";
 import "../utils/EIP2535Initializable.sol";
 import "../utils/IrrigationAccessControl.sol";
 import "../libraries/TransferHelper.sol";
+import "../curve/ICurveSwapRouter.sol";
+import "../libraries/Constants.sol";
+import "../interfaces/ISprinklerUpgradeable.sol";
 
 contract WaterTowerUpgradeable is EIP2535Initializable, IrrigationAccessControl {
     using WaterTowerStorage for WaterTowerStorage.Layout;
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
+    error NotAutoIrrigate();
     event Deposited(address indexed user, uint amount);
     event Withdrawn(address indexed user, uint amount);
     event Claimed(address indexed user, uint amount);
 
-    uint256 constant DECIMALS = 1e18;
+    /// @notice decimals of water token
+    uint256 private constant DECIMALS = 1e18;
 
-    // deposit water token
+    /// @notice deposit water token
     function deposit(uint256 amount) external {
-        IERC20Upgradeable(address(this)).safeTransferFrom(msg.sender, address(this), amount);        
+        IERC20Upgradeable(address(this)).safeTransferFrom(msg.sender, address(this), amount);
         _deposit(msg.sender, amount);
     }
 
@@ -52,10 +57,34 @@ contract WaterTowerUpgradeable is EIP2535Initializable, IrrigationAccessControl 
         emit Claimed(msg.sender, amount);
     }
 
-    function compound(uint amount) external {}
+    function irrigate() external {
+        _irrigate(msg.sender);
+    }
 
-    // can't call app storage in this function
+    function autoIrrigate(address user) external onlySuperAdminRole {
+        if(!WaterTowerStorage.layout().isAutoIrrigate[user]) revert NotAutoIrrigate();
+        _irrigate(user);
+    }
+
+    /// can't call app storage in this function
     receive() external payable {}
+
+    /// admin setters
+    function setAutoIrrigate(bool bAutoIrrigate) public {
+        WaterTowerStorage.layout().isAutoIrrigate[msg.sender] = bAutoIrrigate;
+    }
+
+    /// internal
+    function _irrigate(address irrigator) internal {
+        WaterTowerStorage.UserInfo storage curUserInfo = WaterTowerStorage.layout().userInfo[
+            irrigator
+        ];
+        uint256 amount = curUserInfo.pending / DECIMALS;
+        curUserInfo.debt = WaterTowerStorage.layout().sharePerWater * curUserInfo.amount;
+        curUserInfo.pending = 0;
+        uint256 swappedWaterAmount = _swapEthForWater(amount);
+        _deposit(irrigator, swappedWaterAmount);
+    }
 
     function _deposit(address user, uint amount) internal {
         WaterTowerStorage.UserInfo storage curUserInfo = WaterTowerStorage.layout().userInfo[user];
@@ -81,6 +110,38 @@ contract WaterTowerUpgradeable is EIP2535Initializable, IrrigationAccessControl 
         curUserInfo.debt = WaterTowerStorage.layout().sharePerWater * curUserInfo.amount;
         WaterTowerStorage.layout().totalDeposits -= amount;
         emit Withdrawn(user, amount);
+    }
+
+    function _swapEthForWater(uint256 amount) internal returns (uint256) {
+        if (WaterTowerStorage.layout().middleAssetForIrrigate == Constants.BEAN) {
+            /// @dev swap ETH for BEAN using curve router
+            address[9] memory route = [
+                Constants.ETHER,
+                Constants.TRI_CRYPTO_POOL,
+                Constants.USDT,
+                Constants.CURVE_BEAN_METAPOOL,
+                Constants.BEAN,
+                0x0000000000000000000000000000000000000000,
+                0x0000000000000000000000000000000000000000,
+                0x0000000000000000000000000000000000000000,
+                0x0000000000000000000000000000000000000000
+            ];
+            uint256[3][4] memory swapParams = [
+                [uint(2), 0, 3],
+                [uint(3), 0, 2],
+                [uint(0), 0, 0],
+                [uint(0), 0, 0]
+            ];
+            uint256 beanAmount = ICurveSwapRouter(Constants.CURVE_ROUTER).exchange_multiple{
+                value: amount
+            }(route, swapParams, amount, 0);
+
+            uint256 waterAmount = ISprinklerUpgradeable(address(this)).getWaterAmount(
+                Constants.BEAN,
+                beanAmount
+            );
+            return waterAmount;
+        }
     }
 
     // generated getter for usersInfos

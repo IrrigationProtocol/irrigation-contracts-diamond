@@ -16,7 +16,7 @@ struct WhitelistAsset {
 }
 
 library SprinklerStorage {
-    struct Layout {        
+    struct Layout {
         // stores all whitelisted assets
         address[] allWhiteList;
         mapping(address => WhitelistAsset) whitelistAssets;
