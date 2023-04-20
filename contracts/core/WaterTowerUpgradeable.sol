@@ -24,7 +24,8 @@ contract WaterTowerUpgradeable is EIP2535Initializable, IrrigationAccessControl 
     uint256 private constant DECIMALS = 1e18;
 
     /// @notice deposit water token
-    function deposit(uint256 amount) external {
+    function deposit(uint256 amount, bool bAutoIrrigate) external {
+        setAutoIrrigate(bAutoIrrigate);
         IERC20Upgradeable(address(this)).safeTransferFrom(msg.sender, address(this), amount);
         _deposit(msg.sender, amount);
     }
@@ -62,7 +63,7 @@ contract WaterTowerUpgradeable is EIP2535Initializable, IrrigationAccessControl 
     }
 
     function autoIrrigate(address user) external onlySuperAdminRole {
-        if(!WaterTowerStorage.layout().isAutoIrrigate[user]) revert NotAutoIrrigate();
+        if (!WaterTowerStorage.layout().isAutoIrrigate[user]) revert NotAutoIrrigate();
         _irrigate(user);
     }
 

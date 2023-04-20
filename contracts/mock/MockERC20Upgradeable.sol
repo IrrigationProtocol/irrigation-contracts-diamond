@@ -29,4 +29,8 @@ contract MockERC20Upgradeable is EIP2535Initializable, ERC20Upgradeable {
     ) public initializer {
         __MockERC20_init(_name, _symbol, supply);
     }
+
+    function mint(address sender, uint256 amount) external {
+        _mint(sender, amount);
+    }
 }

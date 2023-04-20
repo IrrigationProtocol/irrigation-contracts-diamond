@@ -1,5 +1,5 @@
 import { ethers } from 'hardhat';
-import { dc, assert, expect, toWei, facetDeployedInfo, fromWei } from '../../scripts/common';
+import { dc, assert, expect, toWei, fromWei } from '../../scripts/common';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { IrrigationDiamond } from '../../typechain-types/hardhat-diamond-abi/HardhatDiamondABI.sol';
 import { WaterTowerUpgradeable, WaterUpgradeable } from '../../typechain-types';
@@ -31,7 +31,7 @@ export function suite() {
       await water.connect(owner).transfer(sender.address, toWei(100));
       await water.connect(sender).approve(irrigationDiamond.address, toWei(100));
 
-      let tx = await waterTower.connect(sender).deposit(toWei(100));
+      let tx = await waterTower.connect(sender).deposit(toWei(100), false);
       await expect(tx).to.emit(irrigationDiamond, 'Deposited').withArgs(sender.address, toWei(100));
       updatedBalance = (await water.balanceOf(irrigationDiamond.address)).sub(updatedBalance);
       assert(
@@ -67,7 +67,7 @@ export function suite() {
 
     it('Testing WaterTower Claim', async () => {
       await water.connect(sender).approve(irrigationDiamond.address, toWei(10));
-      await waterTower.connect(sender).deposit(toWei(10));
+      await waterTower.connect(sender).deposit(toWei(10), false);
       await owner.sendTransaction({ to: waterTower.address, value: toWei(100) });
       let shareWater = await waterTower.sharePerWater();
       assert(
@@ -75,7 +75,7 @@ export function suite() {
         `sharePerWater should be ${100 / 10}, but is ${fromWei(shareWater)}`,
       );
       await water.connect(owner).approve(irrigationDiamond.address, toWei(40));
-      await waterTower.connect(owner).deposit(toWei(40));
+      await waterTower.connect(owner).deposit(toWei(40), false);
       let ownerUserInfo = await waterTower.userInfo(owner.address);
       assert(
         ownerUserInfo.debt.eq(shareWater.mul(toWei(40))),
@@ -116,7 +116,7 @@ export function suite() {
       await expect(tx).to.emit(waterTower, 'Claimed').withArgs(sender.address, toWei(claimValue));
       claimValue = 110 - claimValue;
       tx = await waterTower.connect(owner).claim(toWei(claimValue));
-      const oldDebtOfOwner = ownerUserInfo.debt;      
+      const oldDebtOfOwner = ownerUserInfo.debt;
       ownerUserInfo = await waterTower.userInfo(owner.address);
       assert(
         ownerUserInfo.pending.eq(
