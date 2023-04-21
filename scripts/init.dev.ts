@@ -116,7 +116,7 @@ async function deployMocTokens() {
       else token.addresses = { [networkName]: tokenAddress };
     }
   }
-  fs.writeFileSync(`test/mockTokens.json`, JSON.stringify(tokenData));
+  fs.writeFileSync(`test/mockTokens.json`, JSON.stringify(tokenData, null, 4));
   if (networkName !== 'goerli') {
     const signers = await ethers.getSigners();
     const usdc = await getUsdc();

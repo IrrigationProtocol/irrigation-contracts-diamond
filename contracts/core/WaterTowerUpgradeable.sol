@@ -63,7 +63,8 @@ contract WaterTowerUpgradeable is EIP2535Initializable, IrrigationAccessControl 
     }
 
     function autoIrrigate(address user) external onlySuperAdminRole {
-        if (!WaterTowerStorage.layout().isAutoIrrigate[user]) revert NotAutoIrrigate();
+        if (!WaterTowerStorage.layout().userInfo[msg.sender].isAutoIrrigate)
+            revert NotAutoIrrigate();
         _irrigate(user);
     }
 
@@ -72,7 +73,7 @@ contract WaterTowerUpgradeable is EIP2535Initializable, IrrigationAccessControl 
 
     /// admin setters
     function setAutoIrrigate(bool bAutoIrrigate) public {
-        WaterTowerStorage.layout().isAutoIrrigate[msg.sender] = bAutoIrrigate;
+        WaterTowerStorage.layout().userInfo[msg.sender].isAutoIrrigate = bAutoIrrigate;
     }
 
     /// internal
@@ -113,7 +114,7 @@ contract WaterTowerUpgradeable is EIP2535Initializable, IrrigationAccessControl 
         emit Withdrawn(user, amount);
     }
 
-    function _swapEthForWater(uint256 amount) internal returns (uint256) {
+    function _swapEthForWater(uint256 amount) internal returns (uint256 waterAmount) {
         if (WaterTowerStorage.layout().middleAssetForIrrigate == Constants.BEAN) {
             /// @dev swap ETH for BEAN using curve router
             address[9] memory route = [
@@ -137,11 +138,10 @@ contract WaterTowerUpgradeable is EIP2535Initializable, IrrigationAccessControl 
                 value: amount
             }(route, swapParams, amount, 0);
 
-            uint256 waterAmount = ISprinklerUpgradeable(address(this)).getWaterAmount(
+            waterAmount = ISprinklerUpgradeable(address(this)).getWaterAmount(
                 Constants.BEAN,
                 beanAmount
             );
-            return waterAmount;
         }
     }
 

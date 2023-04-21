@@ -10,6 +10,7 @@ library WaterTowerStorage {
         uint256 amount;
         uint256 debt;
         uint256 pending;
+        bool isAutoIrrigate;
     }
 
     struct Layout {
@@ -19,9 +20,6 @@ library WaterTowerStorage {
 
         /// Middle token address for irrigating reward
         address middleAssetForIrrigate;
-
-        /// Mapping from user address to auto irrigate option
-        mapping(address => bool) isAutoIrrigate;
     }
 
     bytes32 internal constant STORAGE_SLOT = keccak256("irrigation.contracts.storage.WaterTower");
