@@ -16,6 +16,7 @@ contract WaterTowerUpgradeable is EIP2535Initializable, IrrigationAccessControl 
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
     error NotAutoIrrigate();
+    error InsufficientBalance();
     event Deposited(address indexed user, uint amount);
     event Withdrawn(address indexed user, uint amount);
     event Claimed(address indexed user, uint amount);
@@ -58,14 +59,19 @@ contract WaterTowerUpgradeable is EIP2535Initializable, IrrigationAccessControl 
         emit Claimed(msg.sender, amount);
     }
 
-    function irrigate() external {
-        _irrigate(msg.sender);
+    function irrigate(uint256 amount) external {
+        _irrigate(msg.sender, amount);
     }
 
     function autoIrrigate(address user) external onlySuperAdminRole {
         if (!WaterTowerStorage.layout().userInfo[msg.sender].isAutoIrrigate)
             revert NotAutoIrrigate();
-        _irrigate(user);
+        WaterTowerStorage.UserInfo storage curUserInfo = WaterTowerStorage.layout().userInfo[user];
+        uint256 amount = curUserInfo.pending / DECIMALS;
+        curUserInfo.debt = WaterTowerStorage.layout().sharePerWater * curUserInfo.amount;
+        curUserInfo.pending = 0;
+        uint256 swappedWaterAmount = _swapEthForWater(amount);
+        _deposit(user, swappedWaterAmount);
     }
 
     /// can't call app storage in this function
@@ -77,11 +83,12 @@ contract WaterTowerUpgradeable is EIP2535Initializable, IrrigationAccessControl 
     }
 
     /// internal
-    function _irrigate(address irrigator) internal {
+    function _irrigate(address irrigator, uint256 irrigateAmount) internal {
         WaterTowerStorage.UserInfo storage curUserInfo = WaterTowerStorage.layout().userInfo[
             irrigator
         ];
         uint256 amount = curUserInfo.pending / DECIMALS;
+        if (irrigateAmount > amount) revert InsufficientBalance();
         curUserInfo.debt = WaterTowerStorage.layout().sharePerWater * curUserInfo.amount;
         curUserInfo.pending = 0;
         uint256 swappedWaterAmount = _swapEthForWater(amount);
