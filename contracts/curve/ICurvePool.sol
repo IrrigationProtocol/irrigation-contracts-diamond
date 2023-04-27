@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.17;
 
-interface ICurvePoolUpgradeable {
+interface ICurvePool {
     function get_virtual_price() external view returns (uint256);
 
     function exchange_underlying(

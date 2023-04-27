@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.17;
 
-import "../interfaces/IOracleUpgradeable.sol";
+import "../interfaces/IPriceOracle.sol";
 import "../interfaces/IPodsOracleUpgradeable.sol";
 import "../utils/EIP2535Initializable.sol";
 import "../core/WaterCommonStorage.sol";
 import "../libraries/Oracle/LibPrice.sol";
 
-contract PodsOracleUpgradeable is IPodsOracleUpgradeable, IOracleUpgradeable {
+contract PodsOracleUpgradeable is IPodsOracleUpgradeable, IPriceOracle {
     // decimals of price is 18
     uint256 private constant ONE = 1e18;
 

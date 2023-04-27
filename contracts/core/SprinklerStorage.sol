@@ -4,13 +4,13 @@ pragma solidity ^0.8.17;
 
 import {SprinklerUpgradeable} from "./SprinklerUpgradeable.sol";
 import {IBeanstalkUpgradeable} from "../beanstalk/IBeanstalkUpgradeable.sol";
-import {IOracleUpgradeable} from "../interfaces/IOracleUpgradeable.sol";
+import {IPriceOracle} from "../interfaces/IPriceOracle.sol";
 
 // WhitelistAsset stores priceOracle address and multiplier for exchange for each token
 // Whitelisted asset exchanges can be paused by setting isListed to false
 
 struct WhitelistAsset {
-    IOracleUpgradeable priceOracle;
+    IPriceOracle priceOracle;
     bool isListed;
     uint256 tokenMultiplier;
 }
@@ -20,7 +20,7 @@ library SprinklerStorage {
         // stores all whitelisted assets
         address[] allWhiteList;
         mapping(address => WhitelistAsset) whitelistAssets;
-        IOracleUpgradeable waterPriceOracle;
+        IPriceOracle waterPriceOracle;
     }
 
     bytes32 internal constant STORAGE_SLOT = keccak256("irrigation.contracts.storage.Sprinkler");

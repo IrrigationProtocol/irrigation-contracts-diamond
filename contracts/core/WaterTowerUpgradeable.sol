@@ -37,22 +37,9 @@ contract WaterTowerUpgradeable is EIP2535Initializable, IrrigationAccessControl 
         _withdraw(msg.sender, amount);
     }
 
+    /// @notice claim ETH rewards
     function claim(uint256 amount) external {
-        WaterTowerStorage.UserInfo storage curUserInfo = WaterTowerStorage.layout().userInfo[
-            msg.sender
-        ];
-        curUserInfo.pending +=
-            WaterTowerStorage.layout().sharePerWater *
-            curUserInfo.amount -
-            curUserInfo.debt;
-
-        curUserInfo.debt = WaterTowerStorage.layout().sharePerWater * curUserInfo.amount;
-
-        if (amount == type(uint).max) {
-            amount = curUserInfo.pending / DECIMALS;
-        }
-        curUserInfo.pending -= amount * DECIMALS;
-
+        _claimReward(msg.sender, amount);
         (bool success, ) = msg.sender.call{value: amount}("");
         require(success, "Claim failed");
 
@@ -74,25 +61,30 @@ contract WaterTowerUpgradeable is EIP2535Initializable, IrrigationAccessControl 
         _deposit(user, swappedWaterAmount);
     }
 
-    /// can't call app storage in this function
-    receive() external payable {}
-
-    /// admin setters
     function setAutoIrrigate(bool bAutoIrrigate) public {
         WaterTowerStorage.layout().userInfo[msg.sender].isAutoIrrigate = bAutoIrrigate;
     }
 
     /// internal
     function _irrigate(address irrigator, uint256 irrigateAmount) internal {
-        WaterTowerStorage.UserInfo storage curUserInfo = WaterTowerStorage.layout().userInfo[
-            irrigator
-        ];
-        uint256 amount = curUserInfo.pending / DECIMALS;
-        if (irrigateAmount > amount) revert InsufficientBalance();
-        curUserInfo.debt = WaterTowerStorage.layout().sharePerWater * curUserInfo.amount;
-        curUserInfo.pending = 0;
-        uint256 swappedWaterAmount = _swapEthForWater(amount);
+        _claimReward(irrigator, irrigateAmount);
+        uint256 swappedWaterAmount = _swapEthForWater(irrigateAmount);
         _deposit(irrigator, swappedWaterAmount);
+    }
+
+    function _claimReward(address user, uint256 amount) internal {
+        WaterTowerStorage.UserInfo storage curUserInfo = WaterTowerStorage.layout().userInfo[user];
+        curUserInfo.pending +=
+            WaterTowerStorage.layout().sharePerWater *
+            curUserInfo.amount -
+            curUserInfo.debt;
+
+        curUserInfo.debt = WaterTowerStorage.layout().sharePerWater * curUserInfo.amount;
+
+        if (amount == type(uint).max) {
+            amount = curUserInfo.pending / DECIMALS;
+        }
+        curUserInfo.pending -= amount * DECIMALS;
     }
 
     function _deposit(address user, uint amount) internal {
@@ -152,6 +144,14 @@ contract WaterTowerUpgradeable is EIP2535Initializable, IrrigationAccessControl 
         }
     }
 
+    /// can't call app storage in this function
+    receive() external payable {}
+
+    /// admin setters
+    function setMiddleAsset(address middleAsset) external onlySuperAdminRole {
+        WaterTowerStorage.layout().middleAssetForIrrigate = middleAsset;
+    }
+
     // generated getter for usersInfos
     function userInfo(address arg0) public view returns (WaterTowerStorage.UserInfo memory) {
         return WaterTowerStorage.layout().userInfo[arg0];
@@ -165,5 +165,9 @@ contract WaterTowerUpgradeable is EIP2535Initializable, IrrigationAccessControl 
     // generated getter for sharePerWater
     function sharePerWater() public view returns (uint256) {
         return WaterTowerStorage.layout().sharePerWater;
+    }
+
+    function getMiddleAsset() public view returns (address) {
+        return WaterTowerStorage.layout().middleAssetForIrrigate;
     }
 }

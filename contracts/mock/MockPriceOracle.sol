@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.17;
 
-import "../interfaces/IOracleUpgradeable.sol";
+import "../interfaces/IPriceOracle.sol";
 
-contract MockPriceOracle is IOracleUpgradeable {
+contract MockPriceOracle is IPriceOracle {
 
     uint256 private tempPrice;
     /**

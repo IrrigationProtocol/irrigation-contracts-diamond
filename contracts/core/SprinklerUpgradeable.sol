@@ -4,7 +4,7 @@ pragma solidity ^0.8.17;
 import "./WaterCommonStorage.sol";
 import "@gnus.ai/contracts-upgradeable-diamond/contracts/interfaces/IERC20MetadataUpgradeable.sol";
 import "@gnus.ai/contracts-upgradeable-diamond/contracts/token/ERC20/utils/SafeERC20Upgradeable.sol";
-import "../interfaces/IOracleUpgradeable.sol";
+import "../interfaces/IPriceOracle.sol";
 import "../beanstalk/IBeanstalkUpgradeable.sol";
 import "./SprinklerStorage.sol";
 import "../utils/EIP2535Initializable.sol";
@@ -36,12 +36,12 @@ contract SprinklerUpgradeable is EIP2535Initializable, IrrigationAccessControl {
         address _token,
         address _oracle
     ) external onlySuperAdminRole onlyListedAsset(_token) {
-        SprinklerStorage.layout().whitelistAssets[_token].priceOracle = IOracleUpgradeable(_oracle);
+        SprinklerStorage.layout().whitelistAssets[_token].priceOracle = IPriceOracle(_oracle);
         emit PriceOracleUpdated(_token, _oracle);
     }
 
     function setWaterPriceOracle(address _oracle) external onlySuperAdminRole {
-        SprinklerStorage.layout().waterPriceOracle = IOracleUpgradeable(_oracle);
+        SprinklerStorage.layout().waterPriceOracle = IPriceOracle(_oracle);
         emit PriceOracleUpdated(address(this), _oracle);
     }
 
@@ -76,7 +76,7 @@ contract SprinklerUpgradeable is EIP2535Initializable, IrrigationAccessControl {
                 (IERC20MetadataUpgradeable(address(this)).decimals() -
                     IERC20MetadataUpgradeable(_token).decimals());
         WhitelistAsset memory newAsset = WhitelistAsset(
-            IOracleUpgradeable(_oracle),
+            IPriceOracle(_oracle),
             true,
             _tokenMultiplier
         );
@@ -140,7 +140,7 @@ contract SprinklerUpgradeable is EIP2535Initializable, IrrigationAccessControl {
     }
 
     /// @notice get price oracle address
-    function priceOracle(address _token) public view returns (IOracleUpgradeable) {
+    function priceOracle(address _token) public view returns (IPriceOracle) {
         return SprinklerStorage.layout().whitelistAssets[_token].priceOracle;
     }
 

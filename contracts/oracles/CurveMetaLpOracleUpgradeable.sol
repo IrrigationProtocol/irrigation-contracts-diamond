@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.17;
 
-import "../interfaces/IOracleUpgradeable.sol";
-import "../curve/ICurveMetaPoolUpgradeable.sol";
+import "../interfaces/IPriceOracle.sol";
+import "../curve/ICurveMetaPool.sol";
 import { CurveMetaLpOracleStorage } from "./CurveMetaLpOracleStorage.sol";
 import "../utils/EIP2535Initializable.sol";
 
-contract CurveMetaLpOracleUpgradeable is EIP2535Initializable, IOracleUpgradeable {
+contract CurveMetaLpOracleUpgradeable is EIP2535Initializable, IPriceOracle {
     using CurveMetaLpOracleStorage for CurveMetaLpOracleStorage.Layout;
 
     function __CurveMetaLpOracle_init(address _metaPool) internal onlyInitializing {
@@ -14,7 +14,7 @@ contract CurveMetaLpOracleUpgradeable is EIP2535Initializable, IOracleUpgradeabl
     }
 
     function __CurveMetaLpOracle_init_unchained(address _metaPool) internal onlyInitializing {
-        CurveMetaLpOracleStorage.layout().metaPool = ICurveMetaPoolUpgradeable(_metaPool);
+        CurveMetaLpOracleStorage.layout().metaPool = ICurveMetaPool(_metaPool);
     }
 
     /**
@@ -26,7 +26,7 @@ contract CurveMetaLpOracleUpgradeable is EIP2535Initializable, IOracleUpgradeabl
         price = CurveMetaLpOracleStorage.layout().metaPool.get_virtual_price();
     }
     // generated getter for ${varDecl.name}
-    function metaPool() public view returns(ICurveMetaPoolUpgradeable) {
+    function metaPool() public view returns(ICurveMetaPool) {
         return CurveMetaLpOracleStorage.layout().metaPool;
     }
 

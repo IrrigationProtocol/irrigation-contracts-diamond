@@ -17,7 +17,7 @@ export async function getBeanstalk() {
 }
 
 export async function getBeanMetapool() {
-    return await ethers.getContractAt('ICurvePoolUpgradeable', CONTRACT_ADDRESSES.BEAN_3_CURVE);
+    return await ethers.getContractAt('ICurvePool', CONTRACT_ADDRESSES.BEAN_3_CURVE);
 }
 
 export async function mintUsdc(address: string, amount: BigNumber) {
