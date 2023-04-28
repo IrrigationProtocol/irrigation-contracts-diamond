@@ -11,6 +11,7 @@ import { deployments } from './deployments';
 import { BigNumber } from 'ethers';
 import tokenData from '../test/mockTokens.json';
 import fs from 'fs';
+import { CONTRACT_ADDRESSES } from './shared';
 
 const log: debug.Debugger = debug('IrrigationDeploy:log');
 log.color = '159';
@@ -172,10 +173,20 @@ async function initSprinkler() {
     if (tokenItem?.priceOracles) tokenItem.priceOracles[networkName] = priceOracle;
     else tokenItem.priceOracles = { [networkName]: priceOracle };
   }
-  fs.writeFileSync(`test/mockTokens.json`, JSON.stringify(tokenData));
+  fs.writeFileSync(`test/mockTokens.json`, JSON.stringify(tokenData, null, 4));
   const { tokenAddress, priceOracle } = await setMockPriceOracle(mockDeployer, 'WATER', 0.2);
   await sprinkler.setWaterPriceOracle(priceOracle);
   log(`price oracle of WATER: ${priceOracle}`);
+
+  const factory = await ethers.getContractFactory('BeanPriceOracle');
+  const beanOracle = await factory.deploy(
+    CONTRACT_ADDRESSES.BEAN_3_CURVE,
+    CONTRACT_ADDRESSES.THREE_POOL,
+  );
+  await beanOracle.deployed();
+  await sprinkler.addAssetToWhiteList(CONTRACT_ADDRESSES.BEAN, beanOracle.address, 0);
+
+  log(`price oracle of BEAN: ${beanOracle.address}`);
 }
 
 async function mintBean() {
@@ -191,7 +202,13 @@ async function mintBean() {
   // log(`minted Bean. bean balance is ${fromD6(beanBalance)}`);
   log(`minted Bean.`);
 }
-
+async function initWatetTower() {
+  const waterTower = await ethers.getContractAt(
+    'WaterTowerUpgradeable',
+    devAddresses[networkName].irrigation,
+  );
+  await waterTower.setMiddleAsset(CONTRACT_ADDRESSES.BEAN);
+}
 async function main() {
   if (require.main === module) {
     debug.enable('Irrigation.*:log');
@@ -210,6 +227,7 @@ async function main() {
   await mintBean();
   await initAuction();
   await initSprinkler();
+  await initWatetTower();
 }
 
 main().catch((error) => {

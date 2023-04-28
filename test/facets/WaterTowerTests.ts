@@ -3,6 +3,7 @@ import { dc, assert, expect, toWei, fromWei } from '../../scripts/common';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { IrrigationDiamond } from '../../typechain-types/hardhat-diamond-abi/HardhatDiamondABI.sol';
 import { WaterTowerUpgradeable, WaterUpgradeable } from '../../typechain-types';
+import { CONTRACT_ADDRESSES } from '../../scripts/shared';
 
 export function suite() {
   describe('Irrigation WaterTower Testing', async function () {
@@ -40,11 +41,18 @@ export function suite() {
           updatedBalance,
         )}`,
       );
-      const userInfo = await waterTower.userInfo(sender.address);
+      let userInfo = await waterTower.userInfo(sender.address);
       assert(
         userInfo.amount.eq(toWei(100)),
         `sender balanceOf should be 100, but is ${ethers.utils.formatEther(userInfo.amount)}`,
       );
+      assert(
+        userInfo.isAutoIrrigate === false,
+        `sender isAutoIrrigate is not set, but it is set as auto`,
+      );
+      await waterTower.connect(sender).setAutoIrrigate(true);
+      userInfo = await waterTower.userInfo(sender.address);
+      assert(userInfo.isAutoIrrigate, `sender isAutoIrrigate is set, but it is not set as auto`);
     });
 
     it('Testing WaterTower withdraw', async () => {
@@ -61,7 +69,7 @@ export function suite() {
       const userInfo = await waterTower.userInfo(sender.address);
       assert(
         userInfo.amount.eq(toWei(0)),
-        `sender balanceOf should be 100, but is ${fromWei(userInfo.amount)}`,
+        `sender balanceOf should be 0, but is ${fromWei(userInfo.amount)}`,
       );
     });
 
@@ -100,7 +108,7 @@ export function suite() {
           toWei(102).sub(txReceipt.gasUsed.mul(txReceipt.effectiveGasPrice)),
         )}, but is ${fromWei(updatedEthOfClaimer)}`,
       );
-      let senderUserInfo = await waterTower.userInfo(sender.address);
+      const senderUserInfo = await waterTower.userInfo(sender.address);
       assert(
         senderUserInfo.debt.eq(shareWater.mul(toWei(10))),
         `debt of sender should be ${fromWei(shareWater.mul(10))}, but is ${fromWei(
@@ -133,6 +141,53 @@ export function suite() {
         )}, but is ${fromWei(ownerUserInfo.pending)}`,
       );
       await expect(tx).to.emit(waterTower, 'Claimed').withArgs(owner.address, toWei(claimValue));
+    });
+
+    it('Testing WaterTower Irrigate', async () => {
+      await water.connect(sender).approve(irrigationDiamond.address, toWei(10));
+      await waterTower.connect(sender).deposit(toWei(10), false);
+      await signers[2].sendTransaction({ to: waterTower.address, value: toWei(10) });
+      let shareWater = await waterTower.sharePerWater();
+      let updatedEthOfClaimer = await provider.getBalance(sender.address);
+      let updatedEthInContract = await provider.getBalance(waterTower.address);
+      let senderUserInfo = await waterTower.userInfo(sender.address);
+      let totalRewardsOfSender = await waterTower.userETHReward(sender.address);
+      let irrigateValue = totalRewardsOfSender.div(2);
+      const sprinkler = await ethers.getContractAt('SprinklerUpgradeable', waterTower.address);
+      const whitelisted = await sprinkler.getWhitelist();
+      if (!whitelisted.includes(CONTRACT_ADDRESSES.BEAN)) {
+        // console.log('----not whitelisted bean in sprinkler');
+        const factory = await ethers.getContractFactory('BeanPriceOracle');
+        const beanOracle = await factory.deploy(
+          CONTRACT_ADDRESSES.BEAN_3_CURVE,
+          CONTRACT_ADDRESSES.THREE_POOL,
+        );
+        await beanOracle.deployed();
+        // console.log('---price:', await beanOracle.latestPrice());
+        await sprinkler.addAssetToWhiteList(CONTRACT_ADDRESSES.BEAN, beanOracle.address, 0);
+      }
+      await waterTower.setMiddleAsset(CONTRACT_ADDRESSES.BEAN);
+
+      let tx = await waterTower.connect(sender).irrigate(irrigateValue);
+      const txReceipt = await tx.wait();
+      updatedEthInContract = updatedEthInContract.sub(
+        await provider.getBalance(waterTower.address),
+      );
+      updatedEthOfClaimer = updatedEthOfClaimer.sub(await provider.getBalance(sender.address));
+      assert(
+        updatedEthOfClaimer.eq(txReceipt.gasUsed.mul(txReceipt.effectiveGasPrice)),
+        `updated eth balance of sender should be ${fromWei(
+          txReceipt.gasUsed.mul(txReceipt.effectiveGasPrice),
+        )}, but is ${fromWei(updatedEthOfClaimer)}`,
+      );
+      assert(
+        updatedEthInContract.eq(irrigateValue),
+        `updated ether in contract should be ${fromWei(irrigateValue)}, but is ${fromWei(
+          updatedEthInContract,
+        )}`,
+      );
+
+      senderUserInfo = await waterTower.userInfo(sender.address);
     });
   });
 }

@@ -157,6 +157,13 @@ contract WaterTowerUpgradeable is EIP2535Initializable, IrrigationAccessControl 
         return WaterTowerStorage.layout().userInfo[arg0];
     }
 
+    function userETHReward(address user) public view returns (uint256) {
+        return
+            (sharePerWater() *
+                WaterTowerStorage.layout().userInfo[user].amount -
+                WaterTowerStorage.layout().userInfo[user].debt) / 1e18;
+    }
+
     // generated getter for totalDeposits
     function totalDeposits() public view returns (uint256) {
         return WaterTowerStorage.layout().totalDeposits;
