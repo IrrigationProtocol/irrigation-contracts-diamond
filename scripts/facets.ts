@@ -23,6 +23,7 @@ export const Facets: FacetToDeployInfo = {
   PodsOracleUpgradeable: { priority: 110 },
   TrancheBondUpgradeable: { priority: 120 },
   TrancheNotationUpgradeable: { priority: 130 },
+  PriceOracleUpgradeable: { priority: 140 },
 };
 
 export async function LoadFacetDeployments() {

@@ -31,6 +31,7 @@ import * as AuctionTests from './facets/AuctionTests';
 import * as ZscTests from './facets/ZscTests';
 import * as PodsOracleTests from './PodsOracleTests';
 import * as TrancheTests from './facets/TrancheTests';
+import * as PriceOracleTests from './facets/PriceOracleTests';
 
 const debugging = process.env.JB_IDE_HOST !== undefined;
 
@@ -129,6 +130,7 @@ describe.only('Irrigation Diamond DApp Testing', async function () {
       AuctionTests.suite();
       PodsOracleTests.suite();
       TrancheTests.suite();
+      PriceOracleTests.suite();
     });
   });
 });
