@@ -133,11 +133,14 @@ export async function deployFuncSelectors(
     const deployedVersion =
       deployedFacets[name]?.version ?? (deployedFacets[name]?.tx_hash ? 0.0 : -1.0);
 
+    const externalLibraries = {};
+    Object.keys(networkDeployInfo.ExternalLibraries)?.forEach((libraryName: string) => {
+      if (facetDeployVersionInfo.libraries?.includes(libraryName))
+        externalLibraries[libraryName] = networkDeployInfo.ExternalLibraries[libraryName];
+    });
     const FacetContract = await ethers.getContractFactory(
       name,
-      facetDeployVersionInfo.libraries
-        ? { libraries: networkDeployInfo.ExternalLibraries }
-        : undefined,
+      facetDeployVersionInfo.libraries ? { libraries: externalLibraries } : undefined,
     );
 
     const facet = FacetContract.attach(deployedFacets[name].address!);
@@ -334,10 +337,15 @@ export async function deployExternalLibraries(networkDeployedInfo: INetworkDeplo
   const zetherVerifier = await zetherVerifierContract.deploy();
   const LibEncryptionContract = await ethers.getContractFactory('libEncryption');
   const libEncryption = await LibEncryptionContract.deploy();
+
+  const uniswapV3TwapContract = await ethers.getContractFactory('UniswapV3Twap');
+  const uniswapV3Twap = await uniswapV3TwapContract.deploy();
+
   networkDeployedInfo.ExternalLibraries = {};
   networkDeployedInfo.ExternalLibraries['BurnVerifier'] = burnVerifier.address;
   networkDeployedInfo.ExternalLibraries['ZetherVerifier'] = zetherVerifier.address;
   networkDeployedInfo.ExternalLibraries['libEncryption'] = libEncryption.address;
+  networkDeployedInfo.ExternalLibraries['UniswapV3Twap'] = uniswapV3Twap.address;
 }
 
 export async function deployDiamondFacets(
@@ -366,11 +374,17 @@ export async function deployDiamondFacets(
     const deployedVersion =
       deployedFacets[name]?.version ?? (deployedFacets[name]?.tx_hash ? 0.0 : -1.0);
     const facetNeedsDeployment = !(name in deployedFacets) || deployedVersion != upgradeVersion;
+
+    const externalLibraries = {};
+    Object.keys(networkDeployInfo.ExternalLibraries)?.forEach((libraryName: string) => {
+      if (facetDeployVersionInfo.libraries?.includes(libraryName))
+        externalLibraries[libraryName] = networkDeployInfo.ExternalLibraries[libraryName];
+    });
     const FacetContract = await ethers.getContractFactory(
       name,
       facetDeployVersionInfo.libraries
         ? {
-            libraries: networkDeployInfo.ExternalLibraries,
+            libraries: externalLibraries,
           }
         : undefined,
     );

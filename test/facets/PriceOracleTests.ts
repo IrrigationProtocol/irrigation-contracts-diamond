@@ -2,7 +2,7 @@ import { ethers } from 'hardhat';
 import { dc, assert, expect, toWei, fromWei } from '../../scripts/common';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { IrrigationDiamond } from '../../typechain-types/hardhat-diamond-abi/HardhatDiamondABI.sol';
-import { CONTRACT_ADDRESSES } from '../../scripts/shared';
+import { CONTRACT_ADDRESSES, OracleType } from '../../scripts/shared';
 import { PriceOracleUpgradeable } from '../../typechain-types';
 
 export function suite() {
@@ -21,9 +21,11 @@ export function suite() {
     });
 
     it('Test ETH Price based on chainlink oracle', async () => {
-      await priceOracle.setChainlinkFeed(
+      await priceOracle.setOracle(
         CONTRACT_ADDRESSES.ETHER,
         CONTRACT_ADDRESSES.CHAINLINK_ORACLE_ETH,
+        ethers.constants.AddressZero,
+        OracleType.CHAINLINK,
       );
       const etherPrice = await priceOracle.getUnderlyingPriceETH();
       expect(fromWei(etherPrice)).to.be.lt(10000);
@@ -38,18 +40,29 @@ export function suite() {
         CONTRACT_ADDRESSES.THREE_POOL,
       );
       await beanOracle.deployed();
-      await priceOracle.setCustomOracle(CONTRACT_ADDRESSES.BEAN, beanOracle.address);
+      await priceOracle.setOracle(
+        CONTRACT_ADDRESSES.BEAN,
+        beanOracle.address,
+        ethers.constants.AddressZero,
+        OracleType.CUSTOM_ORACLE,
+      );
       const beanPrice = await priceOracle.getPrice(CONTRACT_ADDRESSES.BEAN);
       expect(fromWei(beanPrice)).to.be.lt(10);
       expect(fromWei(beanPrice)).to.be.gt(0.5);
       console.log('BEAN price: ', fromWei(beanPrice));
     });
 
-    it('Test Water Price based by writting directly', async () => {      
-      await priceOracle.setDirectPrice(priceOracle.address, toWei(0.5));
-      const waterPrice = await priceOracle.getPrice(priceOracle.address);      
-      expect(fromWei(waterPrice)).to.be.eq(0.5);
-      console.log('WATER price: ', fromWei(waterPrice));
+    it('Test SPOT Price based on uniswapv3 oracle', async () => {
+      await priceOracle.setOracle(
+        CONTRACT_ADDRESSES.SPOT,
+        CONTRACT_ADDRESSES.UNIV3_POOL_SPOT,
+        CONTRACT_ADDRESSES.USDC,
+        OracleType.UNISWAP_V3,
+      );      
+      const spotPrice = await priceOracle.getPrice(CONTRACT_ADDRESSES.SPOT);
+      expect(fromWei(spotPrice)).to.be.lt(10);
+      expect(fromWei(spotPrice)).to.be.gt(0.001);
+      console.log('SPOT price: ', fromWei(spotPrice));
     });
   });
 }

@@ -9,7 +9,8 @@
     "coverage": "npx hardhat coverage",
     "init:dev": "npx hardhat run scripts/init.dev.ts",
     "clear:dev": "ts-node scripts/clear.dev.ts",
-    "deploy": "npx hardhat run scripts/deploy.ts"
+    "deploy": "npx hardhat run scripts/deploy.ts",
+    "postinstall": "patch-package"
   },
   "author": "",
   "license": "ISC",
@@ -43,6 +44,7 @@
     "@nomiclabs/hardhat-web3": "^2.0.0",
     "@types/chai": "^4.3.4",
     "@types/chai-as-promised": "^7.1.5",
+    "@uniswap/v3-core": "^1.0.1",
     "chai-as-promised": "^7.1.1",
     "debug": "^3.2.7",
     "fsevents": "2.3",
@@ -50,6 +52,8 @@
     "hardhat-diamond-abi": "^3.0.1",
     "hardhat-gas-reporter": "^1.0.9",
     "keccak256": "^1.0.6",
-    "merkletreejs": "^0.3.9"
+    "merkletreejs": "^0.3.9",
+    "patch-package": "^7.0.0",
+    "postinstall-postinstall": "^2.1.0"
   }
 }

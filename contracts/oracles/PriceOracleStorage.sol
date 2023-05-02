@@ -15,19 +15,17 @@ enum OracleType {
 }
 struct OracleItem {
     uint256 price;
-    AggregatorV2V3Interface chainlinkFeed;
-    ICustomOracle customOracle;
+    /// 10 ** decimals
+    uint256 multiplier;
+    /// feed for chainlink, pool for uniswap
+    address oracle;
+    /// base token address, default 0x is usd
+    address base;
     OracleType oType;
 }
 
 library PriceOracleStorage {
     struct Layout {
-        mapping(address => uint256) prices;
-        mapping(address => AggregatorV2V3Interface) chainlinkFeeds;
-        ///
-        // ChainlinkOracle chainlink;
-        mapping(address => bool) chainlinkAssets;
-        /// oracle setting data for each token address
         mapping(address => OracleItem) oracleItems;
     }
 

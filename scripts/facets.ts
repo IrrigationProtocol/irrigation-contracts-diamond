@@ -19,11 +19,11 @@ export const Facets: FacetToDeployInfo = {
   WaterTowerUpgradeable: { priority: 70 },
   WaterUpgradeable: { priority: 80, versions: { 0.0: { init: 'Water_Initialize' } } },
   AuctionUpgradeable: { priority: 90 },
-  ZSCUpgradeable: { priority: 100, libraries: ['BurnVerifier', 'ZetherVerifier'] },
+  ZSCUpgradeable: { priority: 100, libraries: ['BurnVerifier', 'ZetherVerifier', 'libEncryption'] },
   PodsOracleUpgradeable: { priority: 110 },
   TrancheBondUpgradeable: { priority: 120 },
   TrancheNotationUpgradeable: { priority: 130 },
-  PriceOracleUpgradeable: { priority: 140 },
+  PriceOracleUpgradeable: { priority: 140, libraries: ['UniswapV3Twap'] },
 };
 
 export async function LoadFacetDeployments() {
