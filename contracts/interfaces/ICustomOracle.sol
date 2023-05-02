@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.17;
 
-interface IPriceOracle {
+interface ICustomOracle {
     /**
      * @notice Get latest oracle price normalized to 1e18
      */

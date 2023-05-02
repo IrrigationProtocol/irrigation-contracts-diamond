@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.17;
 
-import "../interfaces/IPriceOracle.sol";
+import "../interfaces/ICustomOracle.sol";
 import "./PriceOracleStorage.sol";
 import "../utils/EIP2535Initializable.sol";
 import "../utils/IrrigationAccessControl.sol";
@@ -13,11 +13,13 @@ contract PriceOracleUpgradeable is EIP2535Initializable, IrrigationAccessControl
 
     /// @dev events
     event UpdateAssetPrice(address asset, uint256 oldPrice, uint256 price);
-    event UpdateChainlinkFeed(address asset, address feed);
+    // event UpdateChainlinkFeed(address asset, address feed);
+    event UpdateOracle(address asset, address oracle, OracleType oType);
 
     /// @dev errors
     error RegisteredOracleAsset();
     error InvalidChainlinkFeed();
+    error InvalidCustomOracleAddress();
 
     function getUnderlyingPriceETH() external view returns (uint) {
         return getChainlinkPrice(getChainlinkFeed(Constants.ETHER));
@@ -27,13 +29,18 @@ contract PriceOracleUpgradeable is EIP2535Initializable, IrrigationAccessControl
         uint256 _price = PriceOracleStorage.layout().prices[asset];
         if (_price != 0) {
             price = _price;
-        } else if (PriceOracleStorage.layout().chainlinkAssets[asset]) {
+        } else if (PriceOracleStorage.layout().oracleItems[asset].oType == OracleType.CHAINLINK) {
             price = getChainlinkPrice(getChainlinkFeed(asset));
+        } else if (
+            PriceOracleStorage.layout().oracleItems[asset].oType == OracleType.CUSTOM_ORACLE
+        ) {
+            price = PriceOracleStorage.layout().oracleItems[asset].customOracle.latestPrice();
         } else {
             price = getCurvePrice(asset);
-        }
+        }        
+        
     }
-
+    
     function getCurvePrice(address asset) public view returns (uint256) {
         return 0;
     }
@@ -66,13 +73,28 @@ contract PriceOracleUpgradeable is EIP2535Initializable, IrrigationAccessControl
 
     function setChainlinkFeed(address asset, address feed) external onlySuperAdminRole {
         if (feed == address(0) || feed == address(this)) revert InvalidChainlinkFeed();
-        if (PriceOracleStorage.layout().chainlinkAssets[asset]) revert RegisteredOracleAsset();
-        PriceOracleStorage.layout().chainlinkAssets[asset] = true;
-        emit UpdateChainlinkFeed(feed, asset);
-        PriceOracleStorage.layout().chainlinkFeeds[asset] = AggregatorV2V3Interface(feed);
+        PriceOracleStorage.layout().oracleItems[asset].oType = OracleType.CHAINLINK;
+        PriceOracleStorage.layout().oracleItems[asset].chainlinkFeed = AggregatorV2V3Interface(
+            feed
+        );
+        emit UpdateOracle(asset, feed, OracleType.CHAINLINK);
+    }
+
+    function setCustomOracle(address asset, address customOracle) external onlySuperAdminRole {
+        if (customOracle == address(0) || customOracle == address(this))
+            revert InvalidCustomOracleAddress();
+        // if (PriceOracleStorage.layout().chainlinkAssets[asset]) revert RegisteredOracleAsset();
+        PriceOracleStorage.layout().oracleItems[asset].oType = OracleType.CUSTOM_ORACLE;
+        PriceOracleStorage.layout().oracleItems[asset].customOracle = ICustomOracle(customOracle);
+        emit UpdateOracle(asset, customOracle, OracleType.CUSTOM_ORACLE);
+        // PriceOracleStorage.layout().chainlinkFeeds[asset] = AggregatorV2V3Interface(feed);
     }
 
     function getChainlinkFeed(address asset) public view returns (AggregatorV2V3Interface) {
-        return PriceOracleStorage.layout().chainlinkFeeds[asset];
+        return PriceOracleStorage.layout().oracleItems[asset].chainlinkFeed;
+    }
+
+    function getOracleItem(address asset) public view returns (OracleItem memory) {
+        return PriceOracleStorage.layout().oracleItems[asset];
     }
 }

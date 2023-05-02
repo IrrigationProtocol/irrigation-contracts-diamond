@@ -5,7 +5,7 @@ import "../interfaces/ICustomOracle.sol";
 import "../curve/ICurvePool.sol";
 import "../curve/ICurveMetaPool.sol";
 
-contract BeanPriceOracle is ICustomOracle {
+contract CurveOracle is ICustomOracle {
     // 1 BEAN amount with decimals
     uint256 constant ONE = 1e6;
     // Bean index on curve metapool;

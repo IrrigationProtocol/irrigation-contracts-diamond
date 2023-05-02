@@ -24,17 +24,7 @@ contract ChainlinkOracle {
         admin = msg.sender;
     }
 
-    function getUnderlyingPriceETH() public view returns (uint) {
-        return getChainlinkPrice(getFeed(Constants.ETHER));
-    }
-
-    function getPrice(address asset) public view returns (uint256 price) {
-        if (prices[asset] != 0) {
-            price = prices[asset];
-        } else {
-            price = getChainlinkPrice(getFeed(asset));
-        }
-    }
+    
 
     /// @dev returns price with decimals 18
     function getChainlinkPrice(AggregatorV2V3Interface feed) internal view returns (uint256) {

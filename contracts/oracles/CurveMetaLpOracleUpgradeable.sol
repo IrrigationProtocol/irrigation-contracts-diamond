@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.17;
 
-import "../interfaces/IPriceOracle.sol";
+import "../interfaces/ICustomOracle.sol";
 import "../curve/ICurveMetaPool.sol";
 import { CurveMetaLpOracleStorage } from "./CurveMetaLpOracleStorage.sol";
 import "../utils/EIP2535Initializable.sol";
 
-contract CurveMetaLpOracleUpgradeable is EIP2535Initializable, IPriceOracle {
+contract CurveMetaLpOracleUpgradeable is EIP2535Initializable, ICustomOracle {
     using CurveMetaLpOracleStorage for CurveMetaLpOracleStorage.Layout;
 
     function __CurveMetaLpOracle_init(address _metaPool) internal onlyInitializing {
