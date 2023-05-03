@@ -7,7 +7,7 @@ import "../interfaces/ICustomOracle.sol";
 import "./PriceOracleStorage.sol";
 import "../utils/EIP2535Initializable.sol";
 import "../utils/IrrigationAccessControl.sol";
-import "./ChainlinkOracle.sol";
+import "../libraries/Constants.sol";
 import "./AggregatorV2V3Interface.sol";
 import "../oracles/uniswapv3/UniswapV3Twap.sol";
 
@@ -20,18 +20,20 @@ contract PriceOracleUpgradeable is EIP2535Initializable, IrrigationAccessControl
     event UpdateOracle(address asset, address oracle, address base, OracleType oType);
 
     /// @dev errors
-    error RegisteredOracleAsset();
     error InvalidChainlinkFeed();
     error InvalidCustomOracleAddress();
 
-    function getUnderlyingPriceETH() external view returns (uint) {
+    function getUnderlyingPriceETH() public view returns (uint) {
         /// @dev feed decimals for ether/usd is 8, so multiplier is 10**(18-8)
         return getChainlinkPrice(getChainlinkFeed(Constants.ETHER)) * 10 ** 10;
     }
 
     function getPrice(address asset) public view returns (uint256 price) {
+        if (asset == Constants.ETHER || asset == Constants.WETH) {
+            price = getUnderlyingPriceETH();
+            return price;
+        }
         OracleItem memory oracleItem = PriceOracleStorage.layout().oracleItems[asset];
-        // uint256 _price = PriceOracleStorage.layout().oracleItems[asset].price;
         if (oracleItem.oType == OracleType.DIRECT) {
             price = oracleItem.price;
         } else if (oracleItem.oType == OracleType.CHAINLINK) {
@@ -41,6 +43,8 @@ contract PriceOracleUpgradeable is EIP2535Initializable, IrrigationAccessControl
         } else {
             price = getUniswapV3Price(asset, oracleItem);
         }
+        if (oracleItem.base != address(0))
+            price = (price * getPrice(oracleItem.base)) / Constants.D18;
     }
 
     /// @dev returns price with decimals 18
@@ -52,6 +56,7 @@ contract PriceOracleUpgradeable is EIP2535Initializable, IrrigationAccessControl
         address asset,
         OracleItem memory oracleItem
     ) internal view returns (uint256) {
+        /// @dev if multiplier is greater than 10**18, uniswap library math function reverts with error.
         if (oracleItem.multiplier > Constants.D18)
             return
                 UniswapV3Twap.getTwap(Constants.D18, asset, oracleItem.oracle, 10) *
@@ -62,8 +67,8 @@ contract PriceOracleUpgradeable is EIP2535Initializable, IrrigationAccessControl
     /// @dev admin setters
     /// @dev direct price
     function setDirectPrice(address asset, uint256 price) external onlySuperAdminRole {
-        emit UpdateAssetPrice(asset, PriceOracleStorage.layout().oracleItems[asset].price, price);
         PriceOracleStorage.layout().oracleItems[asset].price = price;
+        emit UpdateAssetPrice(asset, PriceOracleStorage.layout().oracleItems[asset].price, price);
     }
 
     /// @dev update oracle into any type
@@ -96,5 +101,4 @@ contract PriceOracleUpgradeable is EIP2535Initializable, IrrigationAccessControl
     function getOracleItem(address asset) public view returns (OracleItem memory) {
         return PriceOracleStorage.layout().oracleItems[asset];
     }
-
 }

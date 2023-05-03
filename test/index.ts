@@ -32,6 +32,7 @@ import * as ZscTests from './facets/ZscTests';
 import * as PodsOracleTests from './PodsOracleTests';
 import * as TrancheTests from './facets/TrancheTests';
 import * as PriceOracleTests from './facets/PriceOracleTests';
+import { mintAllTokensForTesting } from './utils/mint';
 
 const debugging = process.env.JB_IDE_HOST !== undefined;
 
@@ -92,6 +93,8 @@ describe.only('Irrigation Diamond DApp Testing', async function () {
     await afterDeployCallbacks(networkDeployedInfo);
     debuglog(`${util.inspect(networkDeployedInfo, { depth: null })}`);
     debuglog('Facets Deployed');
+    debuglog('Minting tokens');
+    await mintAllTokensForTesting(deployer);
   });
 
   describe('Facet Cut Testing', async function () {
@@ -122,6 +125,7 @@ describe.only('Irrigation Diamond DApp Testing', async function () {
     });
 
     after(() => {
+      PriceOracleTests.suite(networkDeployedInfo);
       IrrigationERC20Tests.suite();
       // ZscTests.suite();
       SprinklerTests.suite();
@@ -130,7 +134,6 @@ describe.only('Irrigation Diamond DApp Testing', async function () {
       AuctionTests.suite();
       PodsOracleTests.suite();
       TrancheTests.suite();
-      PriceOracleTests.suite();
     });
   });
 });

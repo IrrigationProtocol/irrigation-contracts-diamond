@@ -3,20 +3,21 @@ import { dc, assert, toWei, toD6, fromD6, fromWei } from '../../scripts/common';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { IrrigationDiamond } from '../../typechain-types/hardhat-diamond-abi/HardhatDiamondABI.sol';
 import {
-  MockERC20Upgradeable,
+  IERC20Upgradeable,
   MockPriceOracle,
   SprinklerUpgradeable,
   WaterUpgradeable,
 } from '../../typechain-types';
 import { BigNumber } from 'ethers';
+import { CONTRACT_ADDRESSES } from '../../scripts/shared';
 
 export function suite() {
   describe('Irrigation Sprintkler Testing', async function () {
     let signers: SignerWithAddress[];
     let owner: SignerWithAddress;
     const irrigationDiamond = dc.IrrigationDiamond as IrrigationDiamond;
-    let token1: MockERC20Upgradeable;
-    let token2: MockERC20Upgradeable;
+    let token1: IERC20Upgradeable;
+    let token2: IERC20Upgradeable;
     let sender: SignerWithAddress;
     let tester2: SignerWithAddress;
     let priceOracle1: MockPriceOracle;
@@ -31,12 +32,8 @@ export function suite() {
       owner = signers[0];
       sender = signers[1];
       tester2 = signers[2];
-      const mockTokenContract = await ethers.getContractFactory('MockERC20Upgradeable');
-      token1 = await mockTokenContract.deploy();
-      await token1.Token_Initialize('Bean', 'BEAN', toWei(100_000_000));
-      const mockTokenContractD6 = await ethers.getContractFactory('MockERC20D6Upgradeable');
-      token2 = await mockTokenContractD6.deploy();
-      await token2.Token_Initialize('Stalk', 'STALK', toWei(100_000_000));
+      token1 = await ethers.getContractAt('IERC20Upgradeable', CONTRACT_ADDRESSES.DAI);
+      token2 = await ethers.getContractAt('IERC20Upgradeable', CONTRACT_ADDRESSES.USDC);
       const priceOracleContract = await ethers.getContractFactory('MockPriceOracle');
       priceOracle1 = await priceOracleContract.deploy();
       priceOracle2 = await priceOracleContract.deploy();

@@ -93,6 +93,10 @@ export function fromD6(value: number | string | BigNumber): string {
   return ethers.utils.formatUnits(value, 6);
 }
 
+export function formatFixed(value: number): number {
+  return Number(value.toFixed(6));
+}
+
 export function mulDivRoundingUp(a: BigNumber, b: BigNumber, d: BigNumber): BigNumber {
   let x: BigNumber = a.mul(b).div(d);
   if (a.mul(b).mod(d).gt(0)) x = x.add(1);
@@ -122,5 +126,5 @@ export const dc: DeployedContracts = {};
 export function random32bit() {
   let u = new Uint32Array(1);
   const randomeBuffer = crypto.randomBytes(32);
-  return '0x' + randomeBuffer.toString('hex');  
+  return '0x' + randomeBuffer.toString('hex');
 }

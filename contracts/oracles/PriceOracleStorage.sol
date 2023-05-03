@@ -15,7 +15,7 @@ enum OracleType {
 }
 struct OracleItem {
     uint256 price;
-    /// 10 ** decimals
+    /// 10 ** decimals, it is not worked for direct off-chain price
     uint256 multiplier;
     /// feed for chainlink, pool for uniswap
     address oracle;
