@@ -4,9 +4,26 @@
 
 import { ethers } from 'hardhat';
 import { CONTRACT_ADDRESSES, OracleType } from './shared';
-import { PriceOracleUpgradeable } from '../typechain-types';
+import {
+  AuctionUpgradeable,
+  PriceOracleUpgradeable,
+  SprinklerUpgradeable,
+  WaterTowerUpgradeable,
+} from '../typechain-types';
 import { formatFixed, fromWei, toWei, debuglog } from './common';
 
+export const whitelist = [
+  CONTRACT_ADDRESSES.DAI,
+  CONTRACT_ADDRESSES.USDT,
+  CONTRACT_ADDRESSES.BEAN,
+  CONTRACT_ADDRESSES.ROOT,
+  CONTRACT_ADDRESSES.OHM,
+  CONTRACT_ADDRESSES.LUSD,
+  CONTRACT_ADDRESSES.SPOT,
+  CONTRACT_ADDRESSES.PAXG,
+  CONTRACT_ADDRESSES.CNHT,
+];
+const purchaseTokens = [CONTRACT_ADDRESSES.DAI, CONTRACT_ADDRESSES.USDC, CONTRACT_ADDRESSES.USDT];
 export async function initPriceOracles(priceOracle: PriceOracleUpgradeable) {
   const factory = await ethers.getContractFactory('BeanPriceOracle');
   const beanOracle = await factory.deploy(
@@ -101,4 +118,26 @@ export async function initPriceOracles(priceOracle: PriceOracleUpgradeable) {
   }
   await priceOracle.setDirectPrice(priceOracle.address, toWei(0.5));
   debuglog(`WATER price: ${formatFixed(fromWei(await priceOracle.getPrice(priceOracle.address)))}`);
+}
+
+export async function initSprinkler(sprinkler: SprinklerUpgradeable) {
+  for (const address of whitelist) {
+    await sprinkler.addAssetToWhiteList(address, 0);
+    const waterToken = await ethers.getContractAt('WaterUpgradeable', sprinkler.address);
+    await waterToken.approve(sprinkler.address, toWei(10_000));    
+  }
+  await sprinkler.depositWater(toWei(10_000));
+}
+
+export async function initWaterTower(waterTower: WaterTowerUpgradeable) {
+  await waterTower.setMiddleAsset(CONTRACT_ADDRESSES.BEAN);
+}
+
+export async function initAuction(auction: AuctionUpgradeable) {
+  const signers = await ethers.getSigners();
+  for (const token of purchaseTokens) {
+    await auction.setPurchaseToken(token, true);
+  }
+  // 1.5% auction fee
+  await auction.setAuctionFee(15, signers[2]?.address || process.env.REWARD_ADDRESS);
 }

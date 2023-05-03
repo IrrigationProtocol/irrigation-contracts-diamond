@@ -6,21 +6,21 @@ import {SprinklerUpgradeable} from "./SprinklerUpgradeable.sol";
 import {IBeanstalkUpgradeable} from "../beanstalk/IBeanstalkUpgradeable.sol";
 import {ICustomOracle} from "../interfaces/ICustomOracle.sol";
 
-// WhitelistAsset stores priceOracle address and multiplier for exchange for each token
-// Whitelisted asset exchanges can be paused by setting isListed to false
+/// WhitelistAsset stores multiplier for exchange for each token
+/// Whitelisted asset exchanges can be paused by setting isListed to false
 
 struct WhitelistAsset {
-    ICustomOracle priceOracle;
-    bool isListed;
     uint256 tokenMultiplier;
+    bool isListed;
 }
 
 library SprinklerStorage {
     struct Layout {
-        // stores all whitelisted assets
+        /// stores all whitelist token addresses
         address[] allWhiteList;
         mapping(address => WhitelistAsset) whitelistAssets;
-        ICustomOracle waterPriceOracle;
+        /// water amount available for sprinkler
+        uint256 availableWater;        
     }
 
     bytes32 internal constant STORAGE_SLOT = keccak256("irrigation.contracts.storage.Sprinkler");

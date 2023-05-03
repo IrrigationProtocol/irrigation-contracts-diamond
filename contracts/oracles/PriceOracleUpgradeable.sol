@@ -47,6 +47,10 @@ contract PriceOracleUpgradeable is EIP2535Initializable, IrrigationAccessControl
             price = (price * getPrice(oracleItem.base)) / Constants.D18;
     }
 
+    function getWaterPrice() public view returns (uint256) {
+        return getPrice(address(this));
+    }
+
     /// @dev returns price with decimals 18
     function getChainlinkPrice(AggregatorV2V3Interface feed) internal view returns (uint256) {
         return uint256(feed.latestAnswer());

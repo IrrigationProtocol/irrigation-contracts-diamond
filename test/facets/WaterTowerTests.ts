@@ -4,6 +4,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { IrrigationDiamond } from '../../typechain-types/hardhat-diamond-abi/HardhatDiamondABI.sol';
 import { WaterTowerUpgradeable, WaterUpgradeable } from '../../typechain-types';
 import { CONTRACT_ADDRESSES } from '../../scripts/shared';
+import { initWaterTower } from '../../scripts/init';
 
 export function suite() {
   describe('Irrigation WaterTower Testing', async function () {
@@ -25,6 +26,7 @@ export function suite() {
       gdAddr1 = await irrigationDiamond.connect(signers[1]);
       water = await ethers.getContractAt('WaterUpgradeable', irrigationDiamond.address);
       waterTower = await ethers.getContractAt('WaterTowerUpgradeable', irrigationDiamond.address);
+      await initWaterTower(waterTower);
     });
 
     it('Testing WaterTower deposit', async () => {
@@ -156,17 +158,8 @@ export function suite() {
       const sprinkler = await ethers.getContractAt('SprinklerUpgradeable', waterTower.address);
       const whitelisted = await sprinkler.getWhitelist();
       if (!whitelisted.includes(CONTRACT_ADDRESSES.BEAN)) {
-        // console.log('----not whitelisted bean in sprinkler');
-        const factory = await ethers.getContractFactory('BeanPriceOracle');
-        const beanOracle = await factory.deploy(
-          CONTRACT_ADDRESSES.BEAN_3_CURVE,
-          CONTRACT_ADDRESSES.THREE_POOL,
-        );
-        await beanOracle.deployed();
-        // console.log('---price:', await beanOracle.latestPrice());
-        await sprinkler.addAssetToWhiteList(CONTRACT_ADDRESSES.BEAN, beanOracle.address, 0);
+        await sprinkler.addAssetToWhiteList(CONTRACT_ADDRESSES.BEAN, 0);
       }
-      await waterTower.setMiddleAsset(CONTRACT_ADDRESSES.BEAN);
 
       let tx = await waterTower.connect(sender).irrigate(irrigateValue);
       const txReceipt = await tx.wait();

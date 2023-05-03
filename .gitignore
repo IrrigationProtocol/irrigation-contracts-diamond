@@ -16,3 +16,4 @@ coverage
 # yarn.lock
 package-lock.json
 typechain-types
+fast.test.ts
