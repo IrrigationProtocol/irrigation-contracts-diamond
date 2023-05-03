@@ -93,6 +93,7 @@ contract ZSCUpgradeable is EIP2535Initializable, IrrigationAccessControl, BanTra
         // require sender and transaction address match
         require(msg.sender == tx.origin, "Only actual wallet address allowed");
         // allows y to participate. c, s should be a Schnorr signature on "this"
+        // K = s * G - c * Y
         Utils.G1Point memory K = Utils.g().mul(s).add(y.mul(c.neg()));
         uint256 challenge = uint256(keccak256(abi.encode(address(this), y, K))).mod();
         require(challenge == c, "Invalid registration signature!");

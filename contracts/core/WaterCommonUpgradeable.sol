@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: MIT
 pragma solidity 0.8.17;
 
 import "@gnus.ai/contracts-upgradeable-diamond/contracts/token/ERC20/IERC20Upgradeable.sol";
@@ -10,12 +10,13 @@ import "../utils/IrrigationAccessControl.sol";
 contract WaterCommonUpgradeable is EIP2535Initializable, IrrigationAccessControl {
     using WaterCommonStorage for WaterCommonStorage.Layout;
 
-    function WaterCommon_Initialize(address _beanstalk, address _fertilizer) public EIP2535Initializer onlySuperAdminRole {
+    /// @dev There should be only one initialize functon in all facets. So there is the initialize function in Water facet
+    
+    function WaterCommon_Initialize(address _beanstalk, address _fertilizer) public  onlySuperAdminRole {
         __WaterCommon_init(_beanstalk, _fertilizer);
     }
 
-    function __WaterCommon_init(address _beanstalk, address _fertilizer) internal onlyInitializing {
-        __IrrigationAccessControl_init_unchained();
+    function __WaterCommon_init(address _beanstalk, address _fertilizer) internal  {
         require(
             _beanstalk != address(0) &&
             _fertilizer != address(0),

@@ -2,7 +2,7 @@ import * as dotenv from 'dotenv';
 
 import { HardhatUserConfig, task } from 'hardhat/config';
 import '@nomiclabs/hardhat-etherscan';
-import '@nomiclabs/hardhat-waffle';
+import '@nomicfoundation/hardhat-toolbox';
 import 'hardhat-diamond-abi';
 import 'hardhat-abi-exporter';
 import '@typechain/hardhat';
@@ -64,10 +64,10 @@ const config: HardhatUserConfig = {
     settings: {
       optimizer: {
         enabled: true,
-        runs: 200,
+        runs: 1000,
       },
     },
-  },  
+  },
   networks: {
     hardhat: {
       forking: process.env.FORK_URL
@@ -76,12 +76,16 @@ const config: HardhatUserConfig = {
             blockNumber: parseInt(process.env.FORK_BLOCK_NUMBER) || undefined,
           }
         : undefined,
-      chainId: 1337,
-      hardfork: 'london'
+      // chainId: 1337,
+      hardfork: 'london',
     },
     local: {
-      url: 'http://localhost:8545',
-      chainId: 1337,
+      url: 'http://127.0.0.1:8545',
+      chainId: 31337,
+    },
+    dev: {
+      url: process.env.DEV_RPC || '',
+      chainId: 31337,
     },
     anvil: {
       url: 'http://localhost:8545',
@@ -91,10 +95,10 @@ const config: HardhatUserConfig = {
             blockNumber: parseInt(process.env.FORK_BLOCK_NUMBER) || undefined,
           }
         : undefined,
-      chainId: 31337
+      chainId: 31337,
     },
-    ropsten: {
-      url: process.env.ROPSTEN_URL || '',
+    goerli: {
+      url: `https://goerli.infura.io/v3/${process.env.INFURA_API_KEY}`,
       accounts: process.env.PRIVATE_KEY !== undefined ? [process.env.PRIVATE_KEY] : [],
     },
     mumbai: {
@@ -104,7 +108,7 @@ const config: HardhatUserConfig = {
     polygon: {
       url: `https://polygon-mainnet.infura.io/v3/${process.env.INFURA_API_KEY}`,
       accounts: process.env.PRIVATE_KEY !== undefined ? [process.env.PRIVATE_KEY] : [],
-    }
+    },
   },
   gasReporter: {
     enabled: process.env.REPORT_GAS !== undefined,
@@ -128,6 +132,9 @@ const config: HardhatUserConfig = {
     strict: false,
     exclude: ['hardhat-diamond-abi/.*'],
     filter: filterDuplicateFunctions,
+  },
+  mocha: {
+    timeout: 0,
   },
 };
 

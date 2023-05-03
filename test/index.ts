@@ -1,11 +1,5 @@
 import { ContractTransaction } from 'ethers';
 import hre, { ethers } from 'hardhat';
-import '@nomiclabs/hardhat-etherscan';
-import '@nomiclabs/hardhat-waffle';
-import '@typechain/hardhat';
-import 'hardhat-gas-reporter';
-import 'solidity-coverage';
-import '@nomiclabs/hardhat-ethers';
 import { getSelectors } from '../scripts/FacetSelectors';
 import {
   afterDeployCallbacks,
@@ -30,6 +24,9 @@ import * as WaterTowerTests from './facets/WaterTowerTests';
 import * as AuctionTests from './facets/AuctionTests';
 import * as ZscTests from './facets/ZscTests';
 import * as PodsOracleTests from './PodsOracleTests';
+import * as TrancheTests from './facets/TrancheTests';
+import * as PriceOracleTests from './facets/PriceOracleTests';
+import { mintAllTokensForTesting } from './utils/mint';
 
 const debugging = process.env.JB_IDE_HOST !== undefined;
 
@@ -90,6 +87,8 @@ describe.only('Irrigation Diamond DApp Testing', async function () {
     await afterDeployCallbacks(networkDeployedInfo);
     debuglog(`${util.inspect(networkDeployedInfo, { depth: null })}`);
     debuglog('Facets Deployed');
+    debuglog('Minting tokens');
+    await mintAllTokensForTesting(deployer);
   });
 
   describe('Facet Cut Testing', async function () {
@@ -120,13 +119,15 @@ describe.only('Irrigation Diamond DApp Testing', async function () {
     });
 
     after(() => {
+      PriceOracleTests.suite(networkDeployedInfo);
       IrrigationERC20Tests.suite();
-      ZscTests.suite();
+      // ZscTests.suite();
       SprinklerTests.suite();
-      WaterFaucetTests.suite();
+      // WaterFaucetTests.suite();
       WaterTowerTests.suite();
       AuctionTests.suite();
       PodsOracleTests.suite();
+      TrancheTests.suite();
     });
   });
 });

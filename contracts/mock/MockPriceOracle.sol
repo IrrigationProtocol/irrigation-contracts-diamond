@@ -1,11 +1,11 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: MIT
 pragma solidity 0.8.17;
 
-import "../interfaces/IOracleUpgradeable.sol";
+import "../interfaces/ICustomOracle.sol";
 
-contract MockPriceOracle is IOracleUpgradeable {
+contract MockPriceOracle is ICustomOracle {
 
-    uint256 tempPrice;
+    uint256 private tempPrice;
     /**
      * @notice Get latest oracle price normalized to 1e18
      */

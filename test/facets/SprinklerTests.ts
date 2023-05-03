@@ -1,86 +1,95 @@
 import { ethers } from 'hardhat';
-import { dc, assert, expect, toWei } from '../../scripts/common';
+import { dc, assert, toWei, toD6, fromD6, fromWei } from '../../scripts/common';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { IrrigationDiamond } from '../../typechain-types/hardhat-diamond-abi/HardhatDiamondABI.sol';
-import { IOracleUpgradeable, MockERC20Upgradeable, MockPriceOracle } from '../../typechain-types';
+import {
+  IERC20Upgradeable,
+  PriceOracleUpgradeable,
+  SprinklerUpgradeable,
+  WaterUpgradeable,
+} from '../../typechain-types';
+import { BigNumber } from 'ethers';
+import { CONTRACT_ADDRESSES } from '../../scripts/shared';
+import { initSprinkler, whitelist } from '../../scripts/init';
+import { expect } from 'chai';
 
 export function suite() {
   describe('Irrigation Sprintkler Testing', async function () {
     let signers: SignerWithAddress[];
     let owner: SignerWithAddress;
-    let gdAddr1: IrrigationDiamond;
-    let gdOwner: IrrigationDiamond;
     const irrigationDiamond = dc.IrrigationDiamond as IrrigationDiamond;
-    let token1: MockERC20Upgradeable;
-    let token2: MockERC20Upgradeable;
+    let token1: IERC20Upgradeable;
+    let token2: IERC20Upgradeable;
     let sender: SignerWithAddress;
-    let priceOracle1: MockPriceOracle;
-    let priceOracle2: IOracleUpgradeable;
-    let priceOracleForWater: MockPriceOracle;
+    let tester2: SignerWithAddress;
+    let sprinkler: SprinklerUpgradeable;
+    let waterToken: WaterUpgradeable;
+    let priceOracle: PriceOracleUpgradeable;
+    const irrigationMainAddress: string = irrigationDiamond.address;
 
     before(async () => {
       signers = await ethers.getSigners();
       owner = signers[0];
       sender = signers[1];
-      const mockTokenContract = await ethers.getContractFactory('MockERC20Upgradeable');
-      token1 = await mockTokenContract.deploy();
-      await token1.Token_Initialize('Bean', 'BEAN', toWei(100_000_000));
-      token2 = await mockTokenContract.deploy();
-      await token2.Token_Initialize('Stalk', 'STALK', toWei(100_000_000));
-      sender = signers[1];
-      gdOwner = await irrigationDiamond.connect(owner);
-      gdAddr1 = await irrigationDiamond.connect(signers[1]);
-      const priceOracleContract = await ethers.getContractFactory('MockPriceOracle');
-      priceOracle1 = await priceOracleContract.deploy();
-      priceOracle2 = await priceOracleContract.deploy();
-      priceOracleForWater = await priceOracleContract.deploy();
+      tester2 = signers[2];
+      token1 = await ethers.getContractAt('IERC20Upgradeable', CONTRACT_ADDRESSES.DAI);
+      token2 = await ethers.getContractAt('IERC20Upgradeable', CONTRACT_ADDRESSES.BEAN);
+      sprinkler = await ethers.getContractAt('SprinklerUpgradeable', irrigationMainAddress);
+      waterToken = await ethers.getContractAt('WaterUpgradeable', irrigationMainAddress);
+      priceOracle = await ethers.getContractAt('PriceOracleUpgradeable', irrigationMainAddress);
+      await initSprinkler(sprinkler);
     });
-
-    it('Testing Sprinkler price oracles', async () => {
-      await irrigationDiamond['setPriceOracle(address,address)'](
-        token1.address,
-        priceOracle1.address,
-      );
-      await irrigationDiamond['setPriceOracle(address,address)'](
-        token2.address,
-        priceOracle2.address,
-      );
-      const priceOracleAddress1 = await irrigationDiamond['priceOracles(address)'](token1.address);
+    it('Test Sprinkler sprinkleable water amount should be enough', async () => {
+      expect(await sprinkler.sprinkleableWater()).to.be.eq(toWei(10_000));
+      const waterBalanceOfIrrigation = await waterToken.balanceOf(irrigationMainAddress);
       assert(
-        priceOracleAddress1 === priceOracle1.address,
-        `price oracles is failed ${priceOracleAddress1}`,
+        waterBalanceOfIrrigation.eq(toWei(10_000)),
+        `irrigation balanceOf water should be 10000, but is ${ethers.utils.formatEther(
+          waterBalanceOfIrrigation,
+        )}`,
       );
-      const priceOracleAddress2 = await irrigationDiamond['priceOracles(address)'](token2.address);
+    });
+    it('Test Sprinkler Whitelist', async () => {
+      const gotWhitelist = await sprinkler.getWhitelist();
       assert(
-        priceOracleAddress2 === priceOracle2.address,
-        `price oracles is failed ${priceOracleAddress2}`,
+        gotWhitelist[0] == whitelist[0],
+        `expected whitelist token ${whitelist[0]}, but ${gotWhitelist[0]}`,
+      );
+      assert(
+        gotWhitelist[gotWhitelist.length - 1] == whitelist[gotWhitelist.length - 1],
+        `expected whitelist token ${whitelist[gotWhitelist.length - 1]}, but ${
+          gotWhitelist[gotWhitelist.length - 1]
+        }`,
       );
     });
 
-    it('Testing Sprinkler exchange water', async () => {
-      await gdOwner.setTokenMultiplier(token1.address, 2);
+    it('Test Sprinkler get amount to exchange', async () => {
+      const amount = await sprinkler.getWaterAmount(token1.address, toWei(100));
+      const token1Price = await priceOracle.getPrice(token1.address);
+      const waterPrice = await priceOracle.getWaterPrice();
+      const token1Multiplier = await sprinkler.tokenMultiplier(token1.address);
+      assert(
+        token1Multiplier.eq(BigNumber.from(1)),
+        `expected token multiplier is ${1}, but ${token1Multiplier}`,
+      );
+      const expectedWaterAmount = toWei(100).mul(token1Price).mul(token1Multiplier).div(waterPrice);
+      assert(
+        expectedWaterAmount.eq(amount),
+        `expected water is ${expectedWaterAmount}, received water amount is ${fromWei(amount)}`,
+      );
+    });
+
+    it('Test Sprinkler exchange token', async () => {
       await token1.connect(owner).transfer(sender.address, toWei(100));
       let balance1 = await token1.balanceOf(sender.address);
-      const waterToken = await ethers.getContractAt('WaterUpgradeable', irrigationDiamond.address);
       assert(
         balance1.eq(toWei(100)),
         `sender balanceOf should be 100, but is ${ethers.utils.formatEther(balance1)}`,
       );
 
-      await waterToken.connect(owner).transfer(irrigationDiamond.address, toWei(10000));
-      const waterBalanceOfIrrigation = await waterToken.balanceOf(irrigationDiamond.address);
-      assert(
-        waterBalanceOfIrrigation.eq(toWei(10000)),
-        `irrigation balanceOf water should be 10000, but is ${ethers.utils.formatEther(
-          waterBalanceOfIrrigation,
-        )}`,
-      );
-
-      await gdOwner.setPriceOracle(waterToken.address, priceOracleForWater.address);
-      await priceOracleForWater.mockSetPrice(toWei(3));
-      await priceOracle1.mockSetPrice(toWei(2));
-      await token1.connect(sender).approve(irrigationDiamond.address, toWei(100));
-      await gdAddr1.exchangeTokenToWater(token1.address, toWei(100));
+      await priceOracle.setDirectPrice(priceOracle.address, toWei(2));
+      await token1.connect(sender).approve(irrigationMainAddress, toWei(100));
+      await sprinkler.connect(sender).exchangeTokenToWater(token1.address, toWei(100));
       balance1 = await token1.balanceOf(sender.address);
 
       const waterBalance = await waterToken.balanceOf(sender.address);
@@ -88,14 +97,55 @@ export function suite() {
         balance1.eq(toWei(0)),
         `Sender balanceOf should be 0, but is ${ethers.utils.formatEther(balance1)}`,
       );
-      const token1Price = await priceOracle1.latestPrice();
-      const waterPrice = await priceOracleForWater.latestPrice();
-      const token1Multiplier = await gdAddr1.tokenMultiplier(token1.address);
+      const token1Price = await priceOracle.getPrice(token1.address);
+      const waterPrice = await priceOracle.getWaterPrice();
+      const token1Multiplier = await sprinkler.tokenMultiplier(token1.address);
       const expectedWaterAmount = toWei(100).mul(token1Price).mul(token1Multiplier).div(waterPrice);
       assert(
         expectedWaterAmount.eq(waterBalance),
         `received water balance is ${ethers.utils.formatEther(waterBalance)}`,
       );
+    });
+
+    it('Test Sprinkler exchange token with decimals 6', async () => {
+      await token2.connect(owner).transfer(tester2.address, toD6(250));
+      let balance2 = await token2.balanceOf(tester2.address);
+      assert(balance2.eq(toD6(250)), `sender balanceOf should be 100, but is ${fromD6(balance2)}`);
+      await waterToken.connect(owner).transfer(irrigationMainAddress, toWei(10000));
+      await priceOracle.setDirectPrice(priceOracle.address, toWei(3));
+      await token2.connect(tester2).approve(irrigationMainAddress, toD6(250));
+      let waterBalance = await waterToken.balanceOf(tester2.address);
+      await sprinkler.connect(tester2).exchangeTokenToWater(token2.address, toD6(250));
+      const waterAmount = await sprinkler.getWaterAmount(token2.address, toD6(250));
+      balance2 = await token2.balanceOf(tester2.address);
+      waterBalance = await waterToken.balanceOf(tester2.address);
+      assert(
+        balance2.eq(toWei(0)),
+        `Sender balanceOf should be 0, but is ${ethers.utils.formatEther(balance2)}`,
+      );
+      const tokenPrice = await priceOracle.getPrice(token2.address);
+      const waterPrice = await priceOracle.getWaterPrice();
+      const token2Multiplier = await sprinkler.tokenMultiplier(token2.address);
+
+      const expectedWaterAmount = toD6(250).mul(tokenPrice).mul(token2Multiplier).div(waterPrice);
+      assert(
+        expectedWaterAmount.eq(waterAmount),
+        `should be ${fromWei(expectedWaterAmount)}, but get water amount is ${fromWei(
+          waterAmount,
+        )}`,
+      );
+      assert(
+        expectedWaterAmount.eq(waterBalance),
+        `should be ${fromWei(expectedWaterAmount)}, but received water balance is ${fromWei(
+          waterBalance,
+        )}`,
+      );
+    });
+
+    it('Test Sprinkler should revert for exchange with amount bigger than sprinkleable amount', async () => {      
+      await expect(
+        sprinkler.connect(sender).exchangeTokenToWater(token1.address, toWei(990_000)),
+      ).to.be.revertedWithCustomError(sprinkler, 'InsufficientWater');
     });
   });
 }

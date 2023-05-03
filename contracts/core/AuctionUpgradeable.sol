@@ -1,63 +1,94 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: MIT
 pragma solidity 0.8.17;
 
+import "@gnus.ai/contracts-upgradeable-diamond/contracts/interfaces/IERC20MetadataUpgradeable.sol";
 import "./AuctionStorage.sol";
+import "./TrancheBondStorage.sol";
 import "../utils/EIP2535Initializable.sol";
 import "../utils/IrrigationAccessControl.sol";
 import "../libraries/TransferHelper.sol";
 import "../libraries/FullMath.sol";
-import "@gnus.ai/contracts-upgradeable-diamond/contracts/interfaces/IERC20MetadataUpgradeable.sol";
+import "../interfaces/ITrancheNotationUpgradeable.sol";
+
+/// @title Auction Market for whitelisted erc20 tokens
+/// @dev  Auction contract allows users sell allowed tokens or buy listed tokens with allowed purchase tokens(stable coins)
+///     1. owner allow sell tokens and purchase tokens, and set auction fee
+///     2. seller(auctioner) create auction
+///     * auction has end time
+///     * seller should have enough balance for sell tokens (sell amount + auction fee)
+///     3. buyer buy listed tokens immediately or bid with any price in a range
+///     * buyer shuold have enough balance for bid tokens (price * buy amount)
+///     4. anyone(buyer or seller) close auction after end time
 
 contract AuctionUpgradeable is EIP2535Initializable, IrrigationAccessControl {
     using AuctionStorage for AuctionStorage.Layout;
+    using TrancheBondStorage for TrancheBondStorage.Layout;
 
     event AuctionCreated(
-        address indexed seller,
+        address seller,
         uint256 startTime,
         uint256 duration,
-        address sellToken,
+        address indexed sellToken,
+        uint256 indexed trancheIndex,
         uint256 sellAmount,
         uint256 minBidAmount,
         uint256 fixedPrice,
         uint256 priceRangeStart,
         uint256 priceRangeEnd,
         AuctionType auctionType,
-        uint256 auctionId
+        AssetType assetType,
+        uint256 indexed auctionId
     );
+
+    /// @notice Emitted by auction for buyNow
+    /// @param buyer The address call buyNow
+    /// @param amountIn Token amount paid by user to buy auctioning token
+    /// @param amountOut Auctioning token amount that user received
+    /// @param sellToken Auctioning token that auctionor listed to sell
+    /// @param purchaseToken token paid by user to buy auctioning token
+    /// @param auctionId Id of auction list
 
     event AuctionBuy(
         address indexed buyer,
-        uint256 amountToBuy,
-        address indexed purchaseToken,
-        uint256 auctionId
+        uint256 amountIn,
+        uint256 amountOut,
+        address indexed sellToken,
+        uint256 trancheIndex,
+        address purchaseToken,
+        uint256 indexed auctionId
     );
+
+    /// @notice Emitted by auction when bidder places a bid
+    /// @param bidder The address od bidder
+    /// @param amountToBid The auctioning token amount that user want to buy
+    /// @param purchaseToken The address of token paid by user to buy auctioning token
+    /// @param bidPrice The bid price
+    /// @param auctionId The id of auction list
+    /// @param bidId The id of bid list
 
     event AuctionBid(
-        address indexed buyer,
+        address indexed bidder,
         uint256 amountToBid,
-        address indexed purchaseToken,
+        address purchaseToken,
         uint256 bidPrice,
-        uint256 auctionId,
-        uint256 bidId
+        uint256 indexed auctionId,
+        uint256 indexed bidId
     );
 
-    event UpdateAuctionBid(
-        address indexed buyer,
-        address indexed purchaseToken,
-        uint256 bidPrice,
-        uint256 auctionId,
-        uint256 bidId,
-        uint256 updatedBidId
-    );
+    /// @notice Emitted by auction when bidder or auctioneer closes a auction
+    /// @param unSoldAmount Amount of unsold auctioning token
+    /// @param auctionId Auction id
+    event AuctionClosed(uint256 unSoldAmount, uint256 indexed auctionId);
 
     uint256 public constant FEE_DENOMINATOR = 1000;
-    // when auction is closed, max 200 bids can be settled
+    // when auction is closed, max 200 bids with highest price can be settled
     uint256 public constant MAX_CHECK_BID_COUNT = 200;
 
     function createAuction(
         uint96 startTime,
         uint96 duration,
         address sellToken,
+        uint256 trancheIndex,
         uint128 sellAmount,
         uint128 minBidAmount,
         uint128 fixedPrice,
@@ -65,46 +96,72 @@ contract AuctionUpgradeable is EIP2535Initializable, IrrigationAccessControl {
         uint128 priceRangeEnd,
         AuctionType auctionType
     ) external returns (uint256) {
-        TransferHelper.safeTransferFrom(
-            sellToken,
-            msg.sender,
-            address(this),
-            (uint256(sellAmount) * (FEE_DENOMINATOR + AuctionStorage.layout().feeNumerator)) /
-                FEE_DENOMINATOR
-        );
+        uint256 _trancheIndex = trancheIndex;
+        if (_trancheIndex == 0) {
+            TransferHelper.safeTransferFrom(
+                sellToken,
+                msg.sender,
+                address(this),
+                (uint256(sellAmount) * (FEE_DENOMINATOR + AuctionStorage.layout().feeNumerator)) /
+                    FEE_DENOMINATOR
+            );
+        } else {
+            TranchePods memory tranche = TrancheBondStorage.layout().tranches[_trancheIndex];
+            require(tranche.level != TrancheLevel.Z, "not list Z tranche");
+            ITrancheNotationUpgradeable(address(this)).transferFromTrNotation(
+                _trancheIndex,
+                sellAmount,
+                msg.sender,
+                address(this)
+            );
+        }
         require(sellAmount > 0, "cannot zero sell amount");
         require(startTime == 0 || startTime >= block.timestamp, "start time must be in the future");
         require(minBidAmount > 0 && minBidAmount <= sellAmount, "invalid minBidAmount");
 
         AuctionStorage.layout().currentAuctionId = AuctionStorage.layout().currentAuctionId + 1;
-        uint96 localStartTime = startTime == 0 ? uint96(block.timestamp) : startTime;
+        uint96 _startTime = startTime == 0 ? uint96(block.timestamp) : startTime;
+        uint96 _duration = duration;
+        address _sellToken = sellToken;
+        uint128 _sellAmount = sellAmount;
+        uint128 _minBidAmount = minBidAmount;
+        uint128 _fixedPrice = fixedPrice;
+        uint128 _priceRangeStart = priceRangeStart;
+        uint128 _priceRangeEnd = priceRangeEnd;
+        AuctionType _auctionType = auctionType;
+        AssetType _assetType = _trancheIndex == 0 ? AssetType.ERC20 : AssetType.Tranche;
+
         AuctionData memory auction = AuctionData(
             msg.sender,
-            localStartTime,
-            duration,
-            sellToken,
-            sellAmount,
-            minBidAmount,
-            fixedPrice,
-            priceRangeStart,
-            priceRangeEnd,
-            sellAmount,
+            _startTime,
+            _duration,
+            _sellToken,
+            _trancheIndex,
+            _sellAmount,
+            _minBidAmount,
+            _fixedPrice,
+            _priceRangeStart,
+            _priceRangeEnd,
+            _sellAmount,
             0,
             AuctionStatus.Open,
-            auctionType
+            _auctionType,
+            _assetType
         );
         AuctionStorage.layout().auctions[AuctionStorage.layout().currentAuctionId] = auction;
         emit AuctionCreated(
             msg.sender,
-            localStartTime,
-            duration,
-            sellToken,
-            sellAmount,
-            minBidAmount,
-            fixedPrice,
-            priceRangeStart,
-            priceRangeEnd,
-            auctionType,
+            _startTime,
+            _duration,
+            _sellToken,
+            _trancheIndex,
+            _sellAmount,
+            _minBidAmount,
+            _fixedPrice,
+            _priceRangeStart,
+            _priceRangeEnd,
+            _auctionType,
+            _assetType,
             AuctionStorage.layout().currentAuctionId
         );
         return AuctionStorage.layout().currentAuctionId;
@@ -121,6 +178,7 @@ contract AuctionUpgradeable is EIP2535Initializable, IrrigationAccessControl {
             "invalid auction for buyNow"
         );
         uint128 availableAmount = auction.reserve;
+        uint256 trancheIndex = auction.trancheIndex;
         require(purchaseAmount <= availableAmount, "big amount");
 
         // need auction conditions
@@ -133,8 +191,27 @@ contract AuctionUpgradeable is EIP2535Initializable, IrrigationAccessControl {
         );
         AuctionStorage.layout().auctions[auctionId].reserve = availableAmount - purchaseAmount;
         TransferHelper.safeTransferFrom(purchaseToken, msg.sender, auction.seller, payAmount);
-        TransferHelper.safeTransfer(auction.sellToken, msg.sender, purchaseAmount);
-        emit AuctionBuy(msg.sender, purchaseAmount, purchaseToken, auctionId);
+
+        if (auction.assetType == AssetType.ERC20) {
+            TransferHelper.safeTransfer(auction.sellToken, msg.sender, purchaseAmount);
+        } else {
+            ITrancheNotationUpgradeable(address(this)).transferFromTrNotation(
+                trancheIndex,
+                purchaseAmount,
+                address(this),
+                msg.sender
+            );
+        }
+
+        emit AuctionBuy(
+            msg.sender,
+            payAmount,
+            purchaseAmount,
+            auction.sellToken,
+            auction.trancheIndex,
+            purchaseToken,
+            auctionId
+        );
     }
 
     function placeBid(
@@ -162,7 +239,12 @@ contract AuctionUpgradeable is EIP2535Initializable, IrrigationAccessControl {
             Bid memory lastBid = AuctionStorage.layout().bids[auctionId][auction.curBidId];
             require(bidPrice > lastBid.bidPrice, "low Bid");
         }
-        uint256 payAmount = getPayAmount(purchaseToken, bidAmount, bidPrice, auction.sellToken);
+        uint256 payAmount = getPayAmount(
+            purchaseToken,
+            bidAmount,
+            bidPrice,
+            auction.sellToken
+        );
 
         TransferHelper.safeTransferFrom(purchaseToken, msg.sender, address(this), payAmount);
         Bid memory bid = Bid({
@@ -200,46 +282,120 @@ contract AuctionUpgradeable is EIP2535Initializable, IrrigationAccessControl {
         TransferHelper.safeTransfer(
             bid.purchaseToken,
             bid.bidder,
-            getPayAmount(bid.purchaseToken, bid.bidAmount, bid.bidPrice, auction.sellToken)
+            getPayAmount(
+                bid.purchaseToken,
+                bid.bidAmount,
+                bid.bidPrice,
+                auction.sellToken
+            )
         );
         AuctionStorage.layout().bids[auctionId][bidId].bCleared = true;
     }
 
     function _settleAuction(uint256 auctionId) internal {
         AuctionData memory auction = AuctionStorage.layout().auctions[auctionId];
-        // no bid
+        uint256 trancheIndex = auction.trancheIndex;
+        // when there are no bids, all token amount will be transfered back to seller
         if (auction.curBidId == 0) {
-            TransferHelper.safeTransfer(auction.sellToken, auction.seller, auction.reserve);
+            if (trancheIndex == 0) {
+                TransferHelper.safeTransfer(auction.sellToken, auction.seller, auction.reserve);
+            } else {
+                ITrancheNotationUpgradeable(address(this)).transferFromTrNotation(
+                    trancheIndex,
+                    auction.reserve,
+                    address(this),
+                    auction.seller
+                );
+            }
+
             AuctionStorage.layout().auctions[auctionId].reserve = 0;
             AuctionStorage.layout().auctions[auctionId].status = AuctionStatus.Closed;
+            emit AuctionClosed(auction.reserve, auctionId);
             return;
         }
-        uint256 availableAmount = uint256(auction.reserve);
-        uint256 satteledBidCount = MAX_CHECK_BID_COUNT;
+        uint128 availableAmount = auction.reserve;
+        uint256 settledBidCount = 0;
         uint256 curBidId = auction.curBidId;
         do {
             Bid memory bid = AuctionStorage.layout().bids[auctionId][curBidId];
-            if (availableAmount < bid.bidAmount) {
-                --curBidId;
-                continue;
-            }
-            _settleBid(auction.sellToken, auction.seller, bid);
-            availableAmount -= bid.bidAmount;
+            uint128 settledAmount = _settleBid(
+                auction.sellToken,
+                auction.trancheIndex,
+                auction.seller,
+                bid,
+                availableAmount
+            );
+            availableAmount -= settledAmount;
             AuctionStorage.layout().bids[auctionId][curBidId].bCleared = true;
             --curBidId;
-            --satteledBidCount;
-        } while (curBidId > 0 && satteledBidCount > 0 && availableAmount >= auction.minBidAmount);
-        TransferHelper.safeTransfer(auction.sellToken, auction.seller, availableAmount);
+            ++settledBidCount;
+        } while (
+            curBidId > 0 &&
+                settledBidCount <= MAX_CHECK_BID_COUNT &&
+                availableAmount >= auction.minBidAmount
+        );
+        if (availableAmount > 0) {
+            if (auction.assetType == AssetType.ERC20) {
+                TransferHelper.safeTransfer(auction.sellToken, auction.seller, availableAmount);
+            } else {
+                ITrancheNotationUpgradeable(address(this)).transferFromTrNotation(
+                    trancheIndex,
+                    availableAmount,
+                    address(this),
+                    auction.seller
+                );
+            }
+        }
+
         AuctionStorage.layout().auctions[auctionId].reserve = 0;
         AuctionStorage.layout().auctions[auctionId].status = AuctionStatus.Closed;
+        emit AuctionClosed(availableAmount, auctionId);
     }
 
-    function _settleBid(address sellToken, address seller, Bid memory bid) internal {
-        TransferHelper.safeTransfer(sellToken, bid.bidder, bid.bidAmount);
+    /// @notice transfer autioning token to bidder and transfer puchase token to seller
+    function _settleBid(
+        address sellToken,
+        uint256 trancheIndex,
+        address seller,
+        Bid memory bid,
+        uint128 availableAmount
+    ) internal returns (uint128 settledAmount) {
+        settledAmount = bid.bidAmount;
+        uint128 repayAmount = 0;
+        if (availableAmount < settledAmount) {
+            repayAmount = settledAmount - availableAmount;
+            settledAmount = availableAmount;
+            TransferHelper.safeTransfer(
+                bid.purchaseToken,
+                bid.bidder,
+                getPayAmount(
+                    bid.purchaseToken,
+                    repayAmount,
+                    bid.bidPrice,
+                    sellToken
+                )
+            );
+        }
+        if (trancheIndex == 0) {
+            TransferHelper.safeTransfer(sellToken, bid.bidder, settledAmount);
+        } else {
+            ITrancheNotationUpgradeable(address(this)).transferFromTrNotation(
+                trancheIndex,
+                settledAmount,
+                address(this),
+                bid.bidder
+            );
+        }
+
         TransferHelper.safeTransfer(
             bid.purchaseToken,
             seller,
-            getPayAmount(bid.purchaseToken, bid.bidAmount, bid.bidPrice, sellToken)
+            getPayAmount(
+                bid.purchaseToken,
+                settledAmount,
+                bid.bidPrice,
+                sellToken
+            )
         );
     }
 
@@ -265,7 +421,7 @@ contract AuctionUpgradeable is EIP2535Initializable, IrrigationAccessControl {
     }
 
     // getters
-    function getAuctionFee() public view returns(uint256 numerator, uint256 dominator) {
+    function getAuctionFee() public view returns (uint256 numerator, uint256 dominator) {
         numerator = AuctionStorage.layout().feeNumerator;
         dominator = FEE_DENOMINATOR;
     }
@@ -279,10 +435,8 @@ contract AuctionUpgradeable is EIP2535Initializable, IrrigationAccessControl {
         uint256 denominator = (10 **
             (18 -
                 IERC20MetadataUpgradeable(purchaseToken).decimals() +
-                IERC20MetadataUpgradeable(sellToken).decimals()));
+                (sellToken != address(0) ? IERC20MetadataUpgradeable(sellToken).decimals() : 18)));
         return FullMath.mulDivRoundingUp128(purchaseAmount, price, denominator);
-        // old code without rounding
-        // return (uint256(purchaseAmount) * uint256(price)) / denominator;
     }
 
     function getAuction(uint256 auctionId) public view returns (AuctionData memory) {

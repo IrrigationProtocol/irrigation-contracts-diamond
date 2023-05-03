@@ -1,14 +1,15 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: MIT
 pragma solidity 0.8.17;
 
-import "../interfaces/IOracleUpgradeable.sol";
+import "../interfaces/ICustomOracle.sol";
+import "../interfaces/IPodsOracleUpgradeable.sol";
 import "../utils/EIP2535Initializable.sol";
 import "../core/WaterCommonStorage.sol";
 import "../libraries/Oracle/LibPrice.sol";
 
-contract PodsOracleUpgradeable is EIP2535Initializable, IOracleUpgradeable {
+contract PodsOracleUpgradeable is IPodsOracleUpgradeable, ICustomOracle {
     // decimals of price is 18
-    uint256 constant ONE = 1e18;
+    uint256 private constant ONE = 1e18;
 
     /**
      * @notice Get latest oracle price of BEAN normalized to 1e18
@@ -19,19 +20,18 @@ contract PodsOracleUpgradeable is EIP2535Initializable, IOracleUpgradeable {
         price = ONE;
     }
 
-    function latestPriceOfPods(uint256 placeInLine, uint256 pods) public view returns (uint256 price) {
+    /// @notice returns unharvestable pods price in BDV(based on BEAN price)
+
+    function latestPriceOfPods(
+        uint256 placeInLine,
+        uint256 pods
+    ) public view returns (uint256 price) {
         uint256 podIndex = WaterCommonStorage.layout().beanstalk.podIndex();
         uint256 harvestableIndex = WaterCommonStorage.layout().beanstalk.harvestableIndex();
         price = LibPrice.getPriceOfPods(placeInLine, pods, podIndex, harvestableIndex);
     }
 
-    // getter for prie
-    /**
-     * @notice Get price for any pods to 1e18
-     * @param placeInLine with 1e6 decimals
-     * @param pods with 1e6 decimals
-     * @return price pods price
-     */
+    /// @dev see {IPodsOracleUpgradeable}
     function priceOfPods(
         uint256 placeInLine,
         uint256 pods,

@@ -1,7 +1,7 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: MIT
 pragma solidity 0.8.17;
 
-interface IOracleUpgradeable {
+interface ICustomOracle {
     /**
      * @notice Get latest oracle price normalized to 1e18
      */

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: MIT
 pragma solidity 0.8.17;
 
 import "@gnus.ai/contracts-upgradeable-diamond/contracts/token/ERC20/ERC20Upgradeable.sol";
@@ -28,5 +28,9 @@ contract MockERC20Upgradeable is EIP2535Initializable, ERC20Upgradeable {
         uint256 supply
     ) public initializer {
         __MockERC20_init(_name, _symbol, supply);
+    }
+
+    function mint(address sender, uint256 amount) external {
+        _mint(sender, amount);
     }
 }

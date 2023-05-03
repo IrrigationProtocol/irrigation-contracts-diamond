@@ -13,25 +13,25 @@ import {
   mulDivRoundingUp,
 } from '../../scripts/common';
 import { IrrigationDiamond } from '../../typechain-types/hardhat-diamond-abi/HardhatDiamondABI.sol';
-import { AuctionUpgradeable, MockERC20Upgradeable } from '../../typechain-types';
+import { AuctionUpgradeable, IERC20Upgradeable } from '../../typechain-types';
 import { AuctionType } from '../types';
-import { MockERC20D6Upgradeable } from '../../typechain-types/contracts/mock/MockERC20D6Upgradeable';
 import { BigNumber } from 'ethers';
+import { initAuction } from '../../scripts/init';
+import { CONTRACT_ADDRESSES } from '../../scripts/shared';
 
 export function suite() {
   describe('Irrigation Auction Testing', async function () {
     let signers: SignerWithAddress[];
     let owner: SignerWithAddress;
     const irrigationDiamond = dc.IrrigationDiamond as IrrigationDiamond;
-    let token1: MockERC20Upgradeable;
-    let token2: MockERC20Upgradeable;
-    let dai: MockERC20Upgradeable;
-    let usdc: MockERC20D6Upgradeable;
-    let usdt: MockERC20D6Upgradeable;
-    let water: MockERC20Upgradeable;
-    let root: MockERC20Upgradeable;
-    let liquidPods: MockERC20Upgradeable;
-    let ohmBonds: MockERC20Upgradeable;
+    let token1: IERC20Upgradeable;
+    let token2: IERC20Upgradeable;
+    let dai: IERC20Upgradeable;
+    let usdc: IERC20Upgradeable;
+    let usdt: IERC20Upgradeable;
+    let water: IERC20Upgradeable;
+    let root: IERC20Upgradeable;
+    let ohmBonds: IERC20Upgradeable;
     let sender: SignerWithAddress;
     let secondBidder: SignerWithAddress;
     let auctionContract: AuctionUpgradeable;
@@ -41,45 +41,23 @@ export function suite() {
       signers = await ethers.getSigners();
       owner = signers[0];
       sender = signers[1];
+      token1 = await ethers.getContractAt('IERC20Upgradeable', CONTRACT_ADDRESSES.ROOT);
+      token2 = await ethers.getContractAt('IERC20Upgradeable', CONTRACT_ADDRESSES.SPOT);
+      water = await ethers.getContractAt('IERC20Upgradeable', irrigationDiamond.address);
+      root = await ethers.getContractAt('IERC20Upgradeable', CONTRACT_ADDRESSES.ROOT);
+      ohmBonds = await ethers.getContractAt('IERC20Upgradeable', CONTRACT_ADDRESSES.OHM);
 
-      const mockTokenContract = await ethers.getContractFactory('MockERC20Upgradeable');
-      const mockTokenD6Contract = await ethers.getContractFactory('MockERC20D6Upgradeable');
-      token1 = await mockTokenContract.deploy();
-      await token1.Token_Initialize('Beanstalk', 'BEAN', toWei(100_000_000));
-      token2 = await mockTokenContract.deploy();
-      await token2.Token_Initialize('Olympus', 'GOHM', toWei(100_000_000));
-      water = await mockTokenContract.deploy();
-      await water.Token_Initialize('Irrigation', 'WATER', toWei(100_000_000));
-      root = await mockTokenContract.deploy();
-      await root.Token_Initialize('Root', 'ROOT', toWei(100_000_000));
-      liquidPods = await mockTokenContract.deploy();
-      await liquidPods.Token_Initialize('LiquidPods', 'PODS', toWei(100_000_000));
-      ohmBonds = await mockTokenContract.deploy();
-      await ohmBonds.Token_Initialize('OHM Bonds', 'BOND', toWei(100_000_000));
-
-      // deploy stable tokens
-      dai = await mockTokenContract.deploy();
-      await dai.Token_Initialize('DAI', 'DAI Stable', toWei(100_000_000));
-      usdc = await mockTokenD6Contract.deploy();
-      await usdc.Token_Initialize('USDC', 'USDC Stable', toD6(100_000_000));
-      usdt = await mockTokenContract.deploy();
-      await usdt.Token_Initialize('USDT Stable', 'USDT', toWei(100_000_000));
-
-      // sends tokens to UI work account
-      fundAddress = process.env.ADDRESS_TO_FUND;
-      if (fundAddress) {
-        await usdc.transfer(fundAddress, toD6(1000));
-        expect(await usdc.balanceOf(fundAddress)).to.be.equal(toD6(1000));
-      }
+      // get stable tokens
+      dai = await ethers.getContractAt('IERC20Upgradeable', CONTRACT_ADDRESSES.DAI);
+      usdc = await ethers.getContractAt('IERC20Upgradeable', CONTRACT_ADDRESSES.USDC);
+      usdt = await ethers.getContractAt('IERC20Upgradeable', CONTRACT_ADDRESSES.USDT);
 
       sender = signers[1];
       secondBidder = signers[2];
       auctionContract = await ethers.getContractAt('AuctionUpgradeable', irrigationDiamond.address);
-      await auctionContract.setPurchaseToken(dai.address, true);
-      await auctionContract.setPurchaseToken(usdc.address, true);
+      await initAuction(auctionContract);
       expect(await auctionContract.isSupportedPurchaseToken(usdc.address)).to.be.eq(true);
       // 1.5% auction fee
-      await auctionContract.setAuctionFee(15, signers[2].address);
       expect((await auctionContract.getAuctionFee()).numerator).to.be.eq(BigNumber.from(15));
     });
 
@@ -100,6 +78,7 @@ export function suite() {
         0,
         86400 * 2,
         token1.address,
+        0,
         toWei(100),
         toWei(10),
         toWei(0.9574),
@@ -131,6 +110,7 @@ export function suite() {
         `expected duration ${86400 * 2}, but ${createdAuction.duration}`,
       );
     });
+
     it('Testing Auction buyNow', async () => {
       await dai.transfer(sender.address, toWei(50));
       await dai.connect(sender).approve(auctionContract.address, toWei(50));
@@ -153,7 +133,7 @@ export function suite() {
       );
       expect((await usdc.balanceOf(sender.address)).toString()).to.be.equal(
         expectedUSDCBalance.toString(),
-      );      
+      );
     });
 
     it('Testing Auction Bid', async () => {
@@ -205,7 +185,7 @@ export function suite() {
       ).to.be.revertedWith('auction is inactive');
     });
 
-    it('Testing Auction close', async () => {
+    it('Testing Auction close', async () => {      
       await auctionContract.connect(sender).closeAuction(1);
       await expect(auctionContract.connect(sender).closeAuction(1)).to.be.rejectedWith(
         "auction can't be closed",
@@ -213,7 +193,7 @@ export function suite() {
     });
 
     it('Testing Auction claim canceled bid', async () => {
-      const bid = await auctionContract.getBid(1, 1);
+      const bid = await auctionContract.getBid(1, 1);      
       const payAmount = await auctionContract.getPayAmount(
         dai.address,
         bid.bidAmount,
@@ -221,12 +201,13 @@ export function suite() {
         token1.address,
       );
       // bid with dai is only one
-      expect(await dai.balanceOf(auctionContract.address)).to.be.equal(payAmount);
+      let updatedDaiBalance = await dai.balanceOf(auctionContract.address);      
       // bids with usdc are all done
       await auctionContract.connect(sender).claimForCanceledBid(1, 1);
-      expect(await dai.balanceOf(auctionContract.address)).to.be.equal(0);
+      updatedDaiBalance = updatedDaiBalance.sub(await dai.balanceOf(auctionContract.address));
+      expect(updatedDaiBalance).to.be.equal(payAmount);
       expect(await usdc.balanceOf(auctionContract.address)).to.be.equal(0);
-      // console.log(await dai.balanceOf(owner.address));
+      
       await expect(auctionContract.connect(sender).claimForCanceledBid(1, 1)).to.be.rejectedWith(
         'already settled bid',
       );
@@ -250,11 +231,11 @@ export function suite() {
         AuctionType.FixedPrice,
       ];
       await token1.approve(auctionContract.address, toWei(1000));
-      // await networkHelpers.time.setNextBlockTimestamp(Math.floor(Date.now() / 1000) + 3600);
       const tx = await auctionContract.createAuction(
         0,
         86400 * 2,
         token1.address,
+        0,
         toWei(100),
         toWei(10),
         toWei(5),

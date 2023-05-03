@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: MIT
 pragma solidity 0.8.17;
 
 library LibPrice {
@@ -10,7 +10,10 @@ library LibPrice {
      * @notice Get price for any pods (decimals 18)
      * @param placeInLine with decimals 6
      * @param pods with decimals 6
+     * @param podIndex with decimals 6
+     * @param harvestableIndex with decimals 6
      * @return price pods price
+     * @dev   pods price = (1 - (placeInLine + pods/2 - harvestableIndex)/(podIndex-harvestableIndex)) * pods
      */
     function getPriceOfPods(
         uint256 placeInLine,
@@ -19,12 +22,10 @@ library LibPrice {
         uint256 harvestableIndex
     ) internal pure returns (uint256) {
         uint256 unharvestable = podIndex - harvestableIndex;
-        if (unharvestable == 0) {
-            return 10**DECIMALS;
+        if (unharvestable == 0 || placeInLine <= harvestableIndex) {
+            return 10 ** DECIMALS;
         }
-        uint256 fraction = 1e36 / unharvestable;
-        uint256 estimateId = placeInLine * 1e6 + harvestableIndex;
-        uint256 medianPod = estimateId + (pods - 1e6) / 2;
-        return (1e36 - (fraction * (medianPod - harvestableIndex))) / (10**(36 - DECIMALS));
+        uint256 numerator = podIndex - placeInLine - pods / 2;
+        return ((numerator * pods) * 10 ** (DECIMALS - 6)) / unharvestable;
     }
 }

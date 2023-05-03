@@ -4,13 +4,13 @@ pragma solidity ^0.8.17;
 
 
 import { CurveMetaLpOracleUpgradeable } from "./CurveMetaLpOracleUpgradeable.sol";
-import { ICurveMetaPoolUpgradeable } from "../curve/ICurveMetaPoolUpgradeable.sol";
+import { ICurveMetaPool } from "../curve/ICurveMetaPool.sol";
 
 library CurveMetaLpOracleStorage {
 
   struct Layout {
     // Curve Meta pool
-    ICurveMetaPoolUpgradeable metaPool;
+    ICurveMetaPool metaPool;
 
   }
 

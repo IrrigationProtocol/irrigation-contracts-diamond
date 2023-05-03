@@ -4,7 +4,7 @@
 // When running the script with `npx hardhat run <script>` you'll find the Hardhat
 // Runtime Environment's members available in the global scope.
 import { debug } from 'debug';
-import { BaseContract } from 'ethers';
+import { BaseContract, BigNumber } from 'ethers';
 import hre, { ethers } from 'hardhat';
 import {
   FacetInfo,
@@ -18,6 +18,7 @@ import {
   FacetToDeployInfo,
   AfterDeployInit,
   writeDeployedInfo,
+  toWei,
 } from './common';
 import { DiamondCutFacet, IDiamondCut } from '../typechain-types';
 import { deployments } from './deployments';
@@ -42,13 +43,32 @@ export async function deployIrrigationDiamond(networkDeployInfo: INetworkDeployI
     `DiamondCutFacet deployed: ${diamondCutFacet.deployTransaction.hash} tx_hash: ${diamondCutFacet.deployTransaction.hash}`,
   );
   dc.DiamondCutFacet = diamondCutFacet;
+
   // we use the hash of 'irrigation' insteand of random number
   const salt = ethers.utils.keccak256(ethers.utils.toUtf8Bytes('Irrigation'));
+  let contractDeployer;
+  if (process.env.CONTRACT_DEPLOYER_KEY) {
+    contractDeployer = new ethers.Wallet(process.env.CONTRACT_DEPLOYER_KEY).connect(
+      contractOwner.provider,
+    );
+    const ethBalance = await ethers.provider.getBalance(contractDeployer.address);
+
+    if (ethBalance.lt(BigNumber.from(toWei(0.05)))) {
+      await contractOwner.sendTransaction({
+        to: contractDeployer.address,
+        value: ethers.utils.parseEther('100'),
+        gasLimit: 21000,
+      });
+    }
+  } else {
+    contractDeployer = contractOwner;
+  }
   // deploy deployer Create3Factory
   const Create3Factory = await ethers.getContractFactory('CREATE3Factory');
-  const deployer = await Create3Factory.deploy();
+  const deployer = await Create3Factory.connect(contractDeployer).deploy();
+  log(`Factory address ${deployer.address}`);
+  networkDeployInfo.FactoryAddress = deployer.address;
   await deployer.deployed();
-
   // deploy Diamond
   const Diamond = await ethers.getContractFactory(
     'contracts/IrrigationDiamond.sol:IrrigationDiamond',
@@ -57,10 +77,11 @@ export async function deployIrrigationDiamond(networkDeployInfo: INetworkDeployI
     ['address', 'address'],
     [contractOwner.address, diamondCutFacet.address],
   );
-  await deployer.deploy(salt, Diamond.bytecode, constructCode, { value: 0 });
+  await deployer.connect(contractOwner).deploy(salt, Diamond.bytecode, constructCode, { value: 0 });
   const irrigationDiamondAddress = await deployer.getDeployed(contractOwner.address, salt);
-  log(`salt for contract creation: ${salt}, main contract address: ${irrigationDiamondAddress} `);
-
+  log(
+    `salt: ${salt}, owner: ${contractOwner.address}, main contract: ${irrigationDiamondAddress} `,
+  );
   const irrigationDiamond = await ethers.getContractAt(
     'contracts/IrrigationDiamond.sol:IrrigationDiamond',
     irrigationDiamondAddress,
@@ -112,11 +133,14 @@ export async function deployFuncSelectors(
     const deployedVersion =
       deployedFacets[name]?.version ?? (deployedFacets[name]?.tx_hash ? 0.0 : -1.0);
 
+    const externalLibraries = {};
+    Object.keys(networkDeployInfo.ExternalLibraries)?.forEach((libraryName: string) => {
+      if (facetDeployVersionInfo.libraries?.includes(libraryName))
+        externalLibraries[libraryName] = networkDeployInfo.ExternalLibraries[libraryName];
+    });
     const FacetContract = await ethers.getContractFactory(
       name,
-      facetDeployVersionInfo.libraries
-        ? { libraries: networkDeployInfo.ExternalLibraries }
-        : undefined,
+      facetDeployVersionInfo.libraries ? { libraries: externalLibraries } : undefined,
     );
 
     const facet = FacetContract.attach(deployedFacets[name].address!);
@@ -313,10 +337,15 @@ export async function deployExternalLibraries(networkDeployedInfo: INetworkDeplo
   const zetherVerifier = await zetherVerifierContract.deploy();
   const LibEncryptionContract = await ethers.getContractFactory('libEncryption');
   const libEncryption = await LibEncryptionContract.deploy();
+
+  const uniswapV3TwapContract = await ethers.getContractFactory('UniswapV3Twap');
+  const uniswapV3Twap = await uniswapV3TwapContract.deploy();
+
   networkDeployedInfo.ExternalLibraries = {};
   networkDeployedInfo.ExternalLibraries['BurnVerifier'] = burnVerifier.address;
   networkDeployedInfo.ExternalLibraries['ZetherVerifier'] = zetherVerifier.address;
   networkDeployedInfo.ExternalLibraries['libEncryption'] = libEncryption.address;
+  networkDeployedInfo.ExternalLibraries['UniswapV3Twap'] = uniswapV3Twap.address;
 }
 
 export async function deployDiamondFacets(
@@ -345,11 +374,17 @@ export async function deployDiamondFacets(
     const deployedVersion =
       deployedFacets[name]?.version ?? (deployedFacets[name]?.tx_hash ? 0.0 : -1.0);
     const facetNeedsDeployment = !(name in deployedFacets) || deployedVersion != upgradeVersion;
+
+    const externalLibraries = {};
+    Object.keys(networkDeployInfo.ExternalLibraries)?.forEach((libraryName: string) => {
+      if (facetDeployVersionInfo.libraries?.includes(libraryName))
+        externalLibraries[libraryName] = networkDeployInfo.ExternalLibraries[libraryName];
+    });
     const FacetContract = await ethers.getContractFactory(
       name,
       facetDeployVersionInfo.libraries
         ? {
-            libraries: networkDeployInfo.ExternalLibraries,
+            libraries: externalLibraries,
           }
         : undefined,
     );
@@ -398,6 +433,7 @@ async function main() {
     await deployIrrigationDiamond(networkDeployedInfo);
 
     log(`Contract address deployed is ${networkDeployedInfo.DiamondAddress}`);
+    await deployExternalLibraries(networkDeployedInfo);
 
     await deployAndInitDiamondFacets(networkDeployedInfo);
     log(
@@ -405,7 +441,7 @@ async function main() {
         (util.inspect(networkDeployedInfo.FacetDeployedInfo), { depth: null })
       }`,
     );
-    writeDeployedInfo(deployments);
+    if (networkName !== 'hardhat') writeDeployedInfo(deployments);
   }
 }
 

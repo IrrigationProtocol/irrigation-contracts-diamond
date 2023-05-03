@@ -1,0 +1,36 @@
+[
+    {
+        "name": "Root",
+        "symbol": "ROOT",
+        "priceOracles": {},
+        "addresses": {}
+    },
+    {
+        "name": "Olympus",
+        "symbol": "GOHM",
+        "addresses": {},
+        "priceOracles": {}
+    },
+    {
+        "name": "LiquidPods",
+        "symbol": "PODS",
+        "addresses": {},
+        "priceOracles": {}
+    },
+    {
+        "name": "OHM Bonds",
+        "symbol": "BOND",
+        "addresses": {},
+        "priceOracles": {}
+    },
+    {
+        "name": "DAI Stable",
+        "symbol": "DAI",
+        "addresses": {}
+    },
+    {
+        "name": "USDT Stable",
+        "symbol": "USDT",
+        "addresses": {}
+    }
+]
