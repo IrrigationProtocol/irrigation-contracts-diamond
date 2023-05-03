@@ -1,10 +1,8 @@
-import { ethers } from 'hardhat';
+import { ethers, network } from 'hardhat';
 import { dc, assert, expect, toWei } from '../../scripts/common';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { IrrigationDiamond } from '../../typechain-types/hardhat-diamond-abi/HardhatDiamondABI.sol';
 import {
-  MockBeanstalk,
-  MockWaterCommonUpgradeable,
   WaterCommonUpgradeable,
   WaterFaucetUpgradeable,
   WaterUpgradeable,
@@ -32,16 +30,22 @@ export function suite() {
       water = await ethers.getContractAt('WaterUpgradeable', irrigationDiamond.address);
       waterFaucet = await ethers.getContractAt('WaterFaucetUpgradeable', irrigationDiamond.address);
       waterCommon = await ethers.getContractAt('WaterCommonUpgradeable', irrigationDiamond.address);
-      // const beanstalkContract = await ethers.getContractFactory('MockBeanstalk');
-      // const beanstalk: MockBeanstalk = await beanstalkContract.deploy();
-      const beanstalk = await ethers.getContractAt(
-        'IBeanstalkUpgradeable',
-        CONTRACT_ADDRESSES.BEANSTALK,
-      );
-      const fertizerContract = await ethers.getContractFactory('Mock1155Upgradeable');
-      const fertilizer = await fertizerContract.deploy();
-      await fertilizer.mint(1, 1000);
-      await fertilizer.connect(owner).safeTransferFrom(owner.address, sender.address, 1, 100, '0x');
+      let beanstalk;
+      if (network.name === 'hardhat' && !process.env.FORK_URL) {
+        const beanstalkContract = await ethers.getContractFactory('MockBeanstalk');
+        beanstalk = await beanstalkContract.deploy();
+        const fertizerContract = await ethers.getContractFactory('Mock1155Upgradeable');
+        const fertilizer = await fertizerContract.deploy();
+        await fertilizer.mint(1, 1000);
+        await fertilizer
+          .connect(owner)
+          .safeTransferFrom(owner.address, sender.address, 1, 100, '0x');
+        await waterCommon.WaterCommon_Initialize(beanstalk.address, fertilizer.address);
+      } else
+        beanstalk = await ethers.getContractAt(
+          'IBeanstalkUpgradeable',
+          CONTRACT_ADDRESSES.BEANSTALK,
+        );
       // await beanstalk.mockSetStalkBalance(sender.address, toWei(2));
       // await waterCommon.mockSetBeanstalk(beanstalk.address, fertilizer.address);
     });
