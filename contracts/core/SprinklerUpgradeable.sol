@@ -76,8 +76,7 @@ contract SprinklerUpgradeable is
         address _token,
         uint256 _amount
     ) external onlyListedAsset(_token) returns (uint256 waterAmount) {
-        address _waterToken = address(this);
-        require(_token != _waterToken, "Invalid token");
+        require(_token != address(this), "Invalid token");
         require(_amount != 0, "Invalid amount");
 
         waterAmount = getWaterAmount(_token, _amount);
@@ -85,7 +84,7 @@ contract SprinklerUpgradeable is
         require(waterAmount != 0, "No water output"); // if price is 0, amount can be 0
 
         TransferHelper.safeTransferFrom(_token, msg.sender, address(this), _amount);
-        TransferHelper.safeTransfer(_waterToken, msg.sender, waterAmount);
+        transferWater(waterAmount);
 
         emit WaterExchanged(msg.sender, _token, _amount, waterAmount, false);
     }
@@ -95,13 +94,20 @@ contract SprinklerUpgradeable is
      * @return waterAmount received water amount
      */
     function exchangeETHToWater() external payable returns (uint256 waterAmount) {
-        address _waterToken = address(this);
         require(msg.value != 0, "Invalid amount");
         waterAmount = getWaterAmount(Constants.ETHER, msg.value);
         if (waterAmount > sprinkleableWater()) revert InsufficientWater();
         require(waterAmount != 0, "No water output"); // if price is 0 or tokenMultiplier is 0, amount can be 0
-        TransferHelper.safeTransfer(_waterToken, msg.sender, waterAmount);
+        transferWater(waterAmount);
         emit WaterExchanged(msg.sender, Constants.ETHER, msg.value, waterAmount, false);
+    }
+
+    function transferWater(uint256 amount) internal {
+        address _waterToken = address(this);
+        TransferHelper.safeTransfer(_waterToken, msg.sender, amount);
+        SprinklerStorage.layout().availableWater =
+            SprinklerStorage.layout().availableWater -
+            amount;
     }
 
     function depositWater(uint256 amount) public {

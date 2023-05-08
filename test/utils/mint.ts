@@ -1,9 +1,8 @@
 import { BigNumber } from 'ethers';
 import { ethers } from 'hardhat';
 import { CONTRACT_ADDRESSES } from '../../scripts/shared';
-import { impersonateSigner } from './signer';
+import { impersonateSigner, setEtherBalance } from './signer';
 import { toD6, toWei } from '../../scripts/common';
-import * as helpers from '@nomicfoundation/hardhat-network-helpers';
 
 const tokenHolders = {
   ROOT: '0xa3A7B6F88361F48403514059F1F16C8E78d60EeC',
@@ -58,14 +57,14 @@ export async function mintERC20Token(
 async function mintLUSD(address: string, amount) {
   const signer = await impersonateSigner(CONTRACT_ADDRESSES.LUSD_MINTER);
   const lusd = await ethers.getContractAt('MockERC20Upgradeable', CONTRACT_ADDRESSES.LUSD);
-  await helpers.setBalance(signer.address, toWei(1));
+  await setEtherBalance(signer.address, toWei(1));
   await lusd.connect(signer).mint(address, toWei(100_000));
 }
 
 async function mintWithTransfer(tokenAddress: string, from: string, address: string, amount) {
   const signer = await impersonateSigner(from);
   const token = await ethers.getContractAt('IERC20Upgradeable', tokenAddress);
-  await helpers.setBalance(signer.address, toWei(0.2));
+  await setEtherBalance(signer.address, toWei(0.2));
   await token.connect(signer).transfer(address, amount);
 }
 
@@ -77,7 +76,7 @@ export async function mintAllTokensForTesting(address: string) {
   await mintERC20Token(CONTRACT_ADDRESSES.BEAN, address, toD6(100_000), 0);
   await mintWithTransfer(CONTRACT_ADDRESSES.ROOT, tokenHolders.ROOT, address, toWei(10_000));
   await mintERC20Token(CONTRACT_ADDRESSES.OHM, address, toWei(100_000), 0);
-  await mintLUSD(address, toWei(100_000));  
+  await mintLUSD(address, toWei(100_000));
   await mintWithTransfer(CONTRACT_ADDRESSES.SPOT, tokenHolders.SPOT, address, toD6(100_000_000));
   await mintWithTransfer(CONTRACT_ADDRESSES.PAXG, tokenHolders.PAXG, address, toWei(10_000));
   await mintWithTransfer(CONTRACT_ADDRESSES.CNHT, tokenHolders.CNHT, address, toD6(100_000));
