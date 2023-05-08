@@ -22,6 +22,7 @@ export const whitelist = [
   CONTRACT_ADDRESSES.SPOT,
   CONTRACT_ADDRESSES.PAXG,
   CONTRACT_ADDRESSES.CNHT,
+  CONTRACT_ADDRESSES.ETHER
 ];
 const purchaseTokens = [CONTRACT_ADDRESSES.DAI, CONTRACT_ADDRESSES.USDC, CONTRACT_ADDRESSES.USDT];
 export async function initPriceOracles(priceOracle: PriceOracleUpgradeable) {

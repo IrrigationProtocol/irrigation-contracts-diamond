@@ -2,56 +2,163 @@
 pragma solidity ^0.8.17;
 
 interface IBeanstalkUpgradeable {
-    function bdv(address token, uint256 amount) external view returns (uint256);
+    event SetFertilizer(uint128 id, uint128 bpf);
 
-    function beanToBDV(uint256 amount) external pure returns (uint256);
+    function addFertilizerOwner(uint128 id, uint128 amount, uint256 minLP) external payable;
 
-    function curveToBDV(uint256 amount) external view returns (uint256);
+    function balanceOfBatchFertilizer(
+        address[] memory accounts,
+        uint256[] memory ids
+    ) external view returns (IFertilizer.Balance[] memory);
 
-    function unripeBeanToBDV(uint256 amount) external view returns (uint256);
+    function balanceOfFertilized(
+        address account,
+        uint256[] memory ids
+    ) external view returns (uint256 beans);
 
-    function unripeLPToBDV(uint256 amount) external view returns (uint256);
+    function balanceOfFertilizer(
+        address account,
+        uint256 id
+    ) external view returns (IFertilizer.Balance memory);
 
-    event Convert(
-        address indexed account,
-        address fromToken,
-        address toToken,
-        uint256 fromAmount,
-        uint256 toAmount
+    function balanceOfUnfertilized(
+        address account,
+        uint256[] memory ids
+    ) external view returns (uint256 beans);
+
+    function beansPerFertilizer() external view returns (uint128 bpf);
+
+    function claimFertilized(uint256[] memory ids, uint8 mode) external payable;
+
+    function getActiveFertilizer() external view returns (uint256);
+
+    function getCurrentHumidity() external view returns (uint128 humidity);
+
+    function getEndBpf() external view returns (uint128 endBpf);
+
+    function getFertilizer(uint128 id) external view returns (uint256);
+
+    function getFertilizers() external view returns (FertilizerFacet.Supply[] memory fertilizers);
+
+    function getFirst() external view returns (uint128);
+
+    function getHumidity(uint128 _s) external pure returns (uint128 humidity);
+
+    function getLast() external view returns (uint128);
+
+    function getNext(uint128 id) external view returns (uint128);
+
+    function isFertilizing() external view returns (bool);
+
+    function mintFertilizer(uint128 amount, uint256 minLP, uint8 mode) external payable;
+
+    function payFertilizer(address account, uint256 amount) external payable;
+
+    function remainingRecapitalization() external view returns (uint256);
+
+    function totalFertilizedBeans() external view returns (uint256 beans);
+
+    function totalFertilizerBeans() external view returns (uint256 beans);
+
+    function totalUnfertilizedBeans() external view returns (uint256 beans);
+
+    event AddUnripeToken(
+        address indexed unripeToken,
+        address indexed underlyingToken,
+        bytes32 merkleRoot
     );
-    event RemoveDeposits(
-        address indexed account,
-        address indexed token,
-        uint32[] seasons,
-        uint256[] amounts,
+    event ChangeUnderlying(address indexed token, int256 underlying);
+    event Chop(address indexed account, address indexed token, uint256 amount, uint256 underlying);
+    event Pick(address indexed account, address indexed token, uint256 amount);
+
+    function _getPenalizedUnderlying(
+        address unripeToken,
+        uint256 amount,
+        uint256 supply
+    ) external view returns (uint256 redeem);
+
+    function addUnripeToken(
+        address unripeToken,
+        address underlyingToken,
+        bytes32 root
+    ) external payable;
+
+    function balanceOfPenalizedUnderlying(
+        address unripeToken,
+        address account
+    ) external view returns (uint256 underlying);
+
+    function balanceOfUnderlying(
+        address unripeToken,
+        address account
+    ) external view returns (uint256 underlying);
+
+    function chop(
+        address unripeToken,
+        uint256 amount,
+        uint8 fromMode,
+        uint8 toMode
+    ) external payable returns (uint256 underlyingAmount);
+
+    function getPenalizedUnderlying(
+        address unripeToken,
         uint256 amount
-    );
+    ) external view returns (uint256 redeem);
 
-    function convert(
-        bytes memory convertData,
-        uint32[] memory crates,
-        uint256[] memory amounts
-    )
-        external
-        payable
-        returns (
-            uint32 toSeason,
-            uint256 fromAmount,
-            uint256 toAmount,
-            uint256 fromBdv,
-            uint256 toBdv
-        );
+    function getPenalty(address unripeToken) external view returns (uint256 penalty);
 
-    function getAmountOut(
-        address tokenIn,
-        address tokenOut,
-        uint256 amountIn
-    ) external view returns (uint256 amountOut);
+    function getPercentPenalty(address unripeToken) external view returns (uint256 penalty);
 
-    function getMaxAmountIn(
-        address tokenIn,
-        address tokenOut
-    ) external view returns (uint256 amountIn);
+    function getRecapFundedPercent(address unripeToken) external view returns (uint256 percent);
+
+    function getRecapPaidPercent() external view returns (uint256 penalty);
+
+    function getTotalUnderlying(address unripeToken) external view returns (uint256 underlying);
+
+    function getUnderlying(
+        address unripeToken,
+        uint256 amount
+    ) external view returns (uint256 redeem);
+
+    function getUnderlyingPerUnripeToken(
+        address unripeToken
+    ) external view returns (uint256 underlyingPerToken);
+
+    function getUnderlyingToken(
+        address unripeToken
+    ) external view returns (address underlyingToken);
+
+    function isUnripe(address unripeToken) external view returns (bool unripe);
+
+    function pick(
+        address token,
+        uint256 amount,
+        bytes32[] memory proof,
+        uint8 mode
+    ) external payable;
+
+    function picked(address account, address token) external view returns (bool);
+
+    function facetAddress(bytes4 _functionSelector) external view returns (address facetAddress_);
+
+    function facetAddresses() external view returns (address[] memory facetAddresses_);
+
+    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
+
+    function claimOwnership() external;
+
+    function owner() external view returns (address owner_);
+
+    function ownerCandidate() external view returns (address ownerCandidate_);
+
+    function transferOwnership(address _newOwner) external;
+
+    event Pause(uint256 timestamp);
+    event Unpause(uint256 timestamp, uint256 timePassed);
+
+    function pause() external payable;
+
+    function unpause() external payable;
 
     function addLiquidity(
         address pool,
@@ -121,124 +228,178 @@ interface IBeanstalkUpgradeable {
         uint256 value
     ) external payable returns (bytes memory result);
 
-    function multiPipe(
-        PipeCall[] memory pipes
-    ) external payable returns (bytes[] memory results);
+    function multiPipe(PipeCall[] memory pipes) external payable returns (bytes[] memory results);
 
-    function pipe(
-        PipeCall memory p
-    ) external payable returns (bytes memory result);
+    function pipe(PipeCall memory p) external payable returns (bytes memory result);
 
-    function readPipe(
-        PipeCall memory p
-    ) external view returns (bytes memory result);
+    function readPipe(PipeCall memory p) external view returns (bytes memory result);
 
     function advancedFarm(
         AdvancedFarmCall[] memory data
     ) external payable returns (bytes[] memory results);
 
-    function farm(
-        bytes[] memory data
-    ) external payable returns (bytes[] memory results);
+    function farm(bytes[] memory data) external payable returns (bytes[] memory results);
 
-    event SetFertilizer(uint128 id, uint128 bpf);
+    event InternalBalanceChanged(address indexed user, address indexed token, int256 delta);
+    event TokenApproval(
+        address indexed owner,
+        address indexed spender,
+        address token,
+        uint256 amount
+    );
 
-    function addFertilizerOwner(
-        uint128 id,
-        uint128 amount,
-        uint256 minLP
+    function approveToken(address spender, address token, uint256 amount) external payable;
+
+    function decreaseTokenAllowance(
+        address spender,
+        address token,
+        uint256 subtractedValue
+    ) external returns (bool);
+
+    function getAllBalance(
+        address account,
+        address token
+    ) external view returns (Storage.Rain memory b);
+
+    function getAllBalances(
+        address account,
+        address[] memory tokens
+    ) external view returns (Storage.Rain[] memory balances);
+
+    function getBalance(address account, address token) external view returns (uint256 balance);
+
+    function getBalances(
+        address account,
+        address[] memory tokens
+    ) external view returns (uint256[] memory balances);
+
+    function getExternalBalance(
+        address account,
+        address token
+    ) external view returns (uint256 balance);
+
+    function getExternalBalances(
+        address account,
+        address[] memory tokens
+    ) external view returns (uint256[] memory balances);
+
+    function getInternalBalance(
+        address account,
+        address token
+    ) external view returns (uint256 balance);
+
+    function getInternalBalances(
+        address account,
+        address[] memory tokens
+    ) external view returns (uint256[] memory balances);
+
+    function increaseTokenAllowance(
+        address spender,
+        address token,
+        uint256 addedValue
+    ) external returns (bool);
+
+    function permitToken(
+        address owner,
+        address spender,
+        address token,
+        uint256 value,
+        uint256 deadline,
+        uint8 v,
+        bytes32 r,
+        bytes32 s
     ) external payable;
 
-    function balanceOfBatchFertilizer(
-        address[] memory accounts,
-        uint256[] memory ids
-    ) external view returns (IFertilizer.Balance[] memory);
-
-    function balanceOfFertilized(
+    function tokenAllowance(
         address account,
-        uint256[] memory ids
-    ) external view returns (uint256 beans);
+        address spender,
+        address token
+    ) external view returns (uint256);
 
-    function balanceOfFertilizer(
-        address account,
-        uint256 id
-    ) external view returns (IFertilizer.Balance memory);
+    function tokenPermitDomainSeparator() external view returns (bytes32);
 
-    function balanceOfUnfertilized(
-        address account,
-        uint256[] memory ids
-    ) external view returns (uint256 beans);
+    function tokenPermitNonces(address owner) external view returns (uint256);
 
-    function beansPerFertilizer() external view returns (uint128 bpf);
-
-    function claimFertilized(uint256[] memory ids, uint8 mode) external payable;
-
-    function getActiveFertilizer() external view returns (uint256);
-
-    function getCurrentHumidity() external view returns (uint128 humidity);
-
-    function getEndBpf() external view returns (uint128 endBpf);
-
-    function getFertilizer(uint128 id) external view returns (uint256);
-
-    function getFertilizers()
-        external
-        view
-        returns (FertilizerFacet.Supply[] memory fertilizers);
-
-    function getFirst() external view returns (uint128);
-
-    function getHumidity(uint128 _s) external pure returns (uint128 humidity);
-
-    function getLast() external view returns (uint128);
-
-    function getNext(uint128 id) external view returns (uint128);
-
-    function isFertilizing() external view returns (bool);
-
-    function mintFertilizer(
-        uint128 amount,
-        uint256 minLP,
-        uint8 mode
+    function transferInternalTokenFrom(
+        address token,
+        address sender,
+        address recipient,
+        uint256 amount,
+        uint8 toMode
     ) external payable;
 
-    function payFertilizer(address account, uint256 amount) external payable;
+    function transferToken(
+        address token,
+        address recipient,
+        uint256 amount,
+        uint8 fromMode,
+        uint8 toMode
+    ) external payable;
 
-    function remainingRecapitalization() external view returns (uint256);
+    function unwrapEth(uint256 amount, uint8 mode) external payable;
 
-    function totalFertilizedBeans() external view returns (uint256 beans);
+    function wrapEth(uint256 amount, uint8 mode) external payable;
 
-    function totalFertilizerBeans() external view returns (uint256 beans);
+    function batchTransferERC1155(
+        address token,
+        address to,
+        uint256[] memory ids,
+        uint256[] memory values
+    ) external payable;
 
-    function totalUnfertilizedBeans() external view returns (uint256 beans);
+    function permitERC20(
+        address token,
+        address owner,
+        address spender,
+        uint256 value,
+        uint256 deadline,
+        uint8 v,
+        bytes32 r,
+        bytes32 s
+    ) external payable;
+
+    function permitERC721(
+        address token,
+        address spender,
+        uint256 tokenId,
+        uint256 deadline,
+        bytes memory sig
+    ) external payable;
+
+    function transferERC1155(address token, address to, uint256 id, uint256 value) external payable;
+
+    function transferERC721(address token, address to, uint256 id) external payable;
 
     event Harvest(address indexed account, uint256[] plots, uint256 beans);
     event PodListingCancelled(address indexed account, uint256 index);
-    event Sow(
-        address indexed account,
-        uint256 index,
-        uint256 beans,
-        uint256 pods
-    );
+    event Sow(address indexed account, uint256 index, uint256 beans, uint256 pods);
 
     function harvest(uint256[] memory plots, uint8 mode) external payable;
 
     function harvestableIndex() external view returns (uint256);
 
-    function plot(
-        address account,
-        uint256 plotId
-    ) external view returns (uint256);
+    function maxTemperature() external view returns (uint256);
+
+    function plot(address account, uint256 index) external view returns (uint256);
 
     function podIndex() external view returns (uint256);
 
-    function sow(uint256 amount, uint8 mode) external payable returns (uint256);
+    function remainingPods() external view returns (uint256);
+
+    function sow(
+        uint256 beans,
+        uint256 minTemperature,
+        uint8 mode
+    ) external payable returns (uint256 pods);
 
     function sowWithMin(
-        uint256 amount,
-        uint256 minAmount,
+        uint256 beans,
+        uint256 minTemperature,
+        uint256 minSoil,
         uint8 mode
-    ) external payable returns (uint256);
+    ) external payable returns (uint256 pods);
+
+    function temperature() external view returns (uint256);
 
     function totalHarvestable() external view returns (uint256);
 
@@ -250,36 +411,19 @@ interface IBeanstalkUpgradeable {
 
     function totalUnharvestable() external view returns (uint256);
 
+    function yield() external view returns (uint32);
+
     event CompleteFundraiser(uint32 indexed id);
-    event CreateFundraiser(
-        uint32 indexed id,
-        address fundraiser,
-        address token,
-        uint256 amount
-    );
-    event FundFundraiser(
-        address indexed account,
-        uint32 indexed id,
-        uint256 amount
-    );
+    event CreateFundraiser(uint32 indexed id, address payee, address token, uint256 amount);
+    event FundFundraiser(address indexed account, uint32 indexed id, uint256 amount);
 
-    function createFundraiser(
-        address payee,
-        address token,
-        uint256 amount
-    ) external payable;
+    function createFundraiser(address payee, address token, uint256 amount) external payable;
 
-    function fund(
-        uint32 id,
-        uint256 amount,
-        uint8 mode
-    ) external payable returns (uint256);
+    function fund(uint32 id, uint256 amount, uint8 mode) external payable returns (uint256);
 
     function fundingToken(uint32 id) external view returns (address);
 
-    function fundraiser(
-        uint32 id
-    ) external view returns (Storage.Fundraiser memory);
+    function fundraiser(uint32 id) external view returns (Storage.Fundraiser memory);
 
     function numberOfFundraisers() external view returns (uint32);
 
@@ -287,17 +431,8 @@ interface IBeanstalkUpgradeable {
 
     function totalFunding(uint32 id) external view returns (uint256);
 
-    event PlotTransfer(
-        address indexed from,
-        address indexed to,
-        uint256 indexed id,
-        uint256 pods
-    );
-    event PodApproval(
-        address indexed owner,
-        address indexed spender,
-        uint256 pods
-    );
+    event PlotTransfer(address indexed from, address indexed to, uint256 indexed id, uint256 pods);
+    event PodApproval(address indexed owner, address indexed spender, uint256 pods);
     event PodListingCreated(
         address indexed account,
         uint256 index,
@@ -339,10 +474,7 @@ interface IBeanstalkUpgradeable {
         uint256 costInBeans
     );
 
-    function allowancePods(
-        address owner,
-        address spender
-    ) external view returns (uint256);
+    function allowancePods(address owner, address spender) external view returns (uint256);
 
     function approvePods(address spender, uint256 amount) external payable;
 
@@ -467,68 +599,56 @@ interface IBeanstalkUpgradeable {
         uint256 end
     ) external payable;
 
-    event OwnershipTransferred(
-        address indexed previousOwner,
-        address indexed newOwner
+    function bdv(address token, uint256 amount) external view returns (uint256);
+
+    function beanToBDV(uint256 amount) external pure returns (uint256);
+
+    function curveToBDV(uint256 amount) external view returns (uint256);
+
+    function unripeBeanToBDV(uint256 amount) external view returns (uint256);
+
+    function unripeLPToBDV(uint256 amount) external view returns (uint256);
+
+    event Convert(
+        address indexed account,
+        address fromToken,
+        address toToken,
+        uint256 fromAmount,
+        uint256 toAmount
+    );
+    event RemoveDeposits(
+        address indexed account,
+        address indexed token,
+        uint32[] seasons,
+        uint256[] amounts,
+        uint256 amount
     );
 
-    function claimOwnership() external;
+    function convert(
+        bytes memory convertData,
+        uint32[] memory crates,
+        uint256[] memory amounts
+    )
+        external
+        payable
+        returns (
+            uint32 toSeason,
+            uint256 fromAmount,
+            uint256 toAmount,
+            uint256 fromBdv,
+            uint256 toBdv
+        );
 
-    function owner() external view returns (address owner_);
+    function getAmountOut(
+        address tokenIn,
+        address tokenOut,
+        uint256 amountIn
+    ) external view returns (uint256 amountOut);
 
-    function ownerCandidate() external view returns (address ownerCandidate_);
-
-    function transferOwnership(address _newOwner) external;
-
-    event Pause(uint256 timestamp);
-    event Unpause(uint256 timestamp, uint256 timePassed);
-
-    function pause() external payable;
-
-    function unpause() external payable;
-
-    event Incentivization(address indexed account, uint256 beans);
-    event MetapoolOracle(
-        uint32 indexed season,
-        int256 deltaB,
-        uint256[2] balances
-    );
-    event Reward(
-        uint32 indexed season,
-        uint256 toField,
-        uint256 toSilo,
-        uint256 toFertilizer
-    );
-    event SeasonOfPlenty(
-        uint256 indexed season,
-        uint256 amount,
-        uint256 toField
-    );
-    event Soil(uint32 indexed season, uint256 soil);
-    event Sunrise(uint256 indexed season);
-    event WeatherChange(uint256 indexed season, uint256 caseId, int8 change);
-
-    function paused() external view returns (bool);
-
-    function plentyPerRoot(uint32 season) external view returns (uint256);
-
-    function poolDeltaB(address pool) external view returns (int256 deltaB);
-
-    function rain() external view returns (TokenFacet.Balance memory);
-
-    function season() external view returns (uint32);
-
-    function seasonTime() external view returns (uint32);
-
-    function sunrise() external payable;
-
-    function time() external view returns (Storage.Season memory);
-
-    function totalDeltaB() external view returns (int256 deltaB);
-
-    function weather() external view returns (Storage.Weather memory);
-
-    function yield() external view returns (uint32);
+    function getMaxAmountIn(
+        address tokenIn,
+        address tokenOut
+    ) external view returns (uint256 amountIn);
 
     event AddDeposit(
         address indexed account,
@@ -570,41 +690,21 @@ interface IBeanstalkUpgradeable {
         uint256 amount
     );
     event SeedsBalanceChanged(address indexed account, int256 delta);
-    event StalkBalanceChanged(
-        address indexed account,
-        int256 delta,
-        int256 deltaRoots
-    );
+    event StalkBalanceChanged(address indexed account, int256 delta, int256 deltaRoots);
 
-    function approveDeposit(
-        address spender,
-        address token,
-        uint256 amount
-    ) external payable;
+    function approveDeposit(address spender, address token, uint256 amount) external payable;
 
-    function balanceOfEarnedBeans(
-        address account
-    ) external view returns (uint256 beans);
+    function balanceOfEarnedBeans(address account) external view returns (uint256 beans);
 
-    function balanceOfEarnedSeeds(
-        address account
-    ) external view returns (uint256);
+    function balanceOfEarnedSeeds(address account) external view returns (uint256);
 
-    function balanceOfEarnedStalk(
-        address account
-    ) external view returns (uint256);
+    function balanceOfEarnedStalk(address account) external view returns (uint256);
 
-    function balanceOfGrownStalk(
-        address account
-    ) external view returns (uint256);
+    function balanceOfGrownStalk(address account) external view returns (uint256);
 
-    function balanceOfPlenty(
-        address account
-    ) external view returns (uint256 plenty);
+    function balanceOfPlenty(address account) external view returns (uint256 plenty);
 
-    function balanceOfRainRoots(
-        address account
-    ) external view returns (uint256);
+    function balanceOfRainRoots(address account) external view returns (uint256);
 
     function balanceOfRoots(address account) external view returns (uint256);
 
@@ -618,17 +718,9 @@ interface IBeanstalkUpgradeable {
 
     function claimPlenty() external payable;
 
-    function claimWithdrawal(
-        address token,
-        uint32 season,
-        uint8 mode
-    ) external payable;
+    function claimWithdrawal(address token, uint32 season, uint8 mode) external payable;
 
-    function claimWithdrawals(
-        address token,
-        uint32[] memory seasons,
-        uint8 mode
-    ) external payable;
+    function claimWithdrawals(address token, uint32[] memory seasons, uint8 mode) external payable;
 
     function decreaseDepositAllowance(
         address spender,
@@ -636,11 +728,7 @@ interface IBeanstalkUpgradeable {
         uint256 subtractedValue
     ) external returns (bool);
 
-    function deposit(
-        address token,
-        uint256 amount,
-        uint8 mode
-    ) external payable;
+    function deposit(address token, uint256 amount, uint8 mode) external payable;
 
     function depositAllowance(
         address account,
@@ -652,11 +740,7 @@ interface IBeanstalkUpgradeable {
 
     function depositPermitNonces(address owner) external view returns (uint256);
 
-    function enrootDeposit(
-        address token,
-        uint32 _season,
-        uint256 amount
-    ) external;
+    function enrootDeposit(address token, uint32 _season, uint256 amount) external;
 
     function enrootDeposits(
         address token,
@@ -714,9 +798,7 @@ interface IBeanstalkUpgradeable {
 
     function plant() external payable returns (uint256 beans);
 
-    function tokenSettings(
-        address token
-    ) external view returns (Storage.SiloSettings memory);
+    function tokenSettings(address token) external view returns (Storage.SiloSettings memory);
 
     function totalEarnedBeans() external view returns (uint256);
 
@@ -744,11 +826,7 @@ interface IBeanstalkUpgradeable {
 
     function update(address account) external payable;
 
-    function withdrawDeposit(
-        address token,
-        uint32 season,
-        uint256 amount
-    ) external payable;
+    function withdrawDeposit(address token, uint32 season, uint256 amount) external payable;
 
     function withdrawDeposits(
         address token,
@@ -758,256 +836,8 @@ interface IBeanstalkUpgradeable {
 
     function withdrawFreeze() external view returns (uint8);
 
-    event InternalBalanceChanged(
-        address indexed user,
-        address indexed token,
-        int256 delta
-    );
-    event TokenApproval(
-        address indexed owner,
-        address indexed spender,
-        address token,
-        uint256 amount
-    );
-
-    function approveToken(
-        address spender,
-        address token,
-        uint256 amount
-    ) external payable;
-
-    function decreaseTokenAllowance(
-        address spender,
-        address token,
-        uint256 subtractedValue
-    ) external returns (bool);
-
-    function getAllBalance(
-        address account,
-        address token
-    ) external view returns (TokenFacet.Balance memory b);
-
-    function getAllBalances(
-        address account,
-        address[] memory tokens
-    ) external view returns (TokenFacet.Balance[] memory balances);
-
-    function getBalance(
-        address account,
-        address token
-    ) external view returns (uint256 balance);
-
-    function getBalances(
-        address account,
-        address[] memory tokens
-    ) external view returns (uint256[] memory balances);
-
-    function getExternalBalance(
-        address account,
-        address token
-    ) external view returns (uint256 balance);
-
-    function getExternalBalances(
-        address account,
-        address[] memory tokens
-    ) external view returns (uint256[] memory balances);
-
-    function getInternalBalance(
-        address account,
-        address token
-    ) external view returns (uint256 balance);
-
-    function getInternalBalances(
-        address account,
-        address[] memory tokens
-    ) external view returns (uint256[] memory balances);
-
-    function increaseTokenAllowance(
-        address spender,
-        address token,
-        uint256 addedValue
-    ) external returns (bool);
-
-    function permitToken(
-        address owner,
-        address spender,
-        address token,
-        uint256 value,
-        uint256 deadline,
-        uint8 v,
-        bytes32 r,
-        bytes32 s
-    ) external payable;
-
-    function tokenAllowance(
-        address account,
-        address spender,
-        address token
-    ) external view returns (uint256);
-
-    function tokenPermitDomainSeparator() external view returns (bytes32);
-
-    function tokenPermitNonces(address owner) external view returns (uint256);
-
-    function transferInternalTokenFrom(
-        address token,
-        address sender,
-        address recipient,
-        uint256 amount,
-        uint8 toMode
-    ) external payable;
-
-    function transferToken(
-        address token,
-        address recipient,
-        uint256 amount,
-        uint8 fromMode,
-        uint8 toMode
-    ) external payable;
-
-    function unwrapEth(uint256 amount, uint8 mode) external payable;
-
-    function wrapEth(uint256 amount, uint8 mode) external payable;
-
-    function batchTransferERC1155(
-        address token,
-        address to,
-        uint256[] memory ids,
-        uint256[] memory values
-    ) external payable;
-
-    function permitERC20(
-        address token,
-        address owner,
-        address spender,
-        uint256 value,
-        uint256 deadline,
-        uint8 v,
-        bytes32 r,
-        bytes32 s
-    ) external payable;
-
-    function permitERC721(
-        address token,
-        address spender,
-        uint256 tokenId,
-        uint256 deadline,
-        bytes memory sig
-    ) external payable;
-
-    function transferERC1155(
-        address token,
-        address to,
-        uint256 id,
-        uint256 value
-    ) external payable;
-
-    function transferERC721(
-        address token,
-        address to,
-        uint256 id
-    ) external payable;
-
-    event AddUnripeToken(
-        address indexed unripeToken,
-        address indexed underlyingToken,
-        bytes32 merkleRoot
-    );
-    event ChangeUnderlying(address indexed token, int256 underlying);
-    event Chop(
-        address indexed account,
-        address indexed token,
-        uint256 amount,
-        uint256 underlying
-    );
-    event Pick(address indexed account, address indexed token, uint256 amount);
-
-    function _getPenalizedUnderlying(
-        address unripeToken,
-        uint256 amount,
-        uint256 supply
-    ) external view returns (uint256 redeem);
-
-    function addUnripeToken(
-        address unripeToken,
-        address underlyingToken,
-        bytes32 root
-    ) external payable;
-
-    function balanceOfPenalizedUnderlying(
-        address unripeToken,
-        address account
-    ) external view returns (uint256 underlying);
-
-    function balanceOfUnderlying(
-        address unripeToken,
-        address account
-    ) external view returns (uint256 underlying);
-
-    function chop(
-        address unripeToken,
-        uint256 amount,
-        uint8 fromMode,
-        uint8 toMode
-    ) external payable returns (uint256 underlyingAmount);
-
-    function getPenalizedUnderlying(
-        address unripeToken,
-        uint256 amount
-    ) external view returns (uint256 redeem);
-
-    function getPenalty(
-        address unripeToken
-    ) external view returns (uint256 penalty);
-
-    function getPercentPenalty(
-        address unripeToken
-    ) external view returns (uint256 penalty);
-
-    function getRecapFundedPercent(
-        address unripeToken
-    ) external view returns (uint256 percent);
-
-    function getRecapPaidPercent() external view returns (uint256 penalty);
-
-    function getTotalUnderlying(
-        address unripeToken
-    ) external view returns (uint256 underlying);
-
-    function getUnderlying(
-        address unripeToken,
-        uint256 amount
-    ) external view returns (uint256 redeem);
-
-    function getUnderlyingPerUnripeToken(
-        address unripeToken
-    ) external view returns (uint256 underlyingPerToken);
-
-    function getUnderlyingToken(
-        address unripeToken
-    ) external view returns (address underlyingToken);
-
-    function isUnripe(address unripeToken) external view returns (bool unripe);
-
-    function pick(
-        address token,
-        uint256 amount,
-        bytes32[] memory proof,
-        uint8 mode
-    ) external payable;
-
-    function picked(
-        address account,
-        address token
-    ) external view returns (bool);
-
     event DewhitelistToken(address indexed token);
-    event WhitelistToken(
-        address indexed token,
-        bytes4 selector,
-        uint256 seeds,
-        uint256 stalk
-    );
+    event WhitelistToken(address indexed token, bytes4 selector, uint256 seeds, uint256 stalk);
 
     function dewhitelistToken(address token) external payable;
 
@@ -1017,6 +847,39 @@ interface IBeanstalkUpgradeable {
         uint32 stalk,
         uint32 seeds
     ) external payable;
+
+    event Incentivization(address indexed account, uint256 beans);
+    event Reward(uint32 indexed season, uint256 toField, uint256 toSilo, uint256 toFertilizer);
+    event SeasonOfPlenty(uint256 indexed season, uint256 amount, uint256 toField);
+    event Soil(uint32 indexed season, uint256 soil);
+    event Sunrise(uint256 indexed season);
+    event WeatherChange(uint256 indexed season, uint256 caseId, int8 change);
+
+    function abovePeg() external view returns (bool);
+
+    function gm(address account, uint8 mode) external payable returns (uint256);
+
+    function paused() external view returns (bool);
+
+    function plentyPerRoot(uint32 season) external view returns (uint256);
+
+    function poolDeltaB(address pool) external view returns (int256);
+
+    function rain() external view returns (Storage.Rain memory);
+
+    function season() external view returns (uint32);
+
+    function seasonTime() external view returns (uint32);
+
+    function sunrise() external payable returns (uint256);
+
+    function sunriseBlock() external view returns (uint32);
+
+    function time() external view returns (Storage.Season memory);
+
+    function totalDeltaB() external view returns (int256 deltaB);
+
+    function weather() external view returns (Storage.Weather memory);
 }
 
 struct AdvancedPipeCall {
@@ -1049,7 +912,21 @@ interface FertilizerFacet {
     }
 }
 
+interface TokenFacet {
+    struct Rain {
+        uint256 deprecated;
+        uint256 pods;
+        uint256 roots;
+    }
+}
+
 interface Storage {
+    struct Rain {
+        uint256 deprecated;
+        uint256 pods;
+        uint256 roots;
+    }
+
     struct Fundraiser {
         address payee;
         address token;
@@ -1058,10 +935,10 @@ interface Storage {
         uint256 start;
     }
 
-    struct Balance {
-        uint256 internalBalance;
-        uint256 externalBalance;
-        uint256 totalBalance;
+    struct SiloSettings {
+        bytes4 selector;
+        uint32 seeds;
+        uint32 stalk;
     }
 
     struct Season {
@@ -1072,26 +949,19 @@ interface Storage {
         uint32 rainStart;
         bool raining;
         bool fertilizing;
+        uint32 sunriseBlock;
+        bool abovePeg;
         uint256 start;
         uint256 period;
         uint256 timestamp;
     }
 
     struct Weather {
-        uint256 startSoil;
-        uint256 lastDSoil;
-        uint96 lastSoilPercent;
+        uint256[2] deprecated;
+        uint128 lastDSoil;
         uint32 lastSowTime;
-        uint32 nextSowTime;
-        uint32 yield;
-        bool didSowBelowMin;
-        bool didSowFaster;
-    }
-
-    struct SiloSettings {
-        bytes4 selector;
-        uint32 seeds;
-        uint32 stalk;
+        uint32 thisSowTime;
+        uint32 t;
     }
 }
 
@@ -1124,13 +994,5 @@ interface SiloExit {
         uint256 roots;
         uint256 plentyPerRoot;
         uint256 plenty;
-    }
-}
-
-interface TokenFacet {
-    struct Balance {
-        uint256 internalBalance;
-        uint256 externalBalance;
-        uint256 totalBalance;
     }
 }

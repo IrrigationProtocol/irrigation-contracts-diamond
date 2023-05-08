@@ -4,7 +4,7 @@ pragma solidity ^0.8.17;
 import "./WaterCommonStorage.sol";
 import "@gnus.ai/contracts-upgradeable-diamond/contracts/interfaces/IERC20MetadataUpgradeable.sol";
 import "../interfaces/ICustomOracle.sol";
-import "../beanstalk/IBeanstalkUpgradeable.sol";
+import {IBeanstalkUpgradeable} from "../beanstalk/IBeanstalkUpgradeable.sol";
 import "./SprinklerStorage.sol";
 import "../utils/EIP2535Initializable.sol";
 import "../utils/IrrigationAccessControl.sol";
@@ -43,11 +43,14 @@ contract SprinklerUpgradeable is
             "already added asset"
         );
 
-        uint256 _tokenMultiplier = _multiplier != 0
-            ? _multiplier
-            : 10 **
-                (IERC20MetadataUpgradeable(address(this)).decimals() -
-                    IERC20MetadataUpgradeable(_token).decimals());
+        uint256 _tokenMultiplier;
+        if (_token == Constants.ETHER) _tokenMultiplier = 1;
+        else
+            _tokenMultiplier = _multiplier != 0
+                ? _multiplier
+                : 10 **
+                    (IERC20MetadataUpgradeable(address(this)).decimals() -
+                        IERC20MetadataUpgradeable(_token).decimals());
         WhitelistAsset memory newAsset = WhitelistAsset(_tokenMultiplier, true);
         SprinklerStorage.layout().whitelistAssets[_token] = newAsset;
         SprinklerStorage.layout().allWhiteList.push(_token);
@@ -79,7 +82,7 @@ contract SprinklerUpgradeable is
 
         waterAmount = getWaterAmount(_token, _amount);
         if (waterAmount > sprinkleableWater()) revert InsufficientWater();
-        // require(waterAmount != 0, "No water output"); // if price is 0, amount can be 0
+        require(waterAmount != 0, "No water output"); // if price is 0, amount can be 0
 
         TransferHelper.safeTransferFrom(_token, msg.sender, address(this), _amount);
         TransferHelper.safeTransfer(_waterToken, msg.sender, waterAmount);
@@ -96,7 +99,7 @@ contract SprinklerUpgradeable is
         require(msg.value != 0, "Invalid amount");
         waterAmount = getWaterAmount(Constants.ETHER, msg.value);
         if (waterAmount > sprinkleableWater()) revert InsufficientWater();
-        // require(waterAmount != 0, "No water output"); // if price is 0, amount can be 0
+        require(waterAmount != 0, "No water output"); // if price is 0 or tokenMultiplier is 0, amount can be 0
         TransferHelper.safeTransfer(_waterToken, msg.sender, waterAmount);
         emit WaterExchanged(msg.sender, Constants.ETHER, msg.value, waterAmount, false);
     }

@@ -2,7 +2,6 @@
 
 pragma solidity ^0.8.17;
 
-import {WaterTowerUpgradeable} from "./WaterTowerUpgradeable.sol";
 import {IERC20Upgradeable} from "@gnus.ai/contracts-upgradeable-diamond/contracts/token/ERC20/IERC20Upgradeable.sol";
 
 library WaterTowerStorage {

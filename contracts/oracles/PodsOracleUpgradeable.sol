@@ -1,24 +1,15 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.17;
+pragma solidity ^0.8.17;
 
-import "../interfaces/ICustomOracle.sol";
+// import "../interfaces/ICustomOracle.sol";
 import "../interfaces/IPodsOracleUpgradeable.sol";
 import "../utils/EIP2535Initializable.sol";
 import "../core/WaterCommonStorage.sol";
 import "../libraries/Oracle/LibPrice.sol";
 
-contract PodsOracleUpgradeable is IPodsOracleUpgradeable, ICustomOracle {
+contract PodsOracleUpgradeable is IPodsOracleUpgradeable {
     // decimals of price is 18
     uint256 private constant ONE = 1e18;
-
-    /**
-     * @notice Get latest oracle price of BEAN normalized to 1e18
-     * @dev Update 3crv price calculation
-     * @return price latest BEAN price
-     */
-    function latestPrice() external view returns (uint256 price) {
-        price = ONE;
-    }
 
     /// @notice returns unharvestable pods price in BDV(based on BEAN price)
 

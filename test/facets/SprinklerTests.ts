@@ -57,8 +57,7 @@ export function suite() {
       );
       assert(
         gotWhitelist[gotWhitelist.length - 1] == whitelist[gotWhitelist.length - 1],
-        `expected whitelist token ${whitelist[gotWhitelist.length - 1]}, but ${
-          gotWhitelist[gotWhitelist.length - 1]
+        `expected whitelist token ${whitelist[gotWhitelist.length - 1]}, but ${gotWhitelist[gotWhitelist.length - 1]
         }`,
       );
     });
@@ -142,10 +141,19 @@ export function suite() {
       );
     });
 
-    it('Test Sprinkler should revert for exchange with amount bigger than sprinkleable amount', async () => {      
+    it('Test Sprinkler should revert for exchange with amount bigger than sprinkleable amount', async () => {
       await expect(
         sprinkler.connect(sender).exchangeTokenToWater(token1.address, toWei(990_000)),
       ).to.be.revertedWithCustomError(sprinkler, 'InsufficientWater');
+    });
+
+    it('Test Sprinkler should buy water with ether', async () => {
+      let waterBalance = await waterToken.balanceOf(sender.address);
+      await sprinkler.connect(sender).exchangeETHToWater({ value: toWei(0.1) });
+      waterBalance = (await waterToken.balanceOf(sender.address)).sub(waterBalance);
+      const etherPrice = await priceOracle.getPrice(CONTRACT_ADDRESSES.ETHER);
+      const waterPrice = await priceOracle.getPrice(waterToken.address);
+      expect(waterBalance.mul(waterPrice).eq(etherPrice.mul(toWei(0.1))));      
     });
   });
 }
