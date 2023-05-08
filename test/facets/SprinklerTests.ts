@@ -147,13 +147,16 @@ export function suite() {
       ).to.be.revertedWithCustomError(sprinkler, 'InsufficientWater');
     });
 
-    it('Test Sprinkler should buy water with ether', async () => {
+    it('Test Sprinkler should buy the same amount of water as getWaterAmount with ether', async () => {
       let waterBalance = await waterToken.balanceOf(sender.address);
       await sprinkler.connect(sender).exchangeETHToWater({ value: toWei(0.1) });
       waterBalance = (await waterToken.balanceOf(sender.address)).sub(waterBalance);
       const etherPrice = await priceOracle.getPrice(CONTRACT_ADDRESSES.ETHER);
       const waterPrice = await priceOracle.getPrice(waterToken.address);
-      expect(waterBalance.mul(waterPrice).eq(etherPrice.mul(toWei(0.1))));      
+      expect(waterBalance.mul(waterPrice).eq(etherPrice.mul(toWei(0.1))));
+      const waterAmountForETH = await sprinkler.getWaterAmount(CONTRACT_ADDRESSES.ETHER, toWei(0.1));
+      expect(waterAmountForETH.eq(waterBalance));
+
     });
   });
 }
