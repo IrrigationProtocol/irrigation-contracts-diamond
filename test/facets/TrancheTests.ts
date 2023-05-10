@@ -15,9 +15,9 @@ import {
   AuctionUpgradeable,
   IBean,
   IBeanstalkUpgradeable,
-  IERC20Upgradeable,  
+  IERC20Upgradeable,
   TrancheBondUpgradeable,
-  TrancheNotationUpgradeable,  
+  TrancheNotationUpgradeable,
 } from '../../typechain-types';
 import { AuctionType } from '../types';
 import { getBean, getBeanMetapool, getBeanstalk, getUsdc } from '../utils/mint';
@@ -28,11 +28,11 @@ export function suite() {
     let rootAddress: string;
     let signers: SignerWithAddress[];
     let owner: SignerWithAddress;
-    const irrigationDiamond = dc.IrrigationDiamond as IrrigationDiamond;    
+    const irrigationDiamond = dc.IrrigationDiamond as IrrigationDiamond;
     let dai: IERC20Upgradeable;
     let usdc: IBean;
-    let usdt: IERC20Upgradeable;    
-    let sender: SignerWithAddress;    
+    let usdt: IERC20Upgradeable;
+    let sender: SignerWithAddress;
     let auctionContract: AuctionUpgradeable;
     let trancheBond: TrancheBondUpgradeable;
     let trancheNotation: TrancheNotationUpgradeable;
@@ -48,11 +48,11 @@ export function suite() {
 
       // get stable tokens
       dai = await ethers.getContractAt('IERC20Upgradeable', CONTRACT_ADDRESSES.DAI);
-      usdt = await ethers.getContractAt('IERC20Upgradeable', CONTRACT_ADDRESSES.USDT);    
+      usdt = await ethers.getContractAt('IERC20Upgradeable', CONTRACT_ADDRESSES.USDT);
 
       sender = signers[1];
       usdc = await getUsdc();
-      auctionContract = await ethers.getContractAt('AuctionUpgradeable', irrigationDiamond.address);      
+      auctionContract = await ethers.getContractAt('AuctionUpgradeable', irrigationDiamond.address);
     });
 
     it('Test Tranche create', async () => {
@@ -61,7 +61,7 @@ export function suite() {
       await usdc.approve(beanMetaPool.address, ethers.constants.MaxUint256);
       await beanMetaPool.exchange_underlying('2', '0', toD6(1000), '0');
       bean = await getBean();
-      beanstalk = await getBeanstalk();      
+      beanstalk = await getBeanstalk();
       await bean.approve(beanstalk.address, ethers.constants.MaxUint256);
       let podIndex = await beanstalk.podIndex();
       await beanstalk.sow(toD6(100), 0, 0);
@@ -77,7 +77,10 @@ export function suite() {
       trancheBond = await ethers.getContractAt('TrancheBondUpgradeable', rootAddress);
       trancheNotation = await ethers.getContractAt('TrancheNotationUpgradeable', rootAddress);
       await beanstalk.approvePods(trancheBond.address, ethers.constants.MaxUint256);
+      await expect(trancheBond.connect(signers[2]).createTranchesWithPods(podsGroup.indexes, [0, 0], podsGroup.amounts)).to.be.revertedWithCustomError(trancheBond, 'NotEligible');
       await trancheBond.createTranchesWithPods(podsGroup.indexes, [0, 0], podsGroup.amounts);
+      const water = await ethers.getContractAt('WaterUpgradeable', irrigationDiamond.address);
+
       let trNotationBalance = await trancheNotation.balanceOfTrNotation(3, owner.address);
       const tranchePods = await trancheBond.getTranchePods(3);
       assert(fromWei(trNotationBalance) > 0, `notaion balance is ${trNotationBalance}`);
@@ -189,8 +192,9 @@ export function suite() {
         seller.address,
       );
 
+
       await networkHelpers.time.setNextBlockTimestamp(
-        Math.floor(Date.now() / 1000) + 86400 * 4 + 3600,
+        (await networkHelpers.time.latest()) + 86400 * 4 + 3600,
       );
 
       const tx = await auctionContract
@@ -230,7 +234,7 @@ export function suite() {
 
     it('Test Tranche Auction close', async () => {
       await networkHelpers.time.setNextBlockTimestamp(
-        Math.floor(Date.now() / 1000) + 86400 * 6 + 3601,
+        (await networkHelpers.time.latest()) + 86400 * 6 + 3601,
       );
       const trancheIndex = 4;
       const seller = sender;
@@ -243,7 +247,7 @@ export function suite() {
       bidderBalance = await trancheNotation.balanceOfTrNotation(trancheIndex, bidder.address);
       assert(
         bidderBalance.gt(0) && bidderBalance.eq(auction.sellAmount),
-        `expected price ${auction.sellAmount}, but ${bidderBalance}`,
+        `expected sell amount ${auction.sellAmount}, but ${bidderBalance}`,
       );
     });
   });

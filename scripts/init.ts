@@ -125,13 +125,14 @@ export async function initSprinkler(sprinkler: SprinklerUpgradeable) {
   for (const address of whitelist) {
     await sprinkler.addAssetToWhiteList(address, 0);
     const waterToken = await ethers.getContractAt('WaterUpgradeable', sprinkler.address);
-    await waterToken.approve(sprinkler.address, toWei(10_000));    
+    await waterToken.approve(sprinkler.address, toWei(10_000));
   }
   await sprinkler.depositWater(toWei(10_000));
 }
 
 export async function initWaterTower(waterTower: WaterTowerUpgradeable) {
   await waterTower.setMiddleAsset(CONTRACT_ADDRESSES.BEAN);
+  await waterTower.setPool(0, 0);
 }
 
 export async function initAuction(auction: AuctionUpgradeable) {

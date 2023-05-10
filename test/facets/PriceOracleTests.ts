@@ -46,6 +46,7 @@ export function suite(networkDeployedInfo: INetworkDeployInfo) {
     it('Test WATER Price based on off-chain', async () => {
       const waterPrice = await priceOracle.getPrice(priceOracle.address);
       expect(fromWei(waterPrice)).to.be.eq(0.5);
+      expect(fromWei(await priceOracle.getWaterPrice())).to.be.eq(0.5);
     });
   });
 }

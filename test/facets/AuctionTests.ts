@@ -73,7 +73,8 @@ export function suite() {
         AuctionType.TimedAndFixed,
       ];
       await token1.approve(auctionContract.address, toWei(1000));
-      await networkHelpers.time.setNextBlockTimestamp(Math.floor(Date.now() / 1000) + 3600);
+      const curTime = await networkHelpers.time.latest();
+      await networkHelpers.time.setNextBlockTimestamp(curTime + 3600);
       const tx = await auctionContract.createAuction(
         0,
         86400 * 2,
@@ -177,8 +178,9 @@ export function suite() {
         auctionContract.connect(secondBidder).placeBid(1, toWei(9), dai.address, toWei(0.21524)),
       ).to.be.revertedWith('too small bid amount');
       // set the timestamp of the next block but don't mine a new block
+      const curTime = await networkHelpers.time.latest();
       await networkHelpers.time.setNextBlockTimestamp(
-        Math.floor(Date.now() / 1000) + 86400 * 2 + 3601,
+       curTime + 86400 * 2 + 3601,
       );
       await expect(
         auctionContract.connect(secondBidder).placeBid(1, toWei(20), dai.address, toWei(0.21523)),
