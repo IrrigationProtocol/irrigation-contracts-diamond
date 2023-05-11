@@ -11,6 +11,7 @@ library Constants {
     address public constant CURVE_BEAN_METAPOOL = 0xc9C32cd16Bf7eFB85Ff14e0c8603cc90F6F2eE49;
     address public constant USDC = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
     address public constant WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
+    address public constant ZERO = 0x0000000000000000000000000000000000000000;
     /// underlying decimals
     uint256 public constant D18 = 1e18;
 }

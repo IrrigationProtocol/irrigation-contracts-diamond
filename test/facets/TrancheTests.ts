@@ -77,7 +77,6 @@ export function suite() {
       trancheBond = await ethers.getContractAt('TrancheBondUpgradeable', rootAddress);
       trancheNotation = await ethers.getContractAt('TrancheNotationUpgradeable', rootAddress);
       await beanstalk.approvePods(trancheBond.address, ethers.constants.MaxUint256);
-      await expect(trancheBond.connect(signers[2]).createTranchesWithPods(podsGroup.indexes, [0, 0], podsGroup.amounts)).to.be.revertedWithCustomError(trancheBond, 'NotEligible');
       await trancheBond.createTranchesWithPods(podsGroup.indexes, [0, 0], podsGroup.amounts);
       const water = await ethers.getContractAt('WaterUpgradeable', irrigationDiamond.address);
 
@@ -90,6 +89,10 @@ export function suite() {
           tranchePods.depositPods.fmv.mul(20).div(100),
         )}, but ${fromWei(trNotationBalance)} `,
       );
+    });
+
+    it('not eligible user should fail creating tranche with pods', async () => {
+      await expect(trancheBond.connect(signers[3]).createTranchesWithPods(podsGroup.indexes, [0, 0], podsGroup.amounts)).to.be.revertedWithCustomError(trancheBond, 'NotEligible');
     });
 
     it('Test Tranche transfer', async () => {

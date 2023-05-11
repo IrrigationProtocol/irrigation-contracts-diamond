@@ -132,6 +132,8 @@ export async function initSprinkler(sprinkler: SprinklerUpgradeable) {
 
 export async function initWaterTower(waterTower: WaterTowerUpgradeable) {
   await waterTower.setMiddleAsset(CONTRACT_ADDRESSES.BEAN);
+  // added bonus for irrigating is 5%
+  await waterTower.setIrrigateBonusRate(5);
   await waterTower.setPool(0, 0);
 }
 

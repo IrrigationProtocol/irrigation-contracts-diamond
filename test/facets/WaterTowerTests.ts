@@ -1,5 +1,5 @@
 import { ethers } from 'hardhat';
-import { dc, assert, expect, toWei, fromWei } from '../../scripts/common';
+import { dc, assert, expect, toWei, fromWei, toD6 } from '../../scripts/common';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { IrrigationDiamond } from '../../typechain-types/hardhat-diamond-abi/HardhatDiamondABI.sol';
 import { WaterTowerUpgradeable, WaterUpgradeable } from '../../typechain-types';
@@ -12,6 +12,7 @@ export function suite() {
     let signers: SignerWithAddress[];
     let owner: SignerWithAddress;
     let sender: SignerWithAddress;
+    let tester: SignerWithAddress;
     const irrigationDiamond = dc.IrrigationDiamond as IrrigationDiamond;
     let water: WaterUpgradeable;
     let waterTower: WaterTowerUpgradeable;
@@ -21,6 +22,7 @@ export function suite() {
       signers = await ethers.getSigners();
       owner = signers[0];
       sender = signers[1];
+      tester = signers[2];
       water = await ethers.getContractAt('WaterUpgradeable', irrigationDiamond.address);
       waterTower = await ethers.getContractAt('WaterTowerUpgradeable', irrigationDiamond.address);
       await initWaterTower(waterTower);
@@ -75,7 +77,7 @@ export function suite() {
 
     it('Test WaterTower claim for one depositer', async () => {
       await water.connect(sender).approve(irrigationDiamond.address, toWei(10));
-      await waterTower.connect(sender).deposit(toWei(10), false);      
+      await waterTower.connect(sender).deposit(toWei(10), false);
       await waterTower.addETHReward({ value: toWei(10) });
 
       let lastTime = await time.latest();
@@ -120,7 +122,7 @@ export function suite() {
       expect(await waterTower.userETHReward(sender.address, 2)).to.be.eq(0);
     });
 
-    it('Testing WaterTower Irrigate', async () => {
+    it('Testing WaterTower Irrigate with some amount', async () => {
       let lastTime = await time.latest();
       await time.setNextBlockTimestamp(lastTime + 30 * 86400);
       // set monthly reward and new month
@@ -128,7 +130,6 @@ export function suite() {
       expect(Number(await waterTower.getPoolIndex())).to.be.eq(4);
       let claimValue = 1;
       expect(await waterTower.userETHReward(sender.address, 3)).to.be.eq(toWei(claimValue));
-      let updatedEthOfClaimer = await provider.getBalance(sender.address);
       let updatedEthInContract = await provider.getBalance(waterTower.address);
       let irrigateValue = toWei(0.5);
       const sprinkler = await ethers.getContractAt('SprinklerUpgradeable', waterTower.address);
@@ -136,17 +137,15 @@ export function suite() {
       if (!whitelisted.includes(CONTRACT_ADDRESSES.BEAN)) {
         await sprinkler.addAssetToWhiteList(CONTRACT_ADDRESSES.BEAN, 0);
       }
+      let originalAmount = (await waterTower.userInfo(sender.address)).amount;
+      const { waterAmount, bonusAmount } = await waterTower.getBonusForIrrigate(irrigateValue);
+
       let tx = await waterTower.connect(sender).irrigate(irrigateValue, 0);
-      const txReceipt = await tx.wait();
+      const addedWaterAmount = (await waterTower.userInfo(sender.address)).amount.sub(originalAmount);
+      // diff between calculated value and real value should be small than 0.1 %
+      expect(addedWaterAmount.sub(bonusAmount.add(waterAmount)).abs().mul(1000)).to.be.lte(addedWaterAmount);
       updatedEthInContract = updatedEthInContract.sub(
         await provider.getBalance(waterTower.address),
-      );
-      updatedEthOfClaimer = updatedEthOfClaimer.sub(await provider.getBalance(sender.address));
-      assert(
-        updatedEthOfClaimer.eq(txReceipt.gasUsed.mul(txReceipt.effectiveGasPrice)),
-        `updated eth balance of sender should be ${fromWei(
-          txReceipt.gasUsed.mul(txReceipt.effectiveGasPrice),
-        )}, but is ${fromWei(updatedEthOfClaimer)}`,
       );
       assert(
         updatedEthInContract.eq(irrigateValue),
@@ -159,11 +158,51 @@ export function suite() {
     });
 
     it('Test WaterTower deposit for two accounts', async () => {
-      await water.approve(irrigationDiamond.address, toWei(50));      
-      let tx = await waterTower.deposit(toWei(50), false);      
-      expect((await waterTower.userInfo(owner.address)).amount).to.be.eq(toWei(50));
-      const ethRewardForOwner = await waterTower.userETHReward(owner.address, 0);
-      expect(ethRewardForOwner).to.be.eq(0);
-    })
+      await water.connect(tester).approve(irrigationDiamond.address, toWei(50));
+      await water.transfer(tester.address, toWei(50));
+      let tx = await waterTower.connect(tester).deposit(toWei(50), true);
+      expect((await waterTower.userInfo(tester.address)).amount).to.be.eq(toWei(50));
+      const ethRewardForTester = await waterTower.userETHReward(tester.address, 0);
+      assert(((await waterTower.userInfo(tester.address)).isAutoIrrigate), 'but not set auto irrigate')
+      expect(ethRewardForTester).to.be.eq(0);
+    });
+
+    it('Test WaterTower: user eth reward should be 0 after irrigate with total amount', async () => {
+      let claimValue = 0.5;
+      expect(await waterTower.userETHReward(sender.address, 3)).to.be.eq(toWei(claimValue));
+      let updatedEthInContract = await provider.getBalance(waterTower.address);
+      let irrigateValue = toWei(0.5);
+      let originalAmount = (await waterTower.userInfo(sender.address)).amount;
+      const { waterAmount, bonusAmount } = await waterTower.getBonusForIrrigate(irrigateValue);
+      let tx = await waterTower.connect(sender).irrigate(0, 0);
+      const addedWaterAmount = (await waterTower.userInfo(sender.address)).amount.sub(originalAmount);
+      expect(addedWaterAmount.sub(bonusAmount.add(waterAmount)).abs().mul(1000)).to.be.lte(addedWaterAmount);
+      updatedEthInContract = updatedEthInContract.sub(
+        await provider.getBalance(waterTower.address),
+      );
+      assert(
+        updatedEthInContract.eq(irrigateValue),
+        `updated ether in contract should be ${fromWei(irrigateValue)}, but is ${fromWei(
+          updatedEthInContract,
+        )}`,
+      );
+      const ethRewardForSender = await waterTower.userETHReward(sender.address, 0);
+      expect(ethRewardForSender).to.be.eq(0);
+    });
+
+    it('Test WaterTower: irrigator amount should be increased after auto irrigate', async () => {
+      await time.setNextBlockTimestamp(await time.latest() + 30 * 86400);
+      // set monthly reward and start pool
+      await waterTower.setPool(0, toWei(0.5));
+      const testerReward = await waterTower.userETHReward(tester.address, 0);
+      const oldDepositAmount = (await waterTower.userInfo(tester.address)).amount;
+      const { waterAmount, bonusAmount } = await waterTower.getBonusForIrrigate(testerReward);
+      await waterTower.autoIrrigate(tester.address, 0);
+      expect((await waterTower.userInfo(tester.address)).amount.sub(oldDepositAmount)).to.be.gt(bonusAmount);
+      expect(bonusAmount).to.be.gt(toD6(0.01));
+      // deposit for eligible of tranche feature      
+      await water.approve(waterTower.address, toWei(1000));
+      await waterTower.deposit(toWei(100), false);
+    });
   });
 }

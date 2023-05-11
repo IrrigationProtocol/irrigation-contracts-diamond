@@ -8,8 +8,10 @@ import "../utils/EIP2535Initializable.sol";
 import "../utils/IrrigationAccessControl.sol";
 import "../libraries/TransferHelper.sol";
 import "../curve/ICurveSwapRouter.sol";
+import "../curve/ICurveMetaPool.sol";
 import "../libraries/Constants.sol";
 import "../interfaces/ISprinklerUpgradeable.sol";
+import "../interfaces/IPriceOracleUpgradeable.sol";
 
 contract WaterTowerUpgradeable is EIP2535Initializable, IrrigationAccessControl {
     using WaterTowerStorage for WaterTowerStorage.Layout;
@@ -26,11 +28,18 @@ contract WaterTowerUpgradeable is EIP2535Initializable, IrrigationAccessControl 
     event Deposited(address indexed user, uint amount);
     event Withdrawn(address indexed user, uint amount);
     event Claimed(address indexed user, uint amount);
+    event Irrigate(
+        address indexed user,
+        address middleAsset,
+        uint irrigateAmount,
+        uint waterAmount,
+        uint bonusAmount
+    );
+
     event AddETH(uint256 amount);
     event SetReward(uint256 amount);
 
-    /// @notice decimals of water token and share
-    uint256 private constant DECIMALS = 1e18;
+    uint256 internal constant IRRIGATE_BONUS_DOMINATOR = 100;
 
     /// @notice deposit water token
     function deposit(uint256 amount, bool bAutoIrrigate) external {
@@ -57,15 +66,9 @@ contract WaterTowerUpgradeable is EIP2535Initializable, IrrigationAccessControl 
         _irrigate(msg.sender, amount, poolIndex);
     }
 
-    function autoIrrigate(address user) external onlySuperAdminRole {
-        if (!WaterTowerStorage.layout().userSettings[msg.sender].isAutoIrrigate)
-            revert NotAutoIrrigate();
-        // UserInfo storage curUserInfo = WaterTowerStorage.layout().userInfo[user];
-        // uint256 amount = curUserInfo.pending / DECIMALS;
-        // curUserInfo.debt = WaterTowerStorage.layout().sharePerWater * curUserInfo.amount;
-        // curUserInfo.pending = 0;
-        // uint256 swappedWaterAmount = _swapEthForWater(amount);
-        // _deposit(user, swappedWaterAmount);
+    function autoIrrigate(address user, uint256 poolIndex) external onlySuperAdminRole {
+        if (!WaterTowerStorage.layout().userSettings[user].isAutoIrrigate) revert NotAutoIrrigate();
+        _irrigate(user, 0, poolIndex);
     }
 
     function setAutoIrrigate(bool bAutoIrrigate) public {
@@ -89,7 +92,17 @@ contract WaterTowerUpgradeable is EIP2535Initializable, IrrigationAccessControl 
     function _irrigate(address irrigator, uint256 irrigateAmount, uint256 poolIndex) internal {
         uint rewardAmount = _claimReward(irrigator, irrigateAmount, poolIndex);
         uint256 swappedWaterAmount = _swapEthForWater(rewardAmount);
-        _deposit(irrigator, swappedWaterAmount);
+        uint256 bonusAmount = (swappedWaterAmount * WaterTowerStorage.layout().irrigateBonusRate) /
+            IRRIGATE_BONUS_DOMINATOR;
+        _deposit(irrigator, swappedWaterAmount + bonusAmount);
+        WaterTowerStorage.layout().totalBonus += bonusAmount;
+        emit Irrigate(
+            irrigator,
+            WaterTowerStorage.layout().middleAssetForIrrigate,
+            rewardAmount,
+            swappedWaterAmount,
+            bonusAmount
+        );
     }
 
     /// @dev if amount is 0, means max claim amount
@@ -160,10 +173,10 @@ contract WaterTowerUpgradeable is EIP2535Initializable, IrrigationAccessControl 
                 Constants.USDT,
                 Constants.CURVE_BEAN_METAPOOL,
                 Constants.BEAN,
-                0x0000000000000000000000000000000000000000,
-                0x0000000000000000000000000000000000000000,
-                0x0000000000000000000000000000000000000000,
-                0x0000000000000000000000000000000000000000
+                Constants.ZERO,
+                Constants.ZERO,
+                Constants.ZERO,
+                Constants.ZERO
             ];
             uint256[3][4] memory swapParams = [
                 [uint(2), 0, 3],
@@ -182,6 +195,31 @@ contract WaterTowerUpgradeable is EIP2535Initializable, IrrigationAccessControl 
         }
     }
 
+    function getBonusForIrrigate(
+        uint256 ethAmount
+    ) public view returns (uint256 waterAmount, uint256 bonusAmount) {
+        if (WaterTowerStorage.layout().middleAssetForIrrigate == Constants.BEAN) {
+            /// @dev swap amount ETH->USDT->BEAN through Curve finance
+            uint256 usdtAmount = ICurveMetaPool(Constants.TRI_CRYPTO_POOL).get_dy(
+                uint256(2),
+                0,
+                ethAmount
+            );
+            uint beanAmount = ICurveMetaPool(Constants.CURVE_BEAN_METAPOOL).get_dy_underlying(
+                3,
+                0,
+                usdtAmount
+            );
+            waterAmount = ISprinklerUpgradeable(address(this)).getWaterAmount(
+                Constants.BEAN,
+                beanAmount
+            );
+            bonusAmount =
+                (waterAmount * WaterTowerStorage.layout().irrigateBonusRate) /
+                IRRIGATE_BONUS_DOMINATOR;
+        } else return (0, 0);
+    }
+
     function addETHReward() public payable {
         if (msg.value > 0) {
             WaterTowerStorage.layout().totalRewards += msg.value;
@@ -196,16 +234,20 @@ contract WaterTowerUpgradeable is EIP2535Initializable, IrrigationAccessControl 
         WaterTowerStorage.curPool().monthlyRewards = monthlyRewards;
     }
 
-    /// admin setters
+    /// @dev admin setters
     function setMiddleAsset(address middleAsset) external onlySuperAdminRole {
         WaterTowerStorage.layout().middleAssetForIrrigate = middleAsset;
+    }
+
+    function setIrrigateBonusRate(uint256 bonusRate) external onlySuperAdminRole {
+        WaterTowerStorage.layout().irrigateBonusRate = bonusRate;
     }
 
     function setPool(uint256 endTime, uint256 monthlyRewards) external payable onlySuperAdminRole {
         if ((endTime != 0 && endTime < block.timestamp)) revert InvalidTime();
         updateMonthlyReward(monthlyRewards);
         if (endTime == 0) endTime = block.timestamp + 30 days;
-        uint256 poolIndex = WaterTowerStorage.layout().curPoolIndex;        
+        uint256 poolIndex = WaterTowerStorage.layout().curPoolIndex;
         ++poolIndex;
         /// @dev total deposits of current pool is
         WaterTowerStorage.layout().pools[poolIndex] = PoolInfo({
@@ -229,7 +271,6 @@ contract WaterTowerUpgradeable is EIP2535Initializable, IrrigationAccessControl 
     }
 
     /// @dev public getters
-
     /// @notice view function to see pending eth reward for each user
     function userETHReward(
         address user,
@@ -247,10 +288,9 @@ contract WaterTowerUpgradeable is EIP2535Initializable, IrrigationAccessControl 
     }
 
     function totalDeposits() public view returns (uint256) {
-        return
-            WaterTowerStorage.layout().totalDeposits;
+        return WaterTowerStorage.layout().totalDeposits;
     }
-    
+
     function getPoolIndex() external view returns (uint256) {
         return WaterTowerStorage.layout().curPoolIndex;
     }

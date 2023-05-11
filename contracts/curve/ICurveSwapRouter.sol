@@ -7,7 +7,5 @@ interface ICurveSwapRouter {
         uint256[3][4] calldata _swap_params,
         uint256 _amount,
         uint256 _expected
-        // address[4] calldata pools,
-        // address receiver
     ) external payable returns (uint256);
 }
