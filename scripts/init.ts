@@ -74,7 +74,7 @@ export async function initPriceOracles(priceOracle: PriceOracleUpgradeable) {
       symbol: 'BEAN',
       asset: CONTRACT_ADDRESSES.BEAN,
       oracle: beanOracle.address,
-      base: ethers.constants.AddressZero,
+      base: CONTRACT_ADDRESSES.DAI,
       oType: OracleType.CUSTOM_ORACLE,
     },
     {

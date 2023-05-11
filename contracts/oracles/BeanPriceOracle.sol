@@ -10,7 +10,7 @@ contract BeanPriceOracle is ICustomOracle {
     uint256 constant ONE = 1e6;
     // Bean index on curve metapool;
     int128 constant i = 0;
-    // 3Crv index on curve metapool;
+    // DAI index on curve metapool;
     int128 constant j = 1;
 
     // Bean/3Crv curve meta pool
@@ -29,10 +29,9 @@ contract BeanPriceOracle is ICustomOracle {
      * @return price latest BEAN price
      */
     function latestPrice() external view returns (uint256 price) {
-        uint256[2] memory lastPrices = beanMetaPool.get_price_cumulative_last();
+        // uint256[2] memory lastPrices = beanMetaPool.get_price_cumulative_last();
 
-        uint256 dy = beanMetaPool.get_dy(i, j, ONE, lastPrices);
-        uint256 threeCrvPrice = threeCrvPool.get_virtual_price();
-        price = (dy * 1e18) / threeCrvPrice;
+        price = beanMetaPool.get_dy_underlying(i, j, ONE);
+        // price = beanMetaPool.get_dy_underlying(i, j, ONE, lastPrices);        
     }
 }
