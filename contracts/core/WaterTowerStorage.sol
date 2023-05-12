@@ -4,31 +4,28 @@ pragma solidity ^0.8.17;
 
 import {IERC20Upgradeable} from "@gnus.ai/contracts-upgradeable-diamond/contracts/token/ERC20/IERC20Upgradeable.sol";
 
-/// @notice User reward per each month
-struct UserPoolInfo {    
-    /// @dev reward rate = sum (block time * amount)
-    uint256 rewardRate;
-    // claimed amount
-    uint256 claimed;
-}
-
 /// @notice User Setting Info
 struct UserInfo {
-    bool isAutoIrrigate;    
+    bool isAutoIrrigate;
+    // last poolIndex that user interact
     uint256 lastPoolIndex;
+    // total claimable reward of user
+    uint256 pending;
+    // reward rate in this month = sum (block time * amount)
+    uint256 rewardRate;
     // deposited water amount
     uint256 amount;
 }
 
 struct PoolInfo {
+    // sum of all user reward rate in this month
     uint256 totalRewardRate;
-    // uint256 totalDeposits;
     uint256 monthlyRewards;
     uint256 endTime;
 }
 
 library WaterTowerStorage {
-    struct Layout {        
+    struct Layout {
         // total ether reward received from other markets
         uint256 totalRewards;
         // current pool index
@@ -39,10 +36,9 @@ library WaterTowerStorage {
         uint256 totalBonus;
         // pool info per month
         mapping(uint256 => PoolInfo) pools;
-        // user reward per month pool
-        mapping(uint256 => mapping(address => UserPoolInfo)) users;
-        // deposit amount and setting for user
-        mapping(address => UserInfo) userSettings;        
+        // deposit amount, pending reward, and setting for user
+        mapping(address => UserInfo) users;
+
         /// @dev config variables
         // bonus percent for irrigator
         uint256 irrigateBonusRate;
@@ -63,11 +59,7 @@ library WaterTowerStorage {
         return layout().pools[layout().curPoolIndex];
     }
 
-    function curUserPoolInfo(address user) internal view returns (UserPoolInfo storage) {
-        return layout().users[layout().curPoolIndex][user];
-    }
-
     function userInfo(address user) internal view returns (UserInfo storage) {
-        return layout().userSettings[user];
+        return layout().users[user];
     }
 }

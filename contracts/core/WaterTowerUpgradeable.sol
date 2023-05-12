@@ -55,42 +55,53 @@ contract WaterTowerUpgradeable is EIP2535Initializable, IrrigationAccessControl 
     }
 
     /// @notice claim ETH rewards
-    function claim(uint256 amount, uint256 poolIndex) external {
-        uint256 claimAmount = _claimReward(msg.sender, amount, poolIndex);
+    function claim(uint256 amount) external {
+        uint256 claimAmount = _claimReward(msg.sender, amount);
         (bool success, ) = msg.sender.call{value: claimAmount}("");
         require(success, "Claim failed");
         emit Claimed(msg.sender, claimAmount);
     }
 
-    function irrigate(uint256 amount, uint256 poolIndex) external {
-        _irrigate(msg.sender, amount, poolIndex);
+    function irrigate(uint256 amount) external {
+        _irrigate(msg.sender, amount);
     }
 
-    function autoIrrigate(address user, uint256 poolIndex) external onlySuperAdminRole {
-        if (!WaterTowerStorage.layout().userSettings[user].isAutoIrrigate) revert NotAutoIrrigate();
-        _irrigate(user, 0, poolIndex);
+    function autoIrrigate(address user) external onlySuperAdminRole {
+        if (!WaterTowerStorage.layout().users[user].isAutoIrrigate) revert NotAutoIrrigate();
+        _irrigate(user, 0);
     }
 
     function setAutoIrrigate(bool bAutoIrrigate) public {
-        WaterTowerStorage.layout().userSettings[msg.sender].isAutoIrrigate = bAutoIrrigate;
+        WaterTowerStorage.layout().users[msg.sender].isAutoIrrigate = bAutoIrrigate;
     }
 
     /// @dev internal
-    /// @dev if there is no reward rate for user with amount in current pool, reward rate is calculated
-    function _updateUserPool(address user, PoolInfo memory poolInfo) internal {
-        UserPoolInfo memory curUserInfo = WaterTowerStorage.curUserPoolInfo(user);
-        if (
-            curUserInfo.rewardRate == 0 && WaterTowerStorage.layout().userSettings[user].amount != 0
-        ) {
-            uint256 userRewardRate = WaterTowerStorage.layout().userSettings[user].amount *
+    /// @dev if user is not updated in current pool index, reward rate is calculated
+    function _updateUserPool(address user, PoolInfo memory poolInfo, uint256 curPoolIndex) internal {
+        UserInfo storage _userInfo = WaterTowerStorage.userInfo(user);        
+        if (_userInfo.lastPoolIndex != curPoolIndex) {
+            PoolInfo memory lastPoolInfo = WaterTowerStorage.layout().pools[
+                _userInfo.lastPoolIndex
+            ];
+            if (_userInfo.rewardRate != 0 && lastPoolInfo.totalRewardRate != 0) {
+                _userInfo.pending +=
+                    (_userInfo.rewardRate * lastPoolInfo.monthlyRewards) /
+                    lastPoolInfo.totalRewardRate;
+            }
+            uint256 userRewardRate = WaterTowerStorage.userInfo(user).amount *
                 (poolInfo.endTime - block.timestamp);
-            WaterTowerStorage.curUserPoolInfo(user).rewardRate = userRewardRate;
-            WaterTowerStorage.curPool().totalRewardRate = poolInfo.totalRewardRate + userRewardRate;
+            _userInfo.lastPoolIndex = curPoolIndex;
+            /// @dev if user deposit in last month, reward rate is increased
+            ///      and if there is no deposit for user, reward rate start from 0
+            _userInfo.rewardRate = userRewardRate;
+            WaterTowerStorage.layout().pools[curPoolIndex].totalRewardRate =
+                poolInfo.totalRewardRate +
+                userRewardRate;
         }
     }
 
-    function _irrigate(address irrigator, uint256 irrigateAmount, uint256 poolIndex) internal {
-        uint rewardAmount = _claimReward(irrigator, irrigateAmount, poolIndex);
+    function _irrigate(address irrigator, uint256 irrigateAmount) internal {
+        uint rewardAmount = _claimReward(irrigator, irrigateAmount);
         uint256 swappedWaterAmount = _swapEthForWater(rewardAmount);
         uint256 bonusAmount = (swappedWaterAmount * WaterTowerStorage.layout().irrigateBonusRate) /
             IRRIGATE_BONUS_DOMINATOR;
@@ -105,62 +116,43 @@ contract WaterTowerUpgradeable is EIP2535Initializable, IrrigationAccessControl 
         );
     }
 
-    /// @dev if amount is 0, means max claim amount
-    function _claimReward(
-        address user,
-        uint256 amount,
-        uint256 poolIndex
-    ) internal returns (uint256) {
+    /// @dev if amount is 0, claim max claimalble amount
+    function _claimReward(address user, uint256 amount) internal returns (uint256) {
         uint256 curPoolIndex = WaterTowerStorage.layout().curPoolIndex;
-        /// @dev Users can always claim monthly rewards for months prior to this month
-        if (poolIndex >= curPoolIndex) revert InvalidRewardPool();
-        _updateUserPool(user, WaterTowerStorage.layout().pools[curPoolIndex]);
-        if (poolIndex == 0) poolIndex = curPoolIndex - 1;
-        // calculate user reward
-        UserPoolInfo memory _userInfo = WaterTowerStorage.layout().users[poolIndex][user];
-        PoolInfo memory poolInfo = WaterTowerStorage.layout().pools[poolIndex];
-        uint256 ethReward = (poolInfo.monthlyRewards * _userInfo.rewardRate) /
-            poolInfo.totalRewardRate -
-            _userInfo.claimed;
-        // uint256 reward = userETHReward(user, poolIndex);
+        _updateUserPool(user, WaterTowerStorage.layout().pools[curPoolIndex], curPoolIndex);
+
+        uint256 ethReward = WaterTowerStorage.userInfo(user).pending;
         if (ethReward < amount) revert InsufficientReward();
         if (amount == 0) amount = ethReward;
-        WaterTowerStorage.layout().users[poolIndex][user].claimed += amount;
+        WaterTowerStorage.layout().users[user].pending = ethReward - amount;
         return amount;
     }
 
     function _deposit(address user, uint amount) internal {
         uint256 curPoolIndex = WaterTowerStorage.layout().curPoolIndex;
-        UserPoolInfo storage curUserInfo = WaterTowerStorage.curUserPoolInfo(user);
         PoolInfo memory poolInfo = WaterTowerStorage.layout().pools[curPoolIndex];
-        _updateUserPool(user, poolInfo);
-        WaterTowerStorage.layout().userSettings[user].amount += amount;
+        _updateUserPool(user, poolInfo, curPoolIndex);
+        WaterTowerStorage.layout().users[user].amount += amount;
         uint256 rewardRate = amount * (poolInfo.endTime - block.timestamp);
-        curUserInfo.rewardRate += rewardRate;
-
-        WaterTowerStorage.layout().totalDeposits += amount;
+        WaterTowerStorage.layout().users[user].rewardRate += rewardRate;
         WaterTowerStorage.layout().pools[curPoolIndex].totalRewardRate =
             poolInfo.totalRewardRate +
             rewardRate;
-        WaterTowerStorage.userInfo(user).lastPoolIndex = curPoolIndex;
+        WaterTowerStorage.layout().totalDeposits += amount;
         emit Deposited(user, amount);
     }
 
     function _withdraw(address user, uint amount) internal {
         uint256 curPoolIndex = WaterTowerStorage.layout().curPoolIndex;
-        UserPoolInfo storage curUserInfo = WaterTowerStorage.curUserPoolInfo(user);
         PoolInfo memory poolInfo = WaterTowerStorage.layout().pools[curPoolIndex];
-
-        _updateUserPool(user, poolInfo);
-        WaterTowerStorage.layout().userSettings[user].amount -= amount;
+        _updateUserPool(user, poolInfo, curPoolIndex);
+        WaterTowerStorage.layout().users[user].amount -= amount;
         uint256 rewardRate = amount * (poolInfo.endTime - block.timestamp);
-        curUserInfo.rewardRate -= rewardRate;
-
-        WaterTowerStorage.layout().totalDeposits -= amount;
+        WaterTowerStorage.layout().users[user].rewardRate -= rewardRate;
         WaterTowerStorage.layout().pools[curPoolIndex].totalRewardRate =
             poolInfo.totalRewardRate -
             rewardRate;
-        WaterTowerStorage.userInfo(user).lastPoolIndex = curPoolIndex;
+        WaterTowerStorage.layout().totalDeposits -= amount;
         emit Withdrawn(user, amount);
     }
 
@@ -249,42 +241,30 @@ contract WaterTowerUpgradeable is EIP2535Initializable, IrrigationAccessControl 
         if (endTime == 0) endTime = block.timestamp + 30 days;
         uint256 poolIndex = WaterTowerStorage.layout().curPoolIndex;
         ++poolIndex;
-        /// @dev total deposits of current pool is
-        WaterTowerStorage.layout().pools[poolIndex] = PoolInfo({
-            totalRewardRate: 0,
-            endTime: endTime,
-            monthlyRewards: 0
-        });
+        WaterTowerStorage.layout().pools[poolIndex].endTime = endTime;
         WaterTowerStorage.layout().curPoolIndex = poolIndex;
     }
 
     /// @dev getters for users
     function userInfo(address user) external view returns (UserInfo memory) {
-        return WaterTowerStorage.layout().userSettings[user];
-    }
-
-    function userPoolInfo(
-        uint256 poolIndex,
-        address user
-    ) external view returns (UserPoolInfo memory) {
-        return WaterTowerStorage.layout().users[poolIndex][user];
+        return WaterTowerStorage.userInfo(user);
     }
 
     /// @dev public getters
     /// @notice view function to see pending eth reward for each user
-    function userETHReward(
-        address user,
-        uint256 poolIndex
-    ) public view returns (uint256 ethReward) {
+    function userETHReward(address user) public view returns (uint256 ethReward) {
         uint256 curPoolIndex = WaterTowerStorage.layout().curPoolIndex;
-        if (curPoolIndex == 0 || poolIndex >= curPoolIndex) return 0;
-        if (poolIndex == 0) poolIndex = curPoolIndex - 1;
-        UserPoolInfo memory _userInfo = WaterTowerStorage.layout().users[poolIndex][user];
-        PoolInfo memory poolInfo = WaterTowerStorage.layout().pools[poolIndex];
-        ethReward =
-            (poolInfo.monthlyRewards * _userInfo.rewardRate) /
-            poolInfo.totalRewardRate -
-            _userInfo.claimed;
+        if (curPoolIndex == 1) return 0;
+        UserInfo memory _userInfo = WaterTowerStorage.userInfo(user);
+        PoolInfo memory lastPoolInfo = WaterTowerStorage.layout().pools[_userInfo.lastPoolIndex];
+        ethReward = _userInfo.pending;
+        if (_userInfo.lastPoolIndex != curPoolIndex) {
+            if (_userInfo.rewardRate != 0 && lastPoolInfo.totalRewardRate != 0) {
+                ethReward +=
+                    (_userInfo.rewardRate * lastPoolInfo.monthlyRewards) /
+                    lastPoolInfo.totalRewardRate;
+            }
+        }
     }
 
     function totalDeposits() public view returns (uint256) {
