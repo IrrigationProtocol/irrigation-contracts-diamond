@@ -77,8 +77,12 @@ contract WaterTowerUpgradeable is EIP2535Initializable, IrrigationAccessControl 
 
     /// @dev internal
     /// @dev if user is not updated in current pool index, reward rate is calculated
-    function _updateUserPool(address user, PoolInfo memory poolInfo, uint256 curPoolIndex) internal {
-        UserInfo storage _userInfo = WaterTowerStorage.userInfo(user);        
+    function _updateUserPool(
+        address user,
+        PoolInfo memory poolInfo,
+        uint256 curPoolIndex
+    ) internal {
+        UserInfo storage _userInfo = WaterTowerStorage.userInfo(user);
         if (_userInfo.lastPoolIndex != curPoolIndex) {
             PoolInfo memory lastPoolInfo = WaterTowerStorage.layout().pools[
                 _userInfo.lastPoolIndex
@@ -276,7 +280,10 @@ contract WaterTowerUpgradeable is EIP2535Initializable, IrrigationAccessControl 
     }
 
     function getPoolInfo(uint256 poolIndex) external view returns (PoolInfo memory) {
-        return WaterTowerStorage.layout().pools[poolIndex];
+        return
+            WaterTowerStorage.layout().pools[
+                poolIndex == 0 ? WaterTowerStorage.layout().curPoolIndex : poolIndex
+            ];
     }
 
     function getMiddleAsset() public view returns (address) {

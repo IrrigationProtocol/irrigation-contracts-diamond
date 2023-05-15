@@ -28,6 +28,14 @@ export function suite() {
       await initWaterTower(waterTower);
     });
 
+    it('Test WaterTower next epoch info', async () => {
+      const { totalRewardRate, monthlyRewards, endTime } = await waterTower.getPoolInfo(0);
+      expect(totalRewardRate).to.be.eq(0);
+      expect(monthlyRewards).to.be.eq(0);
+      const endAt = new Date(Number(endTime) * 1000);
+      assert(endAt.getDate() === 30 || endAt.getDate() === 31, `pool should be exited at month end, but end date is ${endAt}`);
+    });
+
     it('Test WaterTower deposit', async () => {
       let updatedBalance = await water.balanceOf(irrigationDiamond.address);
       await water.connect(owner).transfer(sender.address, toWei(100));
@@ -197,7 +205,7 @@ export function suite() {
       const testerReward = await waterTower.userETHReward(tester.address);
       const oldDepositAmount = (await waterTower.userInfo(tester.address)).amount;
       const { waterAmount, bonusAmount } = await waterTower.getBonusForIrrigate(testerReward);
-      await waterTower.autoIrrigate(tester.address );
+      await waterTower.autoIrrigate(tester.address);
       expect((await waterTower.userInfo(tester.address)).amount.sub(oldDepositAmount)).to.be.gt(bonusAmount);
       expect(bonusAmount).to.be.gt(toD6(0.01));
       // deposit for eligible of tranche feature      

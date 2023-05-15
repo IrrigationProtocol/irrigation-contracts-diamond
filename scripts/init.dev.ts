@@ -10,7 +10,7 @@ import { deployments } from './deployments';
 import { initAuction, initPriceOracles, initSprinkler, initWaterTower } from './init';
 import { mintAllTokensForTesting } from '../test/utils/mint';
 
-const log: debug.Debugger = debug('IrrigationDeploy:log');
+const log: debug.Debugger = debug('IrrigationInit:log');
 log.color = '159';
 
 const networkName = hre.network.name;

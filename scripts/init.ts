@@ -1,7 +1,7 @@
 /**
  * this script initializes each facet contracts
  */
-
+import { debug } from 'debug';
 import { ethers } from 'hardhat';
 import { CONTRACT_ADDRESSES, OracleType } from './shared';
 import {
@@ -10,7 +10,10 @@ import {
   SprinklerUpgradeable,
   WaterTowerUpgradeable,
 } from '../typechain-types';
-import { formatFixed, fromWei, toWei, debuglog } from './common';
+import { formatFixed, fromWei, toWei } from './common';
+
+const debuglog: debug.Debugger = debug('IrrigationInit:log');
+debuglog.color = '159';
 
 export const whitelist = [
   CONTRACT_ADDRESSES.DAI,
@@ -134,7 +137,11 @@ export async function initWaterTower(waterTower: WaterTowerUpgradeable) {
   await waterTower.setMiddleAsset(CONTRACT_ADDRESSES.BEAN);
   // added bonus for irrigating is 5%
   await waterTower.setIrrigateBonusRate(5);
-  await waterTower.setPool(0, 0);
+  // calculate month end
+  let date = new Date();
+  date.setMonth(date.getMonth() + 1);
+  date.setDate(0);
+  await waterTower.setPool(Math.floor(date.getTime() / 1000), 0);
 }
 
 export async function initAuction(auction: AuctionUpgradeable) {
