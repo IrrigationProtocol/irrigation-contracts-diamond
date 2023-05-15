@@ -12,8 +12,13 @@ import "../curve/ICurveMetaPool.sol";
 import "../libraries/Constants.sol";
 import "../interfaces/ISprinklerUpgradeable.sol";
 import "../interfaces/IPriceOracleUpgradeable.sol";
+import "../interfaces/IWaterTowerUpgradeable.sol";
 
-contract WaterTowerUpgradeable is EIP2535Initializable, IrrigationAccessControl {
+contract WaterTowerUpgradeable is
+    EIP2535Initializable,
+    IrrigationAccessControl,
+    IWaterTowerUpgradeable
+{
     using WaterTowerStorage for WaterTowerStorage.Layout;
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
@@ -23,21 +28,7 @@ contract WaterTowerUpgradeable is EIP2535Initializable, IrrigationAccessControl 
     error InvalidRewardPool();
     /// @dev admin errors
     error InvalidTime();
-
-    /// @dev events
-    event Deposited(address indexed user, uint amount);
-    event Withdrawn(address indexed user, uint amount);
-    event Claimed(address indexed user, uint amount);
-    event Irrigate(
-        address indexed user,
-        address middleAsset,
-        uint irrigateAmount,
-        uint waterAmount,
-        uint bonusAmount
-    );
-
-    event AddETH(uint256 amount);
-    event SetReward(uint256 amount);
+    error InsufficientEther();
 
     uint256 internal constant IRRIGATE_BONUS_DOMINATOR = 100;
 
@@ -217,9 +208,8 @@ contract WaterTowerUpgradeable is EIP2535Initializable, IrrigationAccessControl 
     }
 
     function addETHReward() public payable {
-        if (msg.value > 0) {
-            WaterTowerStorage.layout().totalRewards += msg.value;
-        }
+        if (msg.value == 0) revert InsufficientEther();
+        WaterTowerStorage.layout().totalRewards += msg.value;
     }
 
     function updateMonthlyReward(uint256 monthlyRewards) internal onlySuperAdminRole {
@@ -288,5 +278,9 @@ contract WaterTowerUpgradeable is EIP2535Initializable, IrrigationAccessControl 
 
     function getMiddleAsset() public view returns (address) {
         return WaterTowerStorage.layout().middleAssetForIrrigate;
+    }
+
+    function getTotalRewards() external view returns (uint256 totalRewards) {
+        totalRewards = WaterTowerStorage.layout().totalRewards;
     }
 }

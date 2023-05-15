@@ -8,7 +8,10 @@ import "../utils/EIP2535Initializable.sol";
 import "../utils/IrrigationAccessControl.sol";
 import "../libraries/TransferHelper.sol";
 import "../libraries/FullMath.sol";
+import "../libraries/Constants.sol";
 import "../interfaces/ITrancheNotationUpgradeable.sol";
+import "../interfaces/IPriceOracleUpgradeable.sol";
+import "../interfaces/IWaterTowerUpgradeable.sol";
 
 /// @title Auction Market for whitelisted erc20 tokens
 /// @dev  Auction contract allows users sell allowed tokens or buy listed tokens with allowed purchase tokens(stable coins)
@@ -23,7 +26,8 @@ import "../interfaces/ITrancheNotationUpgradeable.sol";
 contract AuctionUpgradeable is EIP2535Initializable, IrrigationAccessControl {
     using AuctionStorage for AuctionStorage.Layout;
     using TrancheBondStorage for TrancheBondStorage.Layout;
-
+    /// @dev errors
+    error InsufficientFee();
     event AuctionCreated(
         address seller,
         uint256 startTime,
@@ -95,7 +99,7 @@ contract AuctionUpgradeable is EIP2535Initializable, IrrigationAccessControl {
         uint128 priceRangeStart,
         uint128 priceRangeEnd,
         AuctionType auctionType
-    ) external returns (uint256) {
+    ) external payable returns (uint256) {
         uint256 _trancheIndex = trancheIndex;
         if (_trancheIndex == 0) {
             TransferHelper.safeTransferFrom(
@@ -114,6 +118,13 @@ contract AuctionUpgradeable is EIP2535Initializable, IrrigationAccessControl {
                 msg.sender,
                 address(this)
             );
+            /// @dev fee is calculated from usd value, and notation amount is BDV
+            uint256 beanPrice = IPriceOracleUpgradeable(address(this)).getPrice(Constants.BEAN);
+            uint256 feeAmount = (((sellAmount * beanPrice) / 1e18) *
+                AuctionStorage.layout().feeNumerator) / FEE_DENOMINATOR;
+            if (msg.value < feeAmount) revert InsufficientFee();
+            else if (msg.value > feeAmount) payable(msg.sender).transfer(msg.value - feeAmount);
+            IWaterTowerUpgradeable(address(this)).addETHReward{value: feeAmount}();
         }
         require(sellAmount > 0, "cannot zero sell amount");
         require(startTime == 0 || startTime >= block.timestamp, "start time must be in the future");
@@ -239,12 +250,7 @@ contract AuctionUpgradeable is EIP2535Initializable, IrrigationAccessControl {
             Bid memory lastBid = AuctionStorage.layout().bids[auctionId][auction.curBidId];
             require(bidPrice > lastBid.bidPrice, "low Bid");
         }
-        uint256 payAmount = getPayAmount(
-            purchaseToken,
-            bidAmount,
-            bidPrice,
-            auction.sellToken
-        );
+        uint256 payAmount = getPayAmount(purchaseToken, bidAmount, bidPrice, auction.sellToken);
 
         TransferHelper.safeTransferFrom(purchaseToken, msg.sender, address(this), payAmount);
         Bid memory bid = Bid({
@@ -282,12 +288,7 @@ contract AuctionUpgradeable is EIP2535Initializable, IrrigationAccessControl {
         TransferHelper.safeTransfer(
             bid.purchaseToken,
             bid.bidder,
-            getPayAmount(
-                bid.purchaseToken,
-                bid.bidAmount,
-                bid.bidPrice,
-                auction.sellToken
-            )
+            getPayAmount(bid.purchaseToken, bid.bidAmount, bid.bidPrice, auction.sellToken)
         );
         AuctionStorage.layout().bids[auctionId][bidId].bCleared = true;
     }
@@ -368,12 +369,7 @@ contract AuctionUpgradeable is EIP2535Initializable, IrrigationAccessControl {
             TransferHelper.safeTransfer(
                 bid.purchaseToken,
                 bid.bidder,
-                getPayAmount(
-                    bid.purchaseToken,
-                    repayAmount,
-                    bid.bidPrice,
-                    sellToken
-                )
+                getPayAmount(bid.purchaseToken, repayAmount, bid.bidPrice, sellToken)
             );
         }
         if (trancheIndex == 0) {
@@ -390,12 +386,7 @@ contract AuctionUpgradeable is EIP2535Initializable, IrrigationAccessControl {
         TransferHelper.safeTransfer(
             bid.purchaseToken,
             seller,
-            getPayAmount(
-                bid.purchaseToken,
-                settledAmount,
-                bid.bidPrice,
-                sellToken
-            )
+            getPayAmount(bid.purchaseToken, settledAmount, bid.bidPrice, sellToken)
         );
     }
 

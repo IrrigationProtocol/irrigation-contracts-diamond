@@ -1,4 +1,4 @@
-import { ethers } from 'hardhat';
+import { ethers, network } from 'hardhat';
 import * as networkHelpers from '@nomicfoundation/hardhat-network-helpers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 
@@ -16,8 +16,10 @@ import {
   IBean,
   IBeanstalkUpgradeable,
   IERC20Upgradeable,
+  PriceOracleUpgradeable,
   TrancheBondUpgradeable,
   TrancheNotationUpgradeable,
+  WaterTowerUpgradeable,
 } from '../../typechain-types';
 import { AuctionType } from '../types';
 import { getBean, getBeanMetapool, getBeanstalk, getUsdc } from '../utils/mint';
@@ -36,6 +38,8 @@ export function suite() {
     let auctionContract: AuctionUpgradeable;
     let trancheBond: TrancheBondUpgradeable;
     let trancheNotation: TrancheNotationUpgradeable;
+    let waterTower: WaterTowerUpgradeable;
+    let priceOracle: PriceOracleUpgradeable;
     let podsGroup: any;
     let bean: IBean;
     let beanstalk: IBeanstalkUpgradeable;
@@ -52,7 +56,11 @@ export function suite() {
 
       sender = signers[1];
       usdc = await getUsdc();
-      auctionContract = await ethers.getContractAt('AuctionUpgradeable', irrigationDiamond.address);
+      auctionContract = await ethers.getContractAt('AuctionUpgradeable', rootAddress);
+      waterTower = await ethers.getContractAt('WaterTowerUpgradeable', rootAddress);
+      priceOracle = await ethers.getContractAt('PriceOracleUpgradeable', rootAddress);
+      trancheBond = await ethers.getContractAt('TrancheBondUpgradeable', rootAddress);
+      trancheNotation = await ethers.getContractAt('TrancheNotationUpgradeable', rootAddress);
     });
 
     it('Test Tranche create', async () => {
@@ -73,9 +81,7 @@ export function suite() {
       podsAmount = await beanstalk.plot(owner.address, podIndex);
       podsGroup.indexes.push(podIndex);
       podsGroup.amounts.push(podsAmount);
-      // console.log('---second:', fromD6(podIndex), fromD6(podsAmount));      
-      trancheBond = await ethers.getContractAt('TrancheBondUpgradeable', rootAddress);
-      trancheNotation = await ethers.getContractAt('TrancheNotationUpgradeable', rootAddress);
+      // console.log('---second:', fromD6(podIndex), fromD6(podsAmount));            
       await beanstalk.approvePods(trancheBond.address, ethers.constants.MaxUint256);
       await trancheBond.createTranchesWithPods(podsGroup.indexes, [0, 0], podsGroup.amounts);
       const water = await ethers.getContractAt('WaterUpgradeable', irrigationDiamond.address);
@@ -125,6 +131,8 @@ export function suite() {
         trancheIndex,
         owner.address,
       );
+      let updateOwnerBalance = await ethers.provider.getBalance(owner.address);
+      let updateContractBalance = await ethers.provider.getBalance(rootAddress);
       const tx = await auctionContract.createAuction(
         0,
         86400 * 2,
@@ -136,7 +144,15 @@ export function suite() {
         toWei(0.1),
         toWei(0.5),
         AuctionType.TimedAndFixed,
+        { value: toWei(0.002) }
       );
+      let txReceipt = await tx.wait();
+      const totalGas = txReceipt.gasUsed.mul(txReceipt.effectiveGasPrice);
+      updateOwnerBalance = updateOwnerBalance.sub(await ethers.provider.getBalance(owner.address)).sub(totalGas);
+      updateContractBalance = (await ethers.provider.getBalance(rootAddress)).sub(updateContractBalance);
+      expect(updateOwnerBalance).to.be.eq(updateContractBalance);
+      expect(updateContractBalance).to.be.gt(toWei(0.00001));
+      expect(updateOwnerBalance).to.be.lt(toWei(0.0015));
       expect(await trancheNotation.balanceOfTrNotation(trancheIndex, rootAddress)).to.be.equal(
         trNotationBalance,
       );
@@ -160,6 +176,7 @@ export function suite() {
           toWei(0.1),
           toWei(0.5),
           AuctionType.TimedAndFixed,
+          { value: toWei(0.01) }
         ),
       ).to.be.revertedWith('not list Z tranche');
     });
@@ -200,7 +217,9 @@ export function suite() {
         (await networkHelpers.time.latest()) + 86400 * 4 + 3600,
       );
 
-      const tx = await auctionContract
+      let updateTotalRewards = await waterTower.getTotalRewards();
+      let updateEther = await ethers.provider.getBalance(rootAddress);
+      const tx = await expect(auctionContract
         .connect(seller)
         .createAuction(
           0,
@@ -213,7 +232,27 @@ export function suite() {
           toWei(0.1),
           toWei(0.5),
           AuctionType.TimedAndFixed,
+        )).to.be.revertedWithCustomError(auctionContract, 'InsufficientFee');
+      const beanPrice = await priceOracle.getPrice(CONTRACT_ADDRESSES.BEAN);
+      const auctionFee = trNotationBalance.mul(beanPrice).div(toWei(1)).mul(15).div(1000);
+      await auctionContract
+        .connect(seller)
+        .createAuction(
+          0,
+          86400 * 2,
+          ethers.constants.AddressZero,
+          trancheIndex,
+          trNotationBalance,
+          toWei(0.0001),
+          toWei(0.6),
+          toWei(0.1),
+          toWei(0.5),
+          AuctionType.TimedAndFixed,
+          { value: auctionFee }
         );
+      updateTotalRewards = (await waterTower.getTotalRewards()).sub(updateTotalRewards);
+      updateEther = (await (ethers.provider.getBalance(rootAddress))).sub(updateEther);
+      expect(updateTotalRewards).to.be.eq(updateEther);
       const lastAuctionId = await auctionContract.getAuctionsCount();
       let auction = await auctionContract.getAuction(lastAuctionId);
       assert(
