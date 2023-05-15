@@ -8,8 +8,11 @@ import "./WaterTowerStorage.sol";
 import "../utils/EIP2535Initializable.sol";
 import "../utils/IrrigationAccessControl.sol";
 import "../libraries/FullMath.sol";
+import "../libraries/Constants.sol";
+
 import "../interfaces/IPodsOracleUpgradeable.sol";
 import "../interfaces/ITrancheNotationUpgradeable.sol";
+import "../interfaces/IPriceOracleUpgradeable.sol";
 
 /// @title TrancheBond Contract
 /// @dev Allows users deposit pods and receive tranches
@@ -85,14 +88,14 @@ contract TrancheBondUpgradeable is EIP2535Initializable, IrrigationAccessControl
 
     function createTrancheNotations(uint256 depositIndex, uint256 fmv, address owner) internal {
         /// @dev bean price should be updated as correct value
-        uint256 beanPrice = 1;
+        uint256 beanPrice = IPriceOracleUpgradeable(address(this)).getPrice(Constants.BEAN);
 
         uint256[3] memory numeratorFMV = [uint256(20), 30, 50];
         TrancheLevel[3] memory levels = [TrancheLevel.A, TrancheLevel.B, TrancheLevel.Z];
         for (uint256 i = 0; i < 3; ) {
             uint256 fmvOfTranche = (fmv * numeratorFMV[i]) / FMV_DENOMINATOR;
             /// calculate total tranche notation value as 1 usd unit with 1e18 decimals
-            uint256 totalSimulatedUsd = fmvOfTranche * beanPrice;
+            uint256 totalSimulatedUsd = (fmvOfTranche * beanPrice) / 1e18;
             uint256 trancheIndex = depositIndex * 3 + i;
             TrancheBondStorage.layout().tranches[trancheIndex] = TranchePods({
                 depositPodsIndex: depositIndex,

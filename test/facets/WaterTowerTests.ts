@@ -5,7 +5,7 @@ import { IrrigationDiamond } from '../../typechain-types/hardhat-diamond-abi/Har
 import { WaterTowerUpgradeable, WaterUpgradeable } from '../../typechain-types';
 import { CONTRACT_ADDRESSES } from '../../scripts/shared';
 import { initWaterTower } from '../../scripts/init';
-import { time } from '@nomicfoundation/hardhat-network-helpers';
+import { skipTime } from '../utils/time';
 
 export function suite() {
   describe('Irrigation WaterTower Testing', async function () {
@@ -87,9 +87,8 @@ export function suite() {
       await water.connect(sender).approve(irrigationDiamond.address, toWei(10));
       await waterTower.connect(sender).deposit(toWei(10), false);
       await waterTower.addETHReward({ value: toWei(10) });
-
-      let lastTime = await time.latest();
-      await time.setNextBlockTimestamp(lastTime + 30 * 86400);
+      // after 30 days
+      await skipTime(30 * 86400);
       await waterTower.setPool(0, toWei(1));
       // claim after updating monthly reward
       let updatedEthOfClaimer = await provider.getBalance(sender.address);
@@ -110,8 +109,7 @@ export function suite() {
     });
 
     it('Should claim without other deposit one month after user deposit one time', async () => {
-      let lastTime = await time.latest();
-      await time.setNextBlockTimestamp(lastTime + 30 * 86400);
+      await skipTime(30 * 86400);
       // set monthly reward and new month
       await waterTower.setPool(0, toWei(1));
       expect(Number(await waterTower.getPoolIndex())).to.be.eq(3);
@@ -131,8 +129,7 @@ export function suite() {
     });
 
     it('Test WaterTower Irrigate with some amount', async () => {
-      let lastTime = await time.latest();
-      await time.setNextBlockTimestamp(lastTime + 30 * 86400);
+      await skipTime(30 * 86400);
       // set monthly reward and new month
       await waterTower.setPool(0, toWei(1));
       expect(Number(await waterTower.getPoolIndex())).to.be.eq(4);
@@ -199,7 +196,7 @@ export function suite() {
     });
 
     it('Test WaterTower: irrigator amount should be increased after auto irrigate', async () => {
-      await time.setNextBlockTimestamp(await time.latest() + 30 * 86400);
+      await skipTime(30 * 86400);
       // set monthly reward and start pool
       await waterTower.setPool(0, toWei(0.5));
       const testerReward = await waterTower.userETHReward(tester.address);

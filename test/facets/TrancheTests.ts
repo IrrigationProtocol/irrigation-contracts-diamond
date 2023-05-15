@@ -1,5 +1,4 @@
 import { ethers, network } from 'hardhat';
-import * as networkHelpers from '@nomicfoundation/hardhat-network-helpers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 
 import {
@@ -24,6 +23,7 @@ import {
 import { AuctionType } from '../types';
 import { getBean, getBeanMetapool, getBeanstalk, getUsdc } from '../utils/mint';
 import { CONTRACT_ADDRESSES } from '../../scripts/shared';
+import { skipTime } from '../utils/time';
 
 export function suite() {
   describe('Irrigation Tranche Testing', async function () {
@@ -85,15 +85,15 @@ export function suite() {
       await beanstalk.approvePods(trancheBond.address, ethers.constants.MaxUint256);
       await trancheBond.createTranchesWithPods(podsGroup.indexes, [0, 0], podsGroup.amounts);
       const water = await ethers.getContractAt('WaterUpgradeable', irrigationDiamond.address);
-
+      const priceOracle = await ethers.getContractAt('PriceOracleUpgradeable', irrigationDiamond.address);
+      const beanPrice = await priceOracle.getPrice(CONTRACT_ADDRESSES.BEAN);
       let trNotationBalance = await trancheNotation.balanceOfTrNotation(3, owner.address);
       const tranchePods = await trancheBond.getTranchePods(3);
       assert(fromWei(trNotationBalance) > 0, `notaion balance is ${trNotationBalance}`);
+      const expectedBalance = tranchePods.depositPods.fmv.mul(20).div(100).mul(beanPrice).div(toWei(1));
       assert(
-        fromWei(trNotationBalance) === fromWei(tranchePods.depositPods.fmv.mul(20).div(100)),
-        `expected balance is ${fromWei(
-          tranchePods.depositPods.fmv.mul(20).div(100),
-        )}, but ${fromWei(trNotationBalance)} `,
+        fromWei(trNotationBalance) === fromWei(expectedBalance),
+        `expected balance is ${fromWei(expectedBalance)}, but ${fromWei(trNotationBalance)} `,
       );
     });
 
@@ -213,9 +213,7 @@ export function suite() {
       );
 
 
-      await networkHelpers.time.setNextBlockTimestamp(
-        (await networkHelpers.time.latest()) + 86400 * 4 + 3600,
-      );
+      await skipTime(86400 * 4 + 3600);
 
       let updateTotalRewards = await waterTower.getTotalRewards();
       let updateEther = await ethers.provider.getBalance(rootAddress);
@@ -275,16 +273,14 @@ export function suite() {
     });
 
     it('Test Tranche Auction close', async () => {
-      await networkHelpers.time.setNextBlockTimestamp(
-        (await networkHelpers.time.latest()) + 86400 * 6 + 3601,
-      );
+      await skipTime(86400 * 6 + 3601);
       const trancheIndex = 4;
       const seller = sender;
       const bidder = owner;
       const auctionId = await auctionContract.getAuctionsCount();
       let bidderBalance = await trancheNotation.balanceOfTrNotation(trancheIndex, bidder.address);
       assert(bidderBalance.eq(0), `expected tranche notation is 0, but ${bidderBalance}`);
-      await auctionContract.connect(sender).closeAuction(auctionId);
+      await auctionContract.connect(seller).closeAuction(auctionId);
       const auction = await auctionContract.getAuction(auctionId);
       bidderBalance = await trancheNotation.balanceOfTrNotation(trancheIndex, bidder.address);
       assert(

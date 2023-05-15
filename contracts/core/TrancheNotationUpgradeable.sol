@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import "./TrancheBondStorage.sol";
 import "./TrancheNotationStorage.sol";
 import "./WaterCommonStorage.sol";
 import "../utils/EIP2535Initializable.sol";
@@ -22,7 +21,6 @@ contract TrancheNotationUpgradeable is
     IrrigationAccessControl
 {
     using TrancheNotationStorage for TrancheNotationStorage.Layout;
-    using TrancheBondStorage for TrancheBondStorage.Layout;
     uint256 public constant TRNOTAION_DECIMALS = 18;
 
     /// @dev Errors
@@ -37,7 +35,7 @@ contract TrancheNotationUpgradeable is
         uint256 amount,
         address from,
         address to
-    ) public virtual override {
+    ) external {
         /// should call inside this contract or by sender as same as from
         if (to == address(0) || (msg.sender != from && msg.sender != address(this)))
             revert InvalidToAddress();
@@ -50,11 +48,7 @@ contract TrancheNotationUpgradeable is
         emit TranferTrancheNotation(trancheIndex, amount, from, to);
     }
 
-    function mintTrNotation(
-        uint256 trancheIndex,
-        uint256 amount,
-        address minter
-    ) public virtual override {
+    function mintTrNotation(uint256 trancheIndex, uint256 amount, address minter) external {
         if (msg.sender != address(this)) revert CallOutIrrigation();
         TrancheNotationStorage.layout().balances[trancheIndex][minter] += amount;
         TrancheNotationStorage.layout().totalSupplies[trancheIndex] += amount;
@@ -68,5 +62,9 @@ contract TrancheNotationUpgradeable is
         address account
     ) public view returns (uint256) {
         return TrancheNotationStorage.layout().balances[trancheIndex][account];
+    }
+
+    function getTotalSupply(uint256 trancheIndex) external view returns (uint256) {
+        return TrancheNotationStorage.layout().totalSupplies[trancheIndex];
     }
 }
