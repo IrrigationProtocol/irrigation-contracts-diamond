@@ -12,17 +12,24 @@ struct TranchePods {
     uint256 depositPodsIndex;
     TrancheLevel level;
     uint256 fmv;
+    // claimed amount after maturity peroid is over
+    uint256 claimed;
 }
 
 /// @notice stores group of podlines that user deposited
-
 struct DepositPods {
     /// indexes of pods group
     uint256[] underlyingPodIndexes;
+    /// represent divided podline after transfer some pods
+    // RangePiece[] rangePieces;
+    uint128[] startPos;
+    uint128[] endPos;
     /// FMV Farmer Market Value
     uint256 fmv;
     /// created timestamp
     uint256 depositedAt;
+    /// total pods
+    uint256 totalPods;
 }
 
 library TrancheBondStorage {
@@ -35,8 +42,6 @@ library TrancheBondStorage {
         mapping(uint256 => TranchePods) tranches;
         // Count of deposited pods group, also it is used as a latest index
         uint256 curDepositPodsCount;
-        // Mapping tranche index  => account => tranche value that the accout hold in usd unit
-        // mapping(uint256 => mapping(address => uint256)) notations;
     }
 
     bytes32 internal constant STORAGE_SLOT = keccak256("irrigation.contracts.storage.TrancheBond");

@@ -29,4 +29,6 @@ interface ITrancheNotationUpgradeable {
         uint256 trancheIndex,
         address account
     ) external view returns (uint256);
+
+    function getTotalSupply(uint256 trancheIndex) external view returns (uint256);
 }
