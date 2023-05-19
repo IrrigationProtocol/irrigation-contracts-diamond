@@ -100,7 +100,7 @@ contract TrancheBondUpgradeable is EIP2535Initializable, IrrigationAccessControl
     function receivePodsWithTranches(uint256 trancheIndex) external {
         uint256[3] memory numeratorFMV = [uint256(20), 30, 50];
         uint256[3] memory startIndexPercent = [uint256(0), 20, 50];
-        (TranchePods memory tranches, DepositPods memory depositPods) = getTranchePods(
+        (TranchePods memory tranche, DepositPods memory depositPods) = getTranchePods(
             trancheIndex
         );
         if (block.timestamp - depositPods.depositedAt < MATURITY_PERIOD) revert NotMatureTranche();
@@ -109,11 +109,11 @@ contract TrancheBondUpgradeable is EIP2535Initializable, IrrigationAccessControl
             msg.sender
         );
         if (amount == 0) revert NotOwnerOfTranche();
-        uint256 podsAmountForTranche = (numeratorFMV[uint8(tranches.level)] *
+        uint256 podsAmountForTranche = (numeratorFMV[uint8(tranche.level)] *
             depositPods.totalPods) / FMV_DENOMINATOR;
-        uint256 offset = (startIndexPercent[uint8(tranches.level)] * depositPods.totalPods) /
+        uint256 offset = (startIndexPercent[uint8(tranche.level)] * depositPods.totalPods) /
             FMV_DENOMINATOR +
-            tranches.claimed;
+            tranche.claimed;
         uint256 podsAmount = (amount * podsAmountForTranche) /
             ITrancheNotationUpgradeable(address(this)).getTotalSupply(trancheIndex);
         uint256[] memory underlyingPodIndexes = depositPods.underlyingPodIndexes;

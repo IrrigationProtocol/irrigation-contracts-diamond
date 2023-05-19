@@ -88,13 +88,19 @@ export function suite() {
       const priceOracle = await ethers.getContractAt('PriceOracleUpgradeable', irrigationDiamond.address);
       const beanPrice = await priceOracle.getPrice(CONTRACT_ADDRESSES.BEAN);
       let trNotationBalance = await trancheNotation.balanceOfTrNotation(3, owner.address);
-      const tranchePods = await trancheBond.getTranchePods(3);
+      const { tranche, depositPods } = await trancheBond.getTranchePods(3);
       assert(fromWei(trNotationBalance) > 0, `notaion balance is ${trNotationBalance}`);
-      const expectedBalance = tranchePods.depositPods.fmv.mul(20).div(100).mul(beanPrice).div(toWei(1));
+      const expectedBalance = depositPods.fmv.mul(20).div(100).mul(beanPrice).div(toWei(1));
       assert(
         fromWei(trNotationBalance) === fromWei(expectedBalance),
         `expected balance is ${fromWei(expectedBalance)}, but ${fromWei(trNotationBalance)} `,
       );
+    });
+
+    it('total supply of tranche notation should be same as owner notation balance', async () => {
+      let trNotationBalance = await trancheNotation.balanceOfTrNotation(3, owner.address);
+      let trTotalSupply = await trancheNotation.getTotalSupply(3);
+      expect(trNotationBalance).to.be.eq(trTotalSupply);
     });
 
     it('not eligible user should fail creating tranche with pods', async () => {
@@ -288,5 +294,16 @@ export function suite() {
         `expected sell amount ${auction.sellAmount}, but ${bidderBalance}`,
       );
     });
+
+    it('not mature error before maturity period is over ', async () => {
+      const zTrancheBalance = await trancheNotation.balanceOfTrNotation(5, owner.address);
+      await expect(trancheBond.receivePodsWithTranches(5)).to.be.revertedWithCustomError(trancheBond, 'NotMatureTranche');
+    })
+
+    it('should revert with not owner error when user no owner call receivePods', async () => {
+      await skipTime(86400 * 180);
+      expect(await trancheNotation.balanceOfTrNotation(5, sender.address)).to.be.eq(0);
+      await expect(trancheBond.connect(sender).receivePodsWithTranches(5)).to.be.revertedWithCustomError(trancheBond, 'NotOwnerOfTranche');
+    })
   });
 }
