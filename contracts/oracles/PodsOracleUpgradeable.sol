@@ -22,7 +22,7 @@ contract PodsOracleUpgradeable is IPodsOracleUpgradeable {
         price = LibPrice.getPriceOfPods(placeInLine, pods, podIndex, harvestableIndex);
     }
 
-    /// @dev see {IPodsOracleUpgradeable}
+    /// @dev see {IPodsOracleUpgradeable} and {LibPrice}
     function priceOfPods(
         uint256 placeInLine,
         uint256 pods,

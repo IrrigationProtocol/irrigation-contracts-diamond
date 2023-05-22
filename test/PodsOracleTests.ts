@@ -17,7 +17,7 @@ export function suite() {
       podsOracle = await ethers.getContractAt('PodsOracleUpgradeable', irrigationDiamond.address);
     });
 
-    it('Testing pods price', async () => {
+    it('Test pods price', async () => {
       // price calculation based on onchain data
       // const podPrice = await podsOracle.latestPriceOfPods(toD6(23.68), toD6(9001.46));
       // console.log('PODS price:', fromWei(podPrice));
@@ -33,5 +33,27 @@ export function suite() {
         `expected price 8732.838595 but ${fromWei(price)}`,
       );
     });
+
+    it('pods price for a podline that contains only harvestable pods should be 1 * pods BDV', async () => {
+      const price = await podsOracle.priceOfPods(
+        toD6(100_000_000),
+        toD6(100),
+        toD6(300_000_000),
+        toD6(200_000_000),
+      );
+      expect(price).to.be.eq(toWei(100));
+    });
+
+    it('Test pods price for a podline that contains harvestable and unharvestable pods', async () => {
+      const price = await podsOracle.priceOfPods(
+        toD6(190_000_000),
+        toD6(20_000_000),
+        toD6(300_000_000),
+        toD6(200_000_000),
+      );
+      // 10M for harvestable part and 9.5M for unharvestable
+      expect(price).to.be.eq(toWei(10_000_000 + 9_500_000));
+    });
+
   });
 }
