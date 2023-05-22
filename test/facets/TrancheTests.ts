@@ -8,6 +8,7 @@ import {
   toWei,
   fromWei,
   toD6,
+  fromD6,
 } from '../../scripts/common';
 import { IrrigationDiamond } from '../../typechain-types/hardhat-diamond-abi/HardhatDiamondABI.sol';
 import {
@@ -81,7 +82,7 @@ export function suite() {
       podsAmount = await beanstalk.plot(owner.address, podIndex);
       podsGroup.indexes.push(podIndex);
       podsGroup.amounts.push(podsAmount);
-      // console.log('---second:', fromD6(podIndex), fromD6(podsAmount));            
+      // console.log('---second:', fromD6(podIndex), fromD6(podsAmount));
       await beanstalk.approvePods(trancheBond.address, ethers.constants.MaxUint256);
       await trancheBond.createTranchesWithPods(podsGroup.indexes, [0, 0], podsGroup.amounts);
       const water = await ethers.getContractAt('WaterUpgradeable', irrigationDiamond.address);
@@ -131,6 +132,29 @@ export function suite() {
       );
     });
 
+    it('Test Tranche Auction for z tranche should be failed ', async () => {
+      const trancheIndex = 5;
+      const trNotationBalance = await trancheNotation.balanceOfTrNotation(
+        trancheIndex,
+        owner.address,
+      );
+      await expect(
+        auctionContract.createAuction(
+          0,
+          86400 * 2,
+          ethers.constants.AddressZero,
+          trancheIndex,
+          trNotationBalance,
+          toWei(0.0001),
+          toWei(0.6),
+          toWei(0.1),
+          toWei(0.5),
+          AuctionType.TimedAndFixed,
+          { value: toWei(0.01) }
+        ),
+      ).to.be.revertedWith('not list Z tranche');
+    });
+
     it('Test Tranche Auction create', async () => {
       let trancheIndex = 4;
       let trNotationBalance = await trancheNotation.balanceOfTrNotation(
@@ -162,29 +186,6 @@ export function suite() {
       expect(await trancheNotation.balanceOfTrNotation(trancheIndex, rootAddress)).to.be.equal(
         trNotationBalance,
       );
-    });
-
-    it('Test Tranche Auction for z tranche should be failed ', async () => {
-      const trancheIndex = 5;
-      const trNotationBalance = await trancheNotation.balanceOfTrNotation(
-        trancheIndex,
-        owner.address,
-      );
-      await expect(
-        auctionContract.createAuction(
-          0,
-          86400 * 2,
-          ethers.constants.AddressZero,
-          trancheIndex,
-          trNotationBalance,
-          toWei(0.0001),
-          toWei(0.6),
-          toWei(0.1),
-          toWei(0.5),
-          AuctionType.TimedAndFixed,
-          { value: toWei(0.01) }
-        ),
-      ).to.be.revertedWith('not list Z tranche');
     });
 
     it('Test Tranche Auction buyNow', async () => {
@@ -295,15 +296,23 @@ export function suite() {
       );
     });
 
-    it('not mature error before maturity period is over ', async () => {
+    it('should be able to receive pods correct for tranche A', async () => {
+      const { tranche, depositPods } = await trancheBond.getTranchePods(3);
+      const { offset, pods } = await trancheBond.getAvailablePodsForUser(3, sender.address);
+      // console.log('offset, pods for tranche A', offset, pods, tranche.level, depositPods.totalPods);
+      expect(offset).to.be.eq(0);
+      expect(pods).to.be.eq(depositPods.totalPods.mul(20).div(100));
+    });
+
+    it('should revert with not mature error before maturity period is over ', async () => {
       const zTrancheBalance = await trancheNotation.balanceOfTrNotation(5, owner.address);
       await expect(trancheBond.receivePodsWithTranches(5)).to.be.revertedWithCustomError(trancheBond, 'NotMatureTranche');
-    })
+    });
 
-    it('should revert with not owner error when user no owner call receivePods', async () => {
+    it('should revert with insuffifient pods error when user tranche balance is 0 or too small, so calculated pods is 0', async () => {
       await skipTime(86400 * 180);
       expect(await trancheNotation.balanceOfTrNotation(5, sender.address)).to.be.eq(0);
-      await expect(trancheBond.connect(sender).receivePodsWithTranches(5)).to.be.revertedWithCustomError(trancheBond, 'NotOwnerOfTranche');
-    })
+      await expect(trancheBond.connect(sender).receivePodsWithTranches(5)).to.be.revertedWithCustomError(trancheBond, 'InsufficientPods');
+    });
   });
 }
