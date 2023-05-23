@@ -64,6 +64,7 @@ contract WaterTowerUpgradeable is
 
     function setAutoIrrigate(bool bAutoIrrigate) public {
         WaterTowerStorage.layout().users[msg.sender].isAutoIrrigate = bAutoIrrigate;
+        emit SetAutoIrrigate(msg.sender, block.timestamp, bAutoIrrigate);
     }
 
     /// @dev internal

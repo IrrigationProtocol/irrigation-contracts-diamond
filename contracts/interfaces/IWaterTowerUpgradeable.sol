@@ -16,6 +16,7 @@ interface IWaterTowerUpgradeable {
         uint waterAmount,
         uint bonusAmount
     );
+    event SetAutoIrrigate(address indexed user, uint timestamp, bool status);
 
     event AddETH(uint256 amount);
     event SetReward(uint256 amount);
