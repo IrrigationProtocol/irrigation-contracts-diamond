@@ -50,7 +50,6 @@ contract WaterTowerUpgradeable is
         uint256 claimAmount = _claimReward(msg.sender, amount);
         (bool success, ) = msg.sender.call{value: claimAmount}("");
         require(success, "Claim failed");
-        emit Claimed(msg.sender, claimAmount);
     }
 
     function irrigate(uint256 amount) external {
@@ -101,13 +100,14 @@ contract WaterTowerUpgradeable is
         uint256 swappedWaterAmount = _swapEthForWater(rewardAmount);
         uint256 bonusAmount = (swappedWaterAmount * WaterTowerStorage.layout().irrigateBonusRate) /
             IRRIGATE_BONUS_DOMINATOR;
-        _deposit(irrigator, swappedWaterAmount + bonusAmount);
+        uint256 totalDepositWaterAmount = swappedWaterAmount + bonusAmount;
+        _deposit(irrigator, totalDepositWaterAmount);
         WaterTowerStorage.layout().totalBonus += bonusAmount;
         emit Irrigate(
             irrigator,
             WaterTowerStorage.layout().middleAssetForIrrigate,
             rewardAmount,
-            swappedWaterAmount,
+            totalDepositWaterAmount,
             bonusAmount
         );
     }
@@ -121,6 +121,7 @@ contract WaterTowerUpgradeable is
         if (ethReward < amount) revert InsufficientReward();
         if (amount == 0) amount = ethReward;
         WaterTowerStorage.layout().users[user].pending = ethReward - amount;
+        emit Claimed(msg.sender, amount);
         return amount;
     }
 
@@ -198,6 +199,26 @@ contract WaterTowerUpgradeable is
                 0,
                 usdtAmount
             );
+            /// calculation through curve router
+            // address[9] memory route = [
+            //     Constants.ETHER,
+            //     Constants.TRI_CRYPTO_POOL,
+            //     Constants.USDT,
+            //     Constants.CURVE_BEAN_METAPOOL,
+            //     Constants.BEAN,
+            //     Constants.ZERO,
+            //     Constants.ZERO,
+            //     Constants.ZERO,
+            //     Constants.ZERO
+            // ];
+            // uint256[3][4] memory swapParams = [
+            //     [uint(2), 0, 3],
+            //     [uint(3), 0, 2],
+            //     [uint(0), 0, 0],
+            //     [uint(0), 0, 0]
+            // ];
+            // uint256 beanAmount = ICurveSwapRouter(Constants.CURVE_ROUTER)
+            //     .get_exchange_multiple_amount(route, swapParams, ethAmount);
             waterAmount = ISprinklerUpgradeable(address(this)).getWaterAmount(
                 Constants.BEAN,
                 beanAmount
@@ -238,6 +259,7 @@ contract WaterTowerUpgradeable is
         ++poolIndex;
         WaterTowerStorage.layout().pools[poolIndex].endTime = endTime;
         WaterTowerStorage.layout().curPoolIndex = poolIndex;
+        emit UpdateRewardPeriod(poolIndex, endTime, monthlyRewards);
     }
 
     /// @dev getters for users
@@ -247,7 +269,7 @@ contract WaterTowerUpgradeable is
 
     /// @dev public getters
     /// @notice view function to see pending eth reward for each user
-    function userETHReward(address user) public view returns (uint256 ethReward) {
+    function userETHReward(address user) external view returns (uint256 ethReward) {
         uint256 curPoolIndex = WaterTowerStorage.layout().curPoolIndex;
         if (curPoolIndex == 1) return 0;
         UserInfo memory _userInfo = WaterTowerStorage.userInfo(user);
@@ -262,7 +284,7 @@ contract WaterTowerUpgradeable is
         }
     }
 
-    function totalDeposits() public view returns (uint256) {
+    function totalDeposits() external view returns (uint256) {
         return WaterTowerStorage.layout().totalDeposits;
     }
 
@@ -277,7 +299,7 @@ contract WaterTowerUpgradeable is
             ];
     }
 
-    function getMiddleAsset() public view returns (address) {
+    function getMiddleAsset() external view returns (address) {
         return WaterTowerStorage.layout().middleAssetForIrrigate;
     }
 

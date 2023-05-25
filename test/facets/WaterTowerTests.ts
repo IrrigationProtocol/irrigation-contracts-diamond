@@ -146,9 +146,14 @@ export function suite() {
       const { waterAmount, bonusAmount } = await waterTower.getBonusForIrrigate(irrigateValue);
 
       let tx = await waterTower.connect(sender).irrigate(irrigateValue);
+
+      await expect(tx).to.emit(irrigationDiamond, 'Claimed').withArgs(sender.address, irrigateValue);
       const addedWaterAmount = (await waterTower.userInfo(sender.address)).amount.sub(originalAmount);
       // diff between calculated value and real value should be small than 0.1 %
       expect(addedWaterAmount.sub(bonusAmount.add(waterAmount)).abs().mul(1000)).to.be.lte(addedWaterAmount);
+      await expect(tx).to.emit(irrigationDiamond, 'Deposited').withArgs(sender.address, addedWaterAmount);
+      await expect(tx).to.emit(irrigationDiamond, 'Irrigate').withArgs(sender.address, CONTRACT_ADDRESSES.BEAN, irrigateValue, addedWaterAmount, addedWaterAmount.mul(5).div(105));
+
       updatedEthInContract = updatedEthInContract.sub(
         await provider.getBalance(waterTower.address),
       );

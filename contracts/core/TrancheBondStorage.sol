@@ -12,7 +12,7 @@ struct TranchePods {
     uint256 depositPodsIndex;
     TrancheLevel level;
     uint256 fmv;
-    // claimed amount after maturity peroid is over
+    /// claimed amount after maturity peroid is over
     uint256 claimed;
 }
 
@@ -20,8 +20,7 @@ struct TranchePods {
 struct DepositPods {
     /// indexes of pods group
     uint256[] underlyingPodIndexes;
-    /// represent divided podline after transfer some pods
-    // RangePiece[] rangePieces;
+    /// represent divided podline after transfer some pods    
     uint128[] startPos;
     uint128[] endPos;
     /// FMV Farmer Market Value
