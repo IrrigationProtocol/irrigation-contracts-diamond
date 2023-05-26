@@ -10,7 +10,7 @@ import {
 } from '../../typechain-types';
 import { BigNumber } from 'ethers';
 import { CONTRACT_ADDRESSES } from '../../scripts/shared';
-import { initSprinkler, whitelist } from '../../scripts/init';
+import { whitelist } from '../../scripts/init';
 import { expect } from 'chai';
 
 export function suite() {
@@ -37,7 +37,6 @@ export function suite() {
       sprinkler = await ethers.getContractAt('SprinklerUpgradeable', irrigationMainAddress);
       waterToken = await ethers.getContractAt('WaterUpgradeable', irrigationMainAddress);
       priceOracle = await ethers.getContractAt('PriceOracleUpgradeable', irrigationMainAddress);
-      await initSprinkler(sprinkler);
     });
     it('Test Sprinkler sprinkleable water amount should be enough', async () => {
       expect(await sprinkler.sprinkleableWater()).to.be.eq(toWei(10_000));

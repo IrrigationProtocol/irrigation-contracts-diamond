@@ -4,7 +4,6 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { IrrigationDiamond } from '../../typechain-types/hardhat-diamond-abi/HardhatDiamondABI.sol';
 import { WaterTowerUpgradeable, WaterUpgradeable } from '../../typechain-types';
 import { CONTRACT_ADDRESSES } from '../../scripts/shared';
-import { initWaterTower } from '../../scripts/init';
 import { skipTime } from '../utils/time';
 
 export function suite() {
@@ -25,7 +24,6 @@ export function suite() {
       tester = signers[2];
       water = await ethers.getContractAt('WaterUpgradeable', irrigationDiamond.address);
       waterTower = await ethers.getContractAt('WaterTowerUpgradeable', irrigationDiamond.address);
-      await initWaterTower(waterTower);
     });
 
     it('Test WaterTower next epoch info', async () => {

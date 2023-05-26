@@ -152,3 +152,14 @@ export async function initAuction(auction: AuctionUpgradeable) {
   // 1.5% auction fee
   await auction.setAuctionFee(15, signers[2]?.address || process.env.REWARD_ADDRESS);
 }
+
+export async function initAll(contractAddress: string) {
+  const waterTower = await ethers.getContractAt('WaterTowerUpgradeable', contractAddress);
+  const priceOracle = await ethers.getContractAt('PriceOracleUpgradeable', contractAddress);
+  const sprinkler = await ethers.getContractAt('SprinklerUpgradeable', contractAddress);
+  const auction = await ethers.getContractAt('AuctionUpgradeable', contractAddress);
+  await initPriceOracles(priceOracle);
+  await initSprinkler(sprinkler);
+  await initWaterTower(waterTower);
+  await initAuction(auction);
+}

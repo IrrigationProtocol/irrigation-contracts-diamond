@@ -15,7 +15,6 @@ import { IrrigationDiamond } from '../../typechain-types/hardhat-diamond-abi/Har
 import { AuctionUpgradeable, IERC20Upgradeable } from '../../typechain-types';
 import { AuctionType } from '../types';
 import { BigNumber } from 'ethers';
-import { initAuction } from '../../scripts/init';
 import { CONTRACT_ADDRESSES } from '../../scripts/shared';
 import { skipTime } from '../utils/time';
 
@@ -55,7 +54,6 @@ export function suite() {
       sender = signers[1];
       secondBidder = signers[2];
       auctionContract = await ethers.getContractAt('AuctionUpgradeable', irrigationDiamond.address);
-      await initAuction(auctionContract);
       expect(await auctionContract.isSupportedPurchaseToken(usdc.address)).to.be.eq(true);
       // 1.5% auction fee
       expect((await auctionContract.getAuctionFee()).numerator).to.be.eq(BigNumber.from(15));

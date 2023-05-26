@@ -84,8 +84,12 @@ export function suite() {
       podsGroup.amounts.push(podsAmount);
       // console.log('---second:', fromD6(podIndex), fromD6(podsAmount));
       await beanstalk.approvePods(trancheBond.address, ethers.constants.MaxUint256);
-      await trancheBond.createTranchesWithPods(podsGroup.indexes, [0, 0], podsGroup.amounts);
       const water = await ethers.getContractAt('WaterUpgradeable', irrigationDiamond.address);
+      const waterTower = await ethers.getContractAt('WaterTowerUpgradeable', irrigationDiamond.address);
+      await water.approve(waterTower.address, toWei(32));
+      await waterTower.deposit(toWei(32), false);
+      await trancheBond.createTranchesWithPods(podsGroup.indexes, [0, 0], podsGroup.amounts);
+
       const priceOracle = await ethers.getContractAt('PriceOracleUpgradeable', irrigationDiamond.address);
       const beanPrice = await priceOracle.getPrice(CONTRACT_ADDRESSES.BEAN);
       let trNotationBalance = await trancheNotation.balanceOfTrNotation(3, owner.address);
@@ -218,10 +222,7 @@ export function suite() {
         trancheIndex,
         seller.address,
       );
-
-
       await skipTime(86400 * 4 + 3600);
-
       let updateTotalRewards = await waterTower.getTotalRewards();
       let updateEther = await ethers.provider.getBalance(rootAddress);
       const tx = await expect(auctionContract
@@ -297,15 +298,23 @@ export function suite() {
     });
 
     it('should be able to receive pods correct for tranche A', async () => {
-      const { tranche, depositPods } = await trancheBond.getTranchePods(3);
+      const { depositPods } = await trancheBond.getTranchePods(3);
       const { offset, pods } = await trancheBond.getAvailablePodsForUser(3, sender.address);
       // console.log('offset, pods for tranche A', offset, pods, tranche.level, depositPods.totalPods);
       expect(offset).to.be.eq(0);
       expect(pods).to.be.eq(depositPods.totalPods.mul(20).div(100));
     });
 
+    it('should be able to receive pods correct for tranche B', async () => {
+      const { depositPods } = await trancheBond.getTranchePods(4);
+      const { offset, pods } = await trancheBond.getAvailablePodsForUser(4, owner.address);
+      // console.log('offset, pods for tranche B', offset, pods, tranche.level, depositPods.totalPods);
+      expect(offset).to.be.eq(depositPods.totalPods.mul(20).div(100));
+      expect(pods).to.be.eq(depositPods.totalPods.mul(30).div(100));
+    });
+
     it('should revert with not mature error before maturity period is over ', async () => {
-      const zTrancheBalance = await trancheNotation.balanceOfTrNotation(5, owner.address);
+      await expect(trancheBond.receivePodsWithTranches(4)).to.be.revertedWithCustomError(trancheBond, 'NotMatureTranche');
       await expect(trancheBond.receivePodsWithTranches(5)).to.be.revertedWithCustomError(trancheBond, 'NotMatureTranche');
     });
 
@@ -313,6 +322,34 @@ export function suite() {
       await skipTime(86400 * 180);
       expect(await trancheNotation.balanceOfTrNotation(5, sender.address)).to.be.eq(0);
       await expect(trancheBond.connect(sender).receivePodsWithTranches(5)).to.be.revertedWithCustomError(trancheBond, 'InsufficientPods');
+    });
+
+    it('should receive pods after the tranche A is mature', async () => {
+      let { tranche, depositPods } = await trancheBond.getTranchePods(3);
+      const oldPods = await beanstalk.plot(trancheBond.address, depositPods.underlyingPodIndexes[0])
+      const tx = await trancheBond.connect(sender).receivePodsWithTranches(3);
+      // console.log(tranche, depositPods);
+      const pods = await beanstalk.plot(sender.address, depositPods.underlyingPodIndexes[0])
+      expect(pods).to.be.eq(depositPods.totalPods.mul(20).div(100));
+      // const pods2 = await beanstalk.plot(trancheBond.address, depositPods.underlyingPodIndexes[0])
+      depositPods = (await trancheBond.getTranchePods(3)).depositPods;
+      expect(depositPods.startIndexAndOffsets[0]).to.be.eq(0);
+      expect(depositPods.startIndexAndOffsets[3]).to.be.eq(depositPods.totalPods.mul(20).div(100));
+      // console.log(depositPods.startIndexAndOffsets);      
+    });
+
+    it('should receive pods after the tranche B is mature', async () => {
+      let { tranche, depositPods } = await trancheBond.getTranchePods(4);
+      // console.log(tranche, depositPods);
+      const { offset, pods } = await trancheBond.getAvailablePodsForUser(4, owner.address);      
+      const tx = await trancheBond.receivePodsWithTranches(4);
+      // const receipt = await tx.wait();
+      depositPods = (await trancheBond.getTranchePods(4)).depositPods;
+      // console.log(depositPods.startIndexAndOffsets);
+      const receivePods = await beanstalk.plot(owner.address, depositPods.underlyingPodIndexes[0].add(offset));
+      expect(pods).to.be.eq(receivePods);
+      // console.log('receivePods', receivePods);
+      // console.log(receipt.logs);      
     });
   });
 }

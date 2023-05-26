@@ -20,9 +20,8 @@ struct TranchePods {
 struct DepositPods {
     /// indexes of pods group
     uint256[] underlyingPodIndexes;
-    /// represent divided podline after transfer some pods    
-    uint128[] startPos;
-    uint128[] endPos;
+    /// represent divided podline after transfer some pods
+    uint128[] startIndexAndOffsets;
     /// FMV Farmer Market Value
     uint256 fmv;
     /// created timestamp

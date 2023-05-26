@@ -28,7 +28,8 @@ contract TrancheBondUpgradeable is EIP2535Initializable, IrrigationAccessControl
     uint256 public constant MATURITY_PERIOD = 180 days;
 
     /// @dev Events
-    event CreateTranche(uint256 depositIndex, uint256 totalFMV, uint256 depositedAt);
+    event CreateTranche(uint depositIndex, uint totalFMV, uint depositedAt);
+    event ReceivePodsWithTranche(uint trancheIndex, uint[] podIndexes, uint totalPods);
 
     /// @dev Errors
     error InvalidPods();
@@ -84,8 +85,9 @@ contract TrancheBondUpgradeable is EIP2535Initializable, IrrigationAccessControl
         /// Register pods deposit
         TrancheBondStorage.layout().depositedPods[curDepositPodsCount] = DepositPods({
             underlyingPodIndexes: podIndexes,
-            startPos: new uint128[](indexes.length),
-            endPos: endPos,
+            startIndexAndOffsets: new uint128[](6),
+            // startPos: new uint128[](indexes.length),
+            // endPos: endPos,
             fmv: totalFMV,
             depositedAt: block.timestamp,
             totalPods: totalPods
@@ -99,60 +101,69 @@ contract TrancheBondUpgradeable is EIP2535Initializable, IrrigationAccessControl
 
     /// @dev receive pods with tranches after maturity date is over
     function receivePodsWithTranches(uint256 trancheIndex) external {
-        (, DepositPods memory depositPods) = getTranchePods(trancheIndex);
+        (TranchePods memory tranche, DepositPods memory depositPods) = getTranchePods(trancheIndex);
         if (block.timestamp - depositPods.depositedAt < MATURITY_PERIOD) revert NotMatureTranche();
 
         (uint256 offset, uint256 pods) = getAvailablePodsForUser(trancheIndex, msg.sender);
         if (pods == 0) revert InsufficientPods();
-        uint256[] memory underlyingPodIndexes = depositPods.underlyingPodIndexes;
-
-        for (uint256 i; i < underlyingPodIndexes.length; ) {
-            uint256 index = underlyingPodIndexes[i];
-            uint256 podsForEachPlot = TrancheBondStorage.layout().depositedPlots[index];
-            /// when pods for the tranche is placed in this range, transfer the plot
+        // uint256[] memory underlyingPodIndexes = depositPods.underlyingPodIndexes;
+        // uint128[] memory startIndexAndOffsets = depositPods.startIndexAndOffsets;
+        uint8 level = (uint8)(tranche.level);
+        uint256 startIndex = depositPods.startIndexAndOffsets[level];
+        uint256 startOffset = depositPods.startIndexAndOffsets[level + 3];
+        uint256[] memory receivePodIndexes = new uint256[](depositPods.underlyingPodIndexes.length);
+        uint256 totalPods = pods;
+        for (uint256 i; i < depositPods.underlyingPodIndexes.length; ) {
             if (pods == 0) break;
+            uint8 _level = level;
+            uint256 originalPodIndex = depositPods.underlyingPodIndexes[i];
+            uint256 podsForEachPlot = TrancheBondStorage.layout().depositedPlots[originalPodIndex];
+            /// when pods for the tranche is placed in this range, transfer the plot
             if (offset < podsForEachPlot) {
-                uint256 startPos = depositPods.startPos[i];
-                uint256 endPos = depositPods.endPos[i];
-                uint256 realPods = startPos == 0 && endPos == podsForEachPlot
-                    ? podsForEachPlot
-                    : WaterCommonStorage.layout().beanstalk.plot(address(this), index + startPos);
-                if (offset != endPos && offset != startPos) {
-                    // divide plot
-                    uint256 transferPods = pods > podsForEachPlot - offset
-                        ? podsForEachPlot - offset
-                        : pods;
+                uint256 _offset = offset;
+                // we will tranfer podline [_offset, transferPods] in [realPodIndex, realPods]
+                uint256 realPodIndex = originalPodIndex + _offset;
+                // uint256 realOffset = _offset;
+                // this means first call, in that case of A tranche, always offset = startOffset
+                if (startIndex != i || _offset != startOffset) {
+                    if (_level == 0) {
+                        // error
+                    }
+                    // previous tranche start point is in original podline as same as current tranche
+                    uint256 preIndex = depositPods.startIndexAndOffsets[_level - 1];
+                    if (preIndex == i) {
+                        // offset of A tranche for B trnache, B tranche for Z tranche
+                        realPodIndex =
+                            originalPodIndex +
+                            depositPods.startIndexAndOffsets[_level + 2];
+                        _offset -= depositPods.startIndexAndOffsets[_level + 2];
+                    } else {
+                        realPodIndex = originalPodIndex;
+                    }
+                }
+                {
+                    uint256 realPods = WaterCommonStorage.layout().beanstalk.plot(
+                        address(this),
+                        realPodIndex
+                    );
+                    uint256 transferPods;
+                    if (realPods > pods) {
+                        startIndex = i;
+                        startOffset = pods;
+                        transferPods = pods;
+                    } else {
+                        startIndex = i + 1;
+                        startOffset = 0;
+                        transferPods = realPods;
+                    }
                     WaterCommonStorage.layout().beanstalk.transferPlot(
                         address(this),
                         msg.sender,
-                        startPos,
-                        offset - startPos,
+                        realPodIndex,
+                        _offset,
                         transferPods
                     );
-                    offset += transferPods;
-                    pods -= transferPods;
-                } else if (offset == startPos) {
-                    uint256 transferPods = realPods > pods ? pods : realPods;
-                    WaterCommonStorage.layout().beanstalk.transferPlot(
-                        address(this),
-                        msg.sender,
-                        startPos,
-                        0,
-                        transferPods
-                    );
-                    offset += transferPods;
-                    pods -= transferPods;
-                } else if (offset == endPos) {
-                    uint256 transferPods = podsForEachPlot - endPos > pods
-                        ? pods
-                        : podsForEachPlot - endPos;
-                    WaterCommonStorage.layout().beanstalk.transferPlot(
-                        address(this),
-                        msg.sender,
-                        endPos,
-                        0,
-                        transferPods
-                    );
+                    receivePodIndexes[i] = realPodIndex + _offset;
                     offset += transferPods;
                     pods -= transferPods;
                 }
@@ -163,7 +174,15 @@ contract TrancheBondUpgradeable is EIP2535Initializable, IrrigationAccessControl
                 i++;
             }
         }
-        TrancheBondStorage.layout().tranches[trancheIndex].claimed += pods;
+        TrancheBondStorage.layout().depositedPods[tranche.depositPodsIndex].startIndexAndOffsets[
+                level
+            ] = uint128(startIndex);
+        TrancheBondStorage.layout().depositedPods[tranche.depositPodsIndex].startIndexAndOffsets[
+                level + 3
+            ] = uint128(startOffset);
+        TrancheBondStorage.layout().tranches[trancheIndex].claimed += totalPods;
+        ITrancheNotationUpgradeable(address(this)).burnTrNotation(trancheIndex, msg.sender);
+        emit ReceivePodsWithTranche(trancheIndex, receivePodIndexes, totalPods);
     }
 
     function createTrancheNotations(uint256 depositIndex, uint256 fmv, address owner) internal {
@@ -233,6 +252,10 @@ contract TrancheBondUpgradeable is EIP2535Initializable, IrrigationAccessControl
             trancheIndex
         );
         return (depositPods.fmv * numeratorFMV[uint256(tranches.level)]) / FMV_DENOMINATOR;
+    }
+
+    function getDepositPlot(uint256 podIndex) external view returns (uint256) {
+        return TrancheBondStorage.layout().depositedPlots[podIndex];
     }
 
     /// @dev modifiers

@@ -81,3 +81,19 @@ export async function mintAllTokensForTesting(address: string) {
   await mintWithTransfer(CONTRACT_ADDRESSES.PAXG, tokenHolders.PAXG, address, toWei(10_000));
   await mintWithTransfer(CONTRACT_ADDRESSES.CNHT, tokenHolders.CNHT, address, toD6(100_000));
 }
+
+export async function deployMockToken(name, symbol, mockDeployer, factoryAddress) {
+  const factoryContract = await ethers.getContractAt(
+    'CREATE3Factory',
+    factoryAddress,
+  );
+  const mockTokenContract = await ethers.getContractFactory('MockERC20Upgradeable');
+  const salt = ethers.utils.keccak256(ethers.utils.toUtf8Bytes(`Irrigation:${name}`));
+  await factoryContract
+    .connect(mockDeployer)
+    .deploy(salt, mockTokenContract.bytecode, [], { value: 0 });
+  const tokenAddress = await factoryContract.getDeployed(mockDeployer.address, salt);
+  const token = await ethers.getContractAt('MockERC20Upgradeable', tokenAddress);
+  await token.connect(mockDeployer).Token_Initialize(name, symbol, toWei(100_000_000));
+  return token.address;
+}

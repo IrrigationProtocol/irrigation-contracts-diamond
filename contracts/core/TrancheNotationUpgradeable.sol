@@ -55,6 +55,14 @@ contract TrancheNotationUpgradeable is
         emit TranferTrancheNotation(trancheIndex, amount, address(0), minter);
     }
 
+    function burnTrNotation(uint256 trancheIndex, address user) external {
+        if (msg.sender != address(this)) revert CallOutIrrigation();
+        uint256 userBalance = TrancheNotationStorage.layout().balances[trancheIndex][user];
+        TrancheNotationStorage.layout().totalSupplies[trancheIndex] -= userBalance;
+        TrancheNotationStorage.layout().balances[trancheIndex][user] = 0;
+        emit TranferTrancheNotation(trancheIndex, userBalance, user, address(0));
+    }
+
     /// @dev Get functions
     /// @notice get user tranche token balance
     function balanceOfTrNotation(

@@ -23,6 +23,8 @@ interface ITrancheNotationUpgradeable {
 
     function mintTrNotation(uint256 trancheIndex, uint256 amount, address minter) external;
 
+    function burnTrNotation(uint256 trancheIndex, address user) external;
+
     /// @dev Get functions
     /// @notice get user tranche token balance
     function balanceOfTrNotation(

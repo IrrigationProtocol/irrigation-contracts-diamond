@@ -4,7 +4,6 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { IrrigationDiamond } from '../../typechain-types/hardhat-diamond-abi/HardhatDiamondABI.sol';
 import { CONTRACT_ADDRESSES, OracleType } from '../../scripts/shared';
 import { PriceOracleUpgradeable } from '../../typechain-types';
-import { initPriceOracles } from '../../scripts/init';
 
 export function suite(networkDeployedInfo: INetworkDeployInfo) {
   describe('Irrigation PriceOracle Testing', async function () {
@@ -19,10 +18,6 @@ export function suite(networkDeployedInfo: INetworkDeployInfo) {
       owner = signers[0];
       sender = signers[1];
       priceOracle = await ethers.getContractAt('PriceOracleUpgradeable', irrigationDiamond.address);
-    });
-
-    it('Initilizing oracles for default tokens', async () => {
-      await initPriceOracles(priceOracle);
     });
 
     it('Test ETH Price based on chainlink oracle', async () => {
