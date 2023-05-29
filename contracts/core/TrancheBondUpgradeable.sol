@@ -25,6 +25,7 @@ contract TrancheBondUpgradeable is EIP2535Initializable, IrrigationAccessControl
     uint256 public constant FMV_DENOMINATOR = 100;
     uint256 public constant MINIMUM_FMV = 1;
     uint256 public constant MINIMUM_WATER = 32;
+    // default maturity period
     uint256 public constant MATURITY_PERIOD = 180 days;
 
     /// @dev Events
@@ -43,11 +44,13 @@ contract TrancheBondUpgradeable is EIP2535Initializable, IrrigationAccessControl
     /// @param indexes Index array of deposited pods
     /// @param starts Array of start number for deposited pods
     /// @param ends Array of end number for deposited pods
+    /// @param maturityPeriod Maturity Period, if this is 0, default is 180 days
 
     function createTranchesWithPods(
         uint256[] calldata indexes,
         uint256[] calldata starts,
-        uint256[] calldata ends
+        uint256[] calldata ends,
+        uint256 maturityPeriod
     ) external onlyWaterHolder {
         if (indexes.length != starts.length || indexes.length != ends.length) revert InvalidPods();
         uint256[] memory podIndexes = new uint256[](indexes.length);
@@ -86,11 +89,10 @@ contract TrancheBondUpgradeable is EIP2535Initializable, IrrigationAccessControl
         TrancheBondStorage.layout().depositedPods[curDepositPodsCount] = DepositPods({
             underlyingPodIndexes: podIndexes,
             startIndexAndOffsets: new uint128[](6),
-            // startPos: new uint128[](indexes.length),
-            // endPos: endPos,
             fmv: totalFMV,
             depositedAt: block.timestamp,
-            totalPods: totalPods
+            totalPods: totalPods,
+            maturityDate: block.timestamp + (maturityPeriod == 0 ? MATURITY_PERIOD : maturityPeriod)
         });
 
         /// Create tranche A, B, Z
@@ -102,12 +104,10 @@ contract TrancheBondUpgradeable is EIP2535Initializable, IrrigationAccessControl
     /// @dev receive pods with tranches after maturity date is over
     function receivePodsWithTranches(uint256 trancheIndex) external {
         (TranchePods memory tranche, DepositPods memory depositPods) = getTranchePods(trancheIndex);
-        if (block.timestamp - depositPods.depositedAt < MATURITY_PERIOD) revert NotMatureTranche();
+        if (block.timestamp < depositPods.maturityDate) revert NotMatureTranche();
 
         (uint256 offset, uint256 pods) = getAvailablePodsForUser(trancheIndex, msg.sender);
         if (pods == 0) revert InsufficientPods();
-        // uint256[] memory underlyingPodIndexes = depositPods.underlyingPodIndexes;
-        // uint128[] memory startIndexAndOffsets = depositPods.startIndexAndOffsets;
         uint8 level = (uint8)(tranche.level);
         uint256 startIndex = depositPods.startIndexAndOffsets[level];
         uint256 startOffset = depositPods.startIndexAndOffsets[level + 3];

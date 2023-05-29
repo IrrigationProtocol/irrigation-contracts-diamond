@@ -88,7 +88,7 @@ export function suite() {
       const waterTower = await ethers.getContractAt('WaterTowerUpgradeable', irrigationDiamond.address);
       await water.approve(waterTower.address, toWei(32));
       await waterTower.deposit(toWei(32), false);
-      await trancheBond.createTranchesWithPods(podsGroup.indexes, [0, 0], podsGroup.amounts);
+      await trancheBond.createTranchesWithPods(podsGroup.indexes, [0, 0], podsGroup.amounts, 180 * 86400);
 
       const priceOracle = await ethers.getContractAt('PriceOracleUpgradeable', irrigationDiamond.address);
       const beanPrice = await priceOracle.getPrice(CONTRACT_ADDRESSES.BEAN);
@@ -109,7 +109,7 @@ export function suite() {
     });
 
     it('not eligible user should fail creating tranche with pods', async () => {
-      await expect(trancheBond.connect(signers[3]).createTranchesWithPods(podsGroup.indexes, [0, 0], podsGroup.amounts)).to.be.revertedWithCustomError(trancheBond, 'NotEligible');
+      await expect(trancheBond.connect(signers[3]).createTranchesWithPods(podsGroup.indexes, [0, 0], podsGroup.amounts, 0)).to.be.revertedWithCustomError(trancheBond, 'NotEligible');
     });
 
     it('Test Tranche transfer', async () => {
@@ -341,7 +341,7 @@ export function suite() {
     it('should receive pods after the tranche B is mature', async () => {
       let { tranche, depositPods } = await trancheBond.getTranchePods(4);
       // console.log(tranche, depositPods);
-      const { offset, pods } = await trancheBond.getAvailablePodsForUser(4, owner.address);      
+      const { offset, pods } = await trancheBond.getAvailablePodsForUser(4, owner.address);
       const tx = await trancheBond.receivePodsWithTranches(4);
       // const receipt = await tx.wait();
       depositPods = (await trancheBond.getTranchePods(4)).depositPods;

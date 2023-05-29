@@ -28,6 +28,7 @@ struct DepositPods {
     uint256 depositedAt;
     /// total pods
     uint256 totalPods;
+    uint256 maturityDate;
 }
 
 library TrancheBondStorage {
