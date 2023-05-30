@@ -14,6 +14,8 @@ import "../interfaces/IPodsOracleUpgradeable.sol";
 import "../interfaces/ITrancheNotationUpgradeable.sol";
 import "../interfaces/IPriceOracleUpgradeable.sol";
 
+// import "hardhat/console.sol";
+
 /// @title TrancheBond Contract
 /// @dev Allows users deposit pods and receive tranches
 
@@ -123,12 +125,14 @@ contract TrancheBondUpgradeable is EIP2535Initializable, IrrigationAccessControl
                 uint256 _offset = offset;
                 // we will tranfer podline [_offset, transferPods] in [realPodIndex, realPods]
                 uint256 realPodIndex = originalPodIndex + _offset;
-                // uint256 realOffset = _offset;
+                // console.log("index %s %s %s", realPodIndex, startOffset, _offset);
+
                 // this means first call, in that case of A tranche, always offset = startOffset
                 if (startIndex != i || _offset != startOffset) {
-                    if (_level == 0) {
-                        // error
-                    }
+                    /// @dev error in this case
+                    // if (_level == 0) {
+
+                    // }
                     // previous tranche start point is in original podline as same as current tranche
                     uint256 preIndex = depositPods.startIndexAndOffsets[_level - 1];
                     if (preIndex == i) {
@@ -147,15 +151,18 @@ contract TrancheBondUpgradeable is EIP2535Initializable, IrrigationAccessControl
                         realPodIndex
                     );
                     uint256 transferPods;
-                    if (realPods > pods) {
+                    if (realPods >= pods) {
                         startIndex = i;
                         startOffset = pods;
                         transferPods = pods;
                     } else {
+                        // go to next podline
                         startIndex = i + 1;
                         startOffset = 0;
                         transferPods = realPods;
                     }
+                    // console.log("pods %s %s %s", pods, startIndex, transferPods);
+                    // console.log("realPods %s %s %s", realPods, startOffset, _offset);
                     WaterCommonStorage.layout().beanstalk.transferPlot(
                         address(this),
                         msg.sender,
@@ -164,7 +171,8 @@ contract TrancheBondUpgradeable is EIP2535Initializable, IrrigationAccessControl
                         transferPods
                     );
                     receivePodIndexes[i] = realPodIndex + _offset;
-                    offset += transferPods;
+                    // offset is always 0 from second podline
+                    offset = 0;
                     pods -= transferPods;
                 }
             } else {

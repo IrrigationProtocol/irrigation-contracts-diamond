@@ -79,6 +79,9 @@ export function suite() {
       // console.log('---first:', fromD6(podIndex), fromD6(podsAmount));
       podIndex = await beanstalk.podIndex();
       await beanstalk.sow(toD6(40), 0, 0);
+      // simulate separate podlines      
+      podIndex = await beanstalk.podIndex();
+      await beanstalk.sow(toD6(100), 0, 0);
       podsAmount = await beanstalk.plot(owner.address, podIndex);
       podsGroup.indexes.push(podIndex);
       podsGroup.amounts.push(podsAmount);
@@ -88,7 +91,11 @@ export function suite() {
       const waterTower = await ethers.getContractAt('WaterTowerUpgradeable', irrigationDiamond.address);
       await water.approve(waterTower.address, toWei(32));
       await waterTower.deposit(toWei(32), false);
-      await trancheBond.createTranchesWithPods(podsGroup.indexes, [0, 0], podsGroup.amounts, 180 * 86400);
+      await trancheBond.createTranchesWithPods(
+        podsGroup.indexes,
+        podsGroup.indexes.map(e => 0),
+        podsGroup.amounts,
+        180 * 86400);
 
       const priceOracle = await ethers.getContractAt('PriceOracleUpgradeable', irrigationDiamond.address);
       const beanPrice = await priceOracle.getPrice(CONTRACT_ADDRESSES.BEAN);
@@ -178,15 +185,15 @@ export function suite() {
         toWei(0.1),
         toWei(0.5),
         AuctionType.TimedAndFixed,
-        { value: toWei(0.002) }
+        { value: toWei(0.02) }
       );
       let txReceipt = await tx.wait();
       const totalGas = txReceipt.gasUsed.mul(txReceipt.effectiveGasPrice);
       updateOwnerBalance = updateOwnerBalance.sub(await ethers.provider.getBalance(owner.address)).sub(totalGas);
       updateContractBalance = (await ethers.provider.getBalance(rootAddress)).sub(updateContractBalance);
       expect(updateOwnerBalance).to.be.eq(updateContractBalance);
-      expect(updateContractBalance).to.be.gt(toWei(0.00001));
-      expect(updateOwnerBalance).to.be.lt(toWei(0.0015));
+      expect(updateContractBalance).to.be.gt(toWei(0.0001));
+      expect(updateOwnerBalance).to.be.lt(toWei(0.003));
       expect(await trancheNotation.balanceOfTrNotation(trancheIndex, rootAddress)).to.be.equal(
         trNotationBalance,
       );
@@ -300,7 +307,6 @@ export function suite() {
     it('should be able to receive pods correct for tranche A', async () => {
       const { depositPods } = await trancheBond.getTranchePods(3);
       const { offset, pods } = await trancheBond.getAvailablePodsForUser(3, sender.address);
-      // console.log('offset, pods for tranche A', offset, pods, tranche.level, depositPods.totalPods);
       expect(offset).to.be.eq(0);
       expect(pods).to.be.eq(depositPods.totalPods.mul(20).div(100));
     });
@@ -308,7 +314,6 @@ export function suite() {
     it('should be able to receive pods correct for tranche B', async () => {
       const { depositPods } = await trancheBond.getTranchePods(4);
       const { offset, pods } = await trancheBond.getAvailablePodsForUser(4, owner.address);
-      // console.log('offset, pods for tranche B', offset, pods, tranche.level, depositPods.totalPods);
       expect(offset).to.be.eq(depositPods.totalPods.mul(20).div(100));
       expect(pods).to.be.eq(depositPods.totalPods.mul(30).div(100));
     });
@@ -328,28 +333,37 @@ export function suite() {
       let { tranche, depositPods } = await trancheBond.getTranchePods(3);
       const oldPods = await beanstalk.plot(trancheBond.address, depositPods.underlyingPodIndexes[0])
       const tx = await trancheBond.connect(sender).receivePodsWithTranches(3);
-      // console.log(tranche, depositPods);
       const pods = await beanstalk.plot(sender.address, depositPods.underlyingPodIndexes[0])
-      expect(pods).to.be.eq(depositPods.totalPods.mul(20).div(100));
-      // const pods2 = await beanstalk.plot(trancheBond.address, depositPods.underlyingPodIndexes[0])
+      const pods2 = await beanstalk.plot(sender.address, depositPods.underlyingPodIndexes[1])
+      const expectedReceivePods = depositPods.totalPods.mul(20).div(100);
+      expect(pods.add(pods2)).to.be.eq(depositPods.totalPods.mul(20).div(100));
       depositPods = (await trancheBond.getTranchePods(3)).depositPods;
-      expect(depositPods.startIndexAndOffsets[0]).to.be.eq(0);
-      expect(depositPods.startIndexAndOffsets[3]).to.be.eq(depositPods.totalPods.mul(20).div(100));
-      // console.log(depositPods.startIndexAndOffsets);      
+      if (expectedReceivePods.gt(oldPods)) {
+        expect(depositPods.startIndexAndOffsets[0]).to.be.eq(1);
+        expect(depositPods.startIndexAndOffsets[3]).to.be.eq(expectedReceivePods.sub(pods));
+      }
+      else {
+        expect(depositPods.startIndexAndOffsets[0]).to.be.eq(0);
+        expect(depositPods.startIndexAndOffsets[3]).to.be.eq(expectedReceivePods);
+      }
     });
 
     it('should receive pods after the tranche B is mature', async () => {
       let { tranche, depositPods } = await trancheBond.getTranchePods(4);
-      // console.log(tranche, depositPods);
       const { offset, pods } = await trancheBond.getAvailablePodsForUser(4, owner.address);
       const tx = await trancheBond.receivePodsWithTranches(4);
-      // const receipt = await tx.wait();
-      depositPods = (await trancheBond.getTranchePods(4)).depositPods;
-      // console.log(depositPods.startIndexAndOffsets);
+      depositPods = (await trancheBond.getTranchePods(4)).depositPods;      
       const receivePods = await beanstalk.plot(owner.address, depositPods.underlyingPodIndexes[0].add(offset));
       expect(pods).to.be.eq(receivePods);
-      // console.log('receivePods', receivePods);
-      // console.log(receipt.logs);      
+    });
+
+    it('should receive pods after the tranche Z is mature', async () => {
+      let { tranche, depositPods } = await trancheBond.getTranchePods(5);
+      const { offset, pods } = await trancheBond.getAvailablePodsForUser(5, owner.address);
+      const tx = await trancheBond.receivePodsWithTranches(5);
+      depositPods = (await trancheBond.getTranchePods(5)).depositPods;
+      const receivePods = await beanstalk.plot(owner.address, depositPods.underlyingPodIndexes[1]);
+      expect(pods).to.be.eq(receivePods);
     });
   });
 }
