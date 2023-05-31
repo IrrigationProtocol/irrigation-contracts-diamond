@@ -8,12 +8,22 @@ enum TrancheLevel {
     Z
 }
 
+enum UnderlyingAssetType {
+    ERC20,
+    PODS
+}
+
 struct TranchePods {
     uint256 depositPodsIndex;
     TrancheLevel level;
     uint256 fmv;
     /// claimed amount after maturity peroid is over
     uint256 claimed;
+}
+
+struct UnderlyingAssetMetadata {
+    address contractAddress;
+    UnderlyingAssetType assetType;
 }
 
 /// @notice stores group of podlines that user deposited

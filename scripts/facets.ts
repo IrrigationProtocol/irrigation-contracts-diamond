@@ -24,6 +24,7 @@ export const Facets: FacetToDeployInfo = {
   TrancheBondUpgradeable: { priority: 120 },
   TrancheNotationUpgradeable: { priority: 130 },
   PriceOracleUpgradeable: { priority: 140, libraries: ['UniswapV3Twap'] },
+  ERC1155WhitelistUpgradeable: { priority: 150 },
 };
 
 export async function LoadFacetDeployments() {

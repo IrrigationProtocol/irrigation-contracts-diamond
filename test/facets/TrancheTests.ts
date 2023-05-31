@@ -352,7 +352,7 @@ export function suite() {
       let { tranche, depositPods } = await trancheBond.getTranchePods(4);
       const { offset, pods } = await trancheBond.getAvailablePodsForUser(4, owner.address);
       const tx = await trancheBond.receivePodsWithTranches(4);
-      depositPods = (await trancheBond.getTranchePods(4)).depositPods;      
+      depositPods = (await trancheBond.getTranchePods(4)).depositPods;
       const receivePods = await beanstalk.plot(owner.address, depositPods.underlyingPodIndexes[0].add(offset));
       expect(pods).to.be.eq(receivePods);
     });
@@ -364,6 +364,11 @@ export function suite() {
       depositPods = (await trancheBond.getTranchePods(5)).depositPods;
       const receivePods = await beanstalk.plot(owner.address, depositPods.underlyingPodIndexes[1]);
       expect(pods).to.be.eq(receivePods);
+    });
+
+    it('minting ERC1155 for tranche by user should be failed', async () => {
+      const erc1155 = await ethers.getContractAt('ERC1155WhitelistUpgradeable', rootAddress);
+      await expect(erc1155.mint(owner.address, 0, toWei(1000), '0x')).revertedWithCustomError(erc1155, 'NoUserMint');
     });
   });
 }
