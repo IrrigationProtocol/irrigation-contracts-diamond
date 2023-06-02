@@ -110,7 +110,7 @@ contract AuctionUpgradeable is EIP2535Initializable, IrrigationAccessControl {
                     FEE_DENOMINATOR
             );
         } else {
-            TranchePods memory tranche = TrancheBondStorage.layout().tranches[_trancheIndex];
+            TrancheMetadata memory tranche = TrancheBondStorage.layout().tranches[_trancheIndex];
             require(tranche.level != TrancheLevel.Z, "not list Z tranche");
             ITrancheNotationUpgradeable(address(this)).transferFromTrNotation(
                 _trancheIndex,

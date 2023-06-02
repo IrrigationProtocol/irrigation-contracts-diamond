@@ -9,22 +9,33 @@ enum TrancheLevel {
 }
 
 enum UnderlyingAssetType {
-    ERC20,
-    PODS
+    PODS,
+    ERC20
 }
 
-struct TranchePods {
-    uint256 depositPodsIndex;
+struct TrancheMetadata {
+    uint128 depositIndex;
     TrancheLevel level;
-    uint256 fmv;
     /// claimed amount after maturity peroid is over
-    uint256 claimed;
+    uint256 claimedAmount;
 }
 
 struct UnderlyingAssetMetadata {
+    // zero address if underlying asset is pods
     address contractAddress;
     UnderlyingAssetType assetType;
+    uint64 maturityDate;
+    // uint256 trancheAIndex;
+    uint256 totalDeposited;
 }
+
+// struct TranchePods {
+//     uint256 depositPodsIndex;
+//     TrancheLevel level;
+//     uint256 fmv;
+//     /// claimed amount after maturity peroid is over
+//     uint256 claimed;
+// }
 
 /// @notice stores group of podlines that user deposited
 struct DepositPods {
@@ -35,10 +46,10 @@ struct DepositPods {
     /// FMV Farmer Market Value
     uint256 fmv;
     /// created timestamp
-    uint256 depositedAt;
+    // uint256 depositedAt;
     /// total pods
-    uint256 totalPods;
-    uint256 maturityDate;
+    // uint256 totalPods;
+    // uint256 maturityDate;
 }
 
 library TrancheBondStorage {
@@ -47,10 +58,13 @@ library TrancheBondStorage {
         mapping(uint256 => uint256) depositedPlots;
         // Pods group deposited to create tranche, mapping from deposit index to pods groups
         mapping(uint256 => DepositPods) depositedPods;
+
+        mapping(uint256 => UnderlyingAssetMetadata) underlyingAssets;
         // Mapping from tranch index to A,B,Z tranches. the total number of tranchePods is always 3 times than count of depositedPods
-        mapping(uint256 => TranchePods) tranches;
+        mapping(uint256 => TrancheMetadata) tranches;
         // Count of deposited pods group, also it is used as a latest index
         uint256 curDepositPodsCount;
+        // uint256 curTrancheCount;
     }
 
     bytes32 internal constant STORAGE_SLOT = keccak256("irrigation.contracts.storage.TrancheBond");

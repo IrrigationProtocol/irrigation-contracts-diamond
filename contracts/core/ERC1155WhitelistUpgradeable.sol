@@ -11,7 +11,7 @@ import "../utils/EIP2535Initializable.sol";
 import "../utils/IrrigationAccessControl.sol";
 import "../libraries/FullMath.sol";
 import "../interfaces/IPodsOracleUpgradeable.sol";
-import "../interfaces/ITrancheNotationUpgradeable.sol";
+import "../interfaces/IERC1155WhitelistUpgradeable.sol";
 
 /// @title ERC1155WhitelistUpgradeable Contract
 /// @dev Users can hold this tranche tokens, and redeem underlying assets after maturity date.
@@ -19,6 +19,7 @@ import "../interfaces/ITrancheNotationUpgradeable.sol";
 ///      so this tranche token can be available on markets in whitelist
 
 contract ERC1155WhitelistUpgradeable is
+    IERC1155WhitelistUpgradeable,
     ERC1155SupplyUpgradeable,
     ERC1155BurnableUpgradeable,
     EIP2535Initializable,
