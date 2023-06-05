@@ -26,6 +26,8 @@ struct UnderlyingAssetMetadata {
     UnderlyingAssetType assetType;
     uint64 maturityDate;
     // uint256 trancheAIndex;
+    // total amount deposited in underlying asset
+    // sum of pods if underlying asset is pods
     uint256 totalDeposited;
 }
 
@@ -43,13 +45,8 @@ struct DepositPods {
     uint256[] underlyingPodIndexes;
     /// represent divided podline after transfer some pods
     uint128[] startIndexAndOffsets;
-    /// FMV Farmer Market Value
+    /// FMV Farmer Market Value in USD
     uint256 fmv;
-    /// created timestamp
-    // uint256 depositedAt;
-    /// total pods
-    // uint256 totalPods;
-    // uint256 maturityDate;
 }
 
 library TrancheBondStorage {

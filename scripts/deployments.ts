@@ -140,12 +140,6 @@ export const deployments: { [key: string]: INetworkDeployInfo } = {
           '0xefe802d7',
           '0x1b20eaef'
         ]
-      },
-      TrancheNotationUpgradeable: {
-        address: '0xC61fF151af6fA8fbe21263C359BDc7fc3211fff6',
-        tx_hash: '0xa8dba55ccccfe5acc558e84db64609e82ba0b006f68272b73e07b0440486c94a',
-        version: 0,
-        funcSelectors: [ '0x4ee843e2', '0xef552f93', '0xd531674b', '0x474866c3' ]
       }
     },
     ExternalLibraries: {
@@ -292,13 +286,7 @@ export const deployments: { [key: string]: INetworkDeployInfo } = {
           '0xefe802d7',
           '0x1b20eaef'
         ]
-      },
-      TrancheNotationUpgradeable: {
-        address: '0x30426D33a78afdb8788597D5BFaBdADc3Be95698',
-        tx_hash: '0xc413377215a7637f7d75de680021c71fa2906861895838cdd8b68f8b2f1fbbfe',
-        version: 0,
-        funcSelectors: [ '0x4ee843e2', '0xef552f93', '0xd531674b', '0x474866c3' ]
-      },
+      },      
       PriceOracleUpgradeable: {
         address: '0x85495222Fd7069B987Ca38C2142732EbBFb7175D',
         tx_hash: '0xfe9a2743d3af5e10f5c5c9235a388011fb5d21fd1967ade868b1a20ff013f6d9',
@@ -460,13 +448,7 @@ export const deployments: { [key: string]: INetworkDeployInfo } = {
           '0xefe802d7',
           '0x1b20eaef'
         ]
-      },
-      TrancheNotationUpgradeable: {
-        address: '0x30426D33a78afdb8788597D5BFaBdADc3Be95698',
-        tx_hash: '0x278a7752d27c849c56e3be246f90d361e94ae5c7a72152aeb56bbd1cda84e6b2',
-        version: 0,
-        funcSelectors: [ '0x4ee843e2', '0xef552f93', '0xd531674b', '0x474866c3' ]
-      },
+      },     
       PriceOracleUpgradeable: {
         address: '0x85495222Fd7069B987Ca38C2142732EbBFb7175D',
         tx_hash: '0x94383603f704f19e0e9baa40b67ddb77038b94f55db430eb257c5dbe8b625252',

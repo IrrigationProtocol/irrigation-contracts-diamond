@@ -4,7 +4,6 @@ pragma solidity ^0.8.17;
 import "@gnus.ai/contracts-upgradeable-diamond/contracts/interfaces/IERC1155Upgradeable.sol";
 
 import "./TrancheBondStorage.sol";
-// import "./TrancheNotationStorage.sol";
 import "./WaterCommonStorage.sol";
 import "./WaterTowerStorage.sol";
 import "../utils/EIP2535Initializable.sol";
@@ -26,7 +25,7 @@ contract TrancheBondUpgradeable is EIP2535Initializable, IrrigationAccessControl
     using WaterTowerStorage for WaterTowerStorage.Layout;
 
     uint256 public constant FMV_DENOMINATOR = 100;
-    uint256 public constant MINIMUM_FMV = 1;
+    uint256 public constant MINIMUM_FMV = 1000;
     uint256 public constant MINIMUM_WATER = 32;
     // default maturity period
     uint256 public constant MATURITY_PERIOD = 180 days;
@@ -89,14 +88,14 @@ contract TrancheBondUpgradeable is EIP2535Initializable, IrrigationAccessControl
         uint256 curDepositPodsCount = TrancheBondStorage.layout().curDepositPodsCount + 1;
 
         /// Register pods deposit
+        uint256 beanPrice = IPriceOracleUpgradeable(address(this)).getPrice(Constants.BEAN);
+        uint256 totalFMVInUSD = (totalFMV * beanPrice) / 1e18;
         TrancheBondStorage.layout().depositedPods[curDepositPodsCount] = DepositPods({
             underlyingPodIndexes: podIndexes,
             startIndexAndOffsets: new uint128[](6),
-            fmv: totalFMV
+            fmv: totalFMVInUSD
         });
-
-        uint256 beanPrice = IPriceOracleUpgradeable(address(this)).getPrice(Constants.BEAN);
-        uint256 totalDeposited = (totalFMV * beanPrice) / 1e18;
+                
 
         /// Create underlying asset meta data
         TrancheBondStorage.layout().underlyingAssets[
@@ -104,14 +103,14 @@ contract TrancheBondUpgradeable is EIP2535Initializable, IrrigationAccessControl
         ] = UnderlyingAssetMetadata({
             contractAddress: Constants.ZERO,
             assetType: UnderlyingAssetType.PODS,
-            totalDeposited: totalDeposited,
             maturityDate: uint64(
                 block.timestamp + (maturityPeriod == 0 ? MATURITY_PERIOD : maturityPeriod)
-            )
+            ),
+            totalDeposited: totalPods
         });
 
         /// Create tranche A, B, Z
-        _createTranchesFromDeposit(curDepositPodsCount, totalDeposited, msg.sender);
+        _createTranchesFromDeposit(curDepositPodsCount, totalFMVInUSD, msg.sender);
         TrancheBondStorage.layout().curDepositPodsCount = curDepositPodsCount;
         emit CreateTranche(curDepositPodsCount, totalFMV, block.timestamp);
     }
@@ -206,40 +205,9 @@ contract TrancheBondUpgradeable is EIP2535Initializable, IrrigationAccessControl
                 level + 3
             ] = uint128(startOffset);
         TrancheBondStorage.layout().tranches[trancheIndex].claimedAmount += totalPods;
-        // ITrancheNotationUpgradeable(address(this)).burnTrNotation(trancheIndex, msg.sender);
         IERC1155BurnableUpgradeable(address(this)).burn(msg.sender, trancheIndex, totalPods);
         emit ReceivePodsWithTranche(trancheIndex, receivePodIndexes, totalPods);
     }
-
-    // function createTrancheNotations(uint256 depositIndex, uint256 fmv, address owner) internal {
-    //     /// @dev bean price should be updated as correct value
-    //     uint256 beanPrice = IPriceOracleUpgradeable(address(this)).getPrice(Constants.BEAN);
-
-    //     uint256[3] memory numeratorFMV = [uint256(20), 30, 50];
-    //     TrancheLevel[3] memory levels = [TrancheLevel.A, TrancheLevel.B, TrancheLevel.Z];
-    //     uint256 trancheAIndex = TrancheBondStorage.layout().curTrancheCount;
-    //     for (uint256 i = 0; i < 3; ) {
-    //         uint256 fmvOfTranche = (fmv * numeratorFMV[i]) / FMV_DENOMINATOR;
-    //         /// calculate total tranche notation value as 1 usd unit with 1e18 decimals
-    //         uint256 totalSimulatedUsd = (fmvOfTranche * beanPrice) / 1e18;
-    //         uint256 trancheIndex = trancheAIndex + i;
-    //         TrancheBondStorage.layout().tranches[trancheIndex] = TrancheMetadata({
-    //             depositPodsIndex: depositIndex,
-    //             level: levels[i],
-    //             // fmv: fmvOfTranche,
-    //             claimed: 0
-    //         });
-    //         /// create tranche token with calculated usd value
-    //         ITrancheNotationUpgradeable(address(this)).mintTrNotation(
-    //             trancheIndex,
-    //             totalSimulatedUsd,
-    //             owner
-    //         );
-    //         unchecked {
-    //             ++i;
-    //         }
-    //     }
-    // }
 
     function _createTranchesFromDeposit(
         uint256 depositIndex,
@@ -262,9 +230,9 @@ contract TrancheBondUpgradeable is EIP2535Initializable, IrrigationAccessControl
             /// create tranche token with
             IERC1155WhitelistUpgradeable(address(this)).mint(
                 owner,
-                totalTrancheTokenAmount,
                 trancheIndex,
-                "0x"
+                totalTrancheTokenAmount,
+                ""
             );
             unchecked {
                 ++i;

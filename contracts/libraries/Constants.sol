@@ -14,4 +14,7 @@ library Constants {
     address public constant ZERO = 0x0000000000000000000000000000000000000000;
     /// underlying decimals
     uint256 public constant D18 = 1e18;
+    bytes internal constant EMPTY = "";
+    bytes4 internal constant ERC1155_ACCEPTED = 0xf23a6e61; // bytes4(keccak256("onERC1155Received(address,address,uint256,uint256,bytes)"))
+    bytes4 internal constant ERC1155_BATCH_ACCEPTED = 0xbc197c81; // bytes4(keccak256("onERC1155BatchReceived(address,address,uint256[],uint256[],bytes)"))
 }

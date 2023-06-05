@@ -5,11 +5,14 @@ import "@gnus.ai/contracts-upgradeable-diamond/contracts/token/ERC1155/extension
 import "@gnus.ai/contracts-upgradeable-diamond/contracts/token/ERC1155/ERC1155Upgradeable.sol";
 import "@gnus.ai/contracts-upgradeable-diamond/contracts/security/PausableUpgradeable.sol";
 import "@gnus.ai/contracts-upgradeable-diamond/contracts/token/ERC1155/extensions/ERC1155BurnableUpgradeable.sol";
+import "@gnus.ai/contracts-upgradeable-diamond/contracts/interfaces/IERC1155ReceiverUpgradeable.sol";
+
 import "./ERC1155WhitelistStorage.sol";
 import "./WaterCommonStorage.sol";
 import "../utils/EIP2535Initializable.sol";
 import "../utils/IrrigationAccessControl.sol";
 import "../libraries/FullMath.sol";
+import "../libraries/Constants.sol";
 import "../interfaces/IPodsOracleUpgradeable.sol";
 import "../interfaces/IERC1155WhitelistUpgradeable.sol";
 
@@ -20,6 +23,7 @@ import "../interfaces/IERC1155WhitelistUpgradeable.sol";
 
 contract ERC1155WhitelistUpgradeable is
     IERC1155WhitelistUpgradeable,
+    IERC1155ReceiverUpgradeable,
     ERC1155SupplyUpgradeable,
     ERC1155BurnableUpgradeable,
     EIP2535Initializable,
@@ -53,7 +57,7 @@ contract ERC1155WhitelistUpgradeable is
         public
         view
         virtual
-        override(ERC1155Upgradeable, AccessControlEnumerableUpgradeable)
+        override(AccessControlEnumerableUpgradeable, ERC1155Upgradeable, IERC165Upgradeable)
         returns (bool)
     {
         return (ERC1155Upgradeable.supportsInterface(interfaceId) ||
@@ -81,5 +85,36 @@ contract ERC1155WhitelistUpgradeable is
     ) external {
         if (msg.sender != address(this)) revert NoUserMint();
         _mintBatch(to, ids, amounts, data);
+    }
+
+    function onERC1155Received(
+        address operator,
+        address from,
+        uint256 id,
+        uint256 value,
+        bytes calldata data
+    ) external pure override returns (bytes4) {
+        (operator);
+        (from);
+        (id);
+        (value);
+        (data); // solidity, be quiet please
+        // require(address(this) == proxy, "Direct call: onERC1155Received");
+        return Constants.ERC1155_ACCEPTED;
+    }
+
+    function onERC1155BatchReceived(
+        address operator,
+        address from,
+        uint256[] calldata ids,
+        uint256[] calldata values,
+        bytes calldata data
+    ) external pure override returns (bytes4) {
+        (operator);
+        (from);
+        (ids);
+        (values);
+        (data); // solidity, be quiet please
+        return Constants.ERC1155_BATCH_ACCEPTED;
     }
 }
