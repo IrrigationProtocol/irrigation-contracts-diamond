@@ -31,13 +31,6 @@ struct UnderlyingAssetMetadata {
     uint256 totalDeposited;
 }
 
-// struct TranchePods {
-//     uint256 depositPodsIndex;
-//     TrancheLevel level;
-//     uint256 fmv;
-//     /// claimed amount after maturity peroid is over
-//     uint256 claimed;
-// }
 
 /// @notice stores group of podlines that user deposited
 struct DepositPods {

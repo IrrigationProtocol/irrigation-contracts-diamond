@@ -2,9 +2,14 @@
 
 pragma solidity ^0.8.17;
 
+struct ProxySpender {
+    bytes32 name;
+    mapping(uint256 => bool) blacklisted;
+}
+
 library ERC1155WhitelistStorage {
     struct Layout {
-        mapping(address => bool) isWhitelisted;
+        mapping(address => ProxySpender) proxySpenders;
     }
 
     bytes32 internal constant STORAGE_SLOT =
