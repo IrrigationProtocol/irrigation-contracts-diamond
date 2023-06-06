@@ -9,6 +9,7 @@ struct ProxySpender {
 
 library ERC1155WhitelistStorage {
     struct Layout {
+        mapping(uint256 => bool) blacklistForCompliance;
         mapping(address => ProxySpender) proxySpenders;
     }
 

@@ -44,13 +44,18 @@ contract ERC1155WhitelistUpgradeable is
         bytes memory data
     ) internal override(ERC1155SupplyUpgradeable, ERC1155Upgradeable) {
         super._beforeTokenTransfer(operator, from, to, ids, amounts, data);
-        if (
-            from != msg.sender && ERC1155WhitelistStorage.layout().proxySpenders[operator].name == 0
-        ) revert NoWhitelist();
+
+        /// @dev check whitelist and blacklist only for proxy contract call
+        bool isProxyCall = from != operator;
+        if (isProxyCall && ERC1155WhitelistStorage.layout().proxySpenders[operator].name == 0)
+            revert NoWhitelist();
         uint256 length = ids.length;
         for (uint256 i = 0; i < length; ) {
-            if (ERC1155WhitelistStorage.layout().proxySpenders[operator].blacklisted[i])
-                revert BlacklistedToken();
+            if (
+                (isProxyCall &&
+                    ERC1155WhitelistStorage.layout().proxySpenders[operator].blacklisted[i]) ||
+                ERC1155WhitelistStorage.layout().blacklistForCompliance[i]
+            ) revert BlacklistedToken();
             unchecked {
                 i++;
             }
@@ -157,6 +162,17 @@ contract ERC1155WhitelistUpgradeable is
             ERC1155WhitelistStorage.layout().proxySpenders[proxyAddress].blacklisted[
                     i
                 ] = bBlacklisted;
+            unchecked {
+                i++;
+            }
+        }
+    }
+
+    /// @notice Add token id list into blacklist for compliance with government regulations)
+    function addTokenIntoBlacklist(uint256[] memory tokenIds) external onlySuperAdminRole {
+        uint256 length = tokenIds.length;
+        for (uint256 i = 0; i < length; ) {
+            ERC1155WhitelistStorage.layout().blacklistForCompliance[i] = true;
             unchecked {
                 i++;
             }

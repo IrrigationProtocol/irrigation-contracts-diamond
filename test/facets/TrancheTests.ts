@@ -25,6 +25,7 @@ import { AuctionType } from '../types';
 import { getBean, getBeanMetapool, getBeanstalk, getUsdc } from '../utils/mint';
 import { CONTRACT_ADDRESSES } from '../../scripts/shared';
 import { skipTime } from '../utils/time';
+import { utils } from 'ethers';
 
 export function suite() {
   describe('Irrigation Tranche Testing', async function () {
@@ -97,9 +98,11 @@ export function suite() {
         podsGroup.amounts,
         180 * 86400);
 
-      const priceOracle = await ethers.getContractAt('PriceOracleUpgradeable', irrigationDiamond.address);
+      // const priceOracle = await ethers.getContractAt('PriceOracleUpgradeable', irrigationDiamond.address);
       // const beanPrice = await priceOracle.getPrice(CONTRACT_ADDRESSES.BEAN);
       let tokenBalance = await trancheCollection.balanceOf(owner.address, 3);
+      // check proxy name for our contract
+      expect(utils.parseBytes32String(await trancheCollection.getProxyInfo(rootAddress))).to.be.eq('Irrigation');
 
       const { tranche, depositPods, underlyingAsset } = await trancheBond.getTranchePods(3);
       assert(fromWei(tokenBalance) > 0, `tranche nft balance is ${tokenBalance}`);
