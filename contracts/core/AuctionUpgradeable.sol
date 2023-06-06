@@ -2,6 +2,7 @@
 pragma solidity 0.8.17;
 
 import "@gnus.ai/contracts-upgradeable-diamond/contracts/interfaces/IERC20MetadataUpgradeable.sol";
+import "@gnus.ai/contracts-upgradeable-diamond/contracts/interfaces/IERC1155Upgradeable.sol";
 import "./AuctionStorage.sol";
 import "./TrancheBondStorage.sol";
 import "../utils/EIP2535Initializable.sol";
@@ -9,7 +10,7 @@ import "../utils/IrrigationAccessControl.sol";
 import "../libraries/TransferHelper.sol";
 import "../libraries/FullMath.sol";
 import "../libraries/Constants.sol";
-import "../interfaces/ITrancheNotationUpgradeable.sol";
+
 import "../interfaces/IPriceOracleUpgradeable.sol";
 import "../interfaces/IWaterTowerUpgradeable.sol";
 
@@ -110,13 +111,14 @@ contract AuctionUpgradeable is EIP2535Initializable, IrrigationAccessControl {
                     FEE_DENOMINATOR
             );
         } else {
-            TranchePods memory tranche = TrancheBondStorage.layout().tranches[_trancheIndex];
+            TrancheMetadata memory tranche = TrancheBondStorage.layout().tranches[_trancheIndex];
             require(tranche.level != TrancheLevel.Z, "not list Z tranche");
-            ITrancheNotationUpgradeable(address(this)).transferFromTrNotation(
-                _trancheIndex,
-                sellAmount,
+            IERC1155Upgradeable(address(this)).safeTransferFrom(
                 msg.sender,
-                address(this)
+                address(this),
+                trancheIndex,
+                uint256(sellAmount),
+                Constants.EMPTY
             );
             /// @dev fee is calculated from usd value, and notation amount is BDV
             uint256 beanPrice = IPriceOracleUpgradeable(address(this)).getPrice(Constants.BEAN);
@@ -206,11 +208,12 @@ contract AuctionUpgradeable is EIP2535Initializable, IrrigationAccessControl {
         if (auction.assetType == AssetType.ERC20) {
             TransferHelper.safeTransfer(auction.sellToken, msg.sender, purchaseAmount);
         } else {
-            ITrancheNotationUpgradeable(address(this)).transferFromTrNotation(
+            IERC1155Upgradeable(address(this)).safeTransferFrom(
+                address(this),
+                msg.sender,
                 trancheIndex,
                 purchaseAmount,
-                address(this),
-                msg.sender
+                Constants.EMPTY
             );
         }
 
@@ -301,11 +304,12 @@ contract AuctionUpgradeable is EIP2535Initializable, IrrigationAccessControl {
             if (trancheIndex == 0) {
                 TransferHelper.safeTransfer(auction.sellToken, auction.seller, auction.reserve);
             } else {
-                ITrancheNotationUpgradeable(address(this)).transferFromTrNotation(
+                IERC1155Upgradeable(address(this)).safeTransferFrom(
+                    address(this),
+                    auction.seller,
                     trancheIndex,
                     auction.reserve,
-                    address(this),
-                    auction.seller
+                    Constants.EMPTY
                 );
             }
 
@@ -339,11 +343,12 @@ contract AuctionUpgradeable is EIP2535Initializable, IrrigationAccessControl {
             if (auction.assetType == AssetType.ERC20) {
                 TransferHelper.safeTransfer(auction.sellToken, auction.seller, availableAmount);
             } else {
-                ITrancheNotationUpgradeable(address(this)).transferFromTrNotation(
+                IERC1155Upgradeable(address(this)).safeTransferFrom(
+                    address(this),
+                    auction.seller,
                     trancheIndex,
                     availableAmount,
-                    address(this),
-                    auction.seller
+                    Constants.EMPTY
                 );
             }
         }
@@ -375,11 +380,12 @@ contract AuctionUpgradeable is EIP2535Initializable, IrrigationAccessControl {
         if (trancheIndex == 0) {
             TransferHelper.safeTransfer(sellToken, bid.bidder, settledAmount);
         } else {
-            ITrancheNotationUpgradeable(address(this)).transferFromTrNotation(
+            IERC1155Upgradeable(address(this)).safeTransferFrom(
+                address(this),
+                bid.bidder,
                 trancheIndex,
                 settledAmount,
-                address(this),
-                bid.bidder
+                Constants.EMPTY
             );
         }
 

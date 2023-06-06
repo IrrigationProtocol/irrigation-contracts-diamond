@@ -153,6 +153,11 @@ export async function initAuction(auction: AuctionUpgradeable) {
   await auction.setAuctionFee(15, signers[2]?.address || process.env.REWARD_ADDRESS);
 }
 
+export async function initTrancheBond(contractAddress: string) {
+  const erc1155whitelist = await ethers.getContractAt('ERC1155WhitelistUpgradeable', contractAddress);
+  await erc1155whitelist.addProxySpender(contractAddress,  ethers.utils.formatBytes32String('Irrigation'));
+}
+
 export async function initAll(contractAddress: string) {
   const waterTower = await ethers.getContractAt('WaterTowerUpgradeable', contractAddress);
   const priceOracle = await ethers.getContractAt('PriceOracleUpgradeable', contractAddress);
@@ -162,4 +167,5 @@ export async function initAll(contractAddress: string) {
   await initSprinkler(sprinkler);
   await initWaterTower(waterTower);
   await initAuction(auction);
+  await initTrancheBond(contractAddress);
 }
