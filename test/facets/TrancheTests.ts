@@ -102,8 +102,9 @@ export function suite() {
       // const beanPrice = await priceOracle.getPrice(CONTRACT_ADDRESSES.BEAN);
       let tokenBalance = await trancheCollection.balanceOf(owner.address, 3);
       // check proxy name for our contract
-      expect(utils.parseBytes32String(await trancheCollection.getProxyInfo(rootAddress))).to.be.eq('Irrigation');
-
+      const trancheId = 3;
+      expect(utils.parseBytes32String(await trancheCollection.getProxyInfo(rootAddress))).to.be.eq('Irrigation');      
+      expect(await trancheCollection.uri(trancheId)).to.be.eq(`${process.env.TRANCHE_NFT_METADATA_BASE_URL}${trancheId}`);
       const { tranche, depositPods, underlyingAsset } = await trancheBond.getTranchePods(3);
       assert(fromWei(tokenBalance) > 0, `tranche nft balance is ${tokenBalance}`);
       const expectedBalance = depositPods.fmv.mul(20).div(100);

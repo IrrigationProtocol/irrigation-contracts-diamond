@@ -6,6 +6,7 @@ import "@gnus.ai/contracts-upgradeable-diamond/contracts/token/ERC1155/ERC1155Up
 import "@gnus.ai/contracts-upgradeable-diamond/contracts/security/PausableUpgradeable.sol";
 import "@gnus.ai/contracts-upgradeable-diamond/contracts/token/ERC1155/extensions/ERC1155BurnableUpgradeable.sol";
 import "@gnus.ai/contracts-upgradeable-diamond/contracts/interfaces/IERC1155ReceiverUpgradeable.sol";
+import "@gnus.ai/contracts-upgradeable-diamond/contracts/utils/StringsUpgradeable.sol";
 
 import "./ERC1155WhitelistStorage.sol";
 import "./WaterCommonStorage.sol";
@@ -29,8 +30,9 @@ contract ERC1155WhitelistUpgradeable is
     EIP2535Initializable,
     IrrigationAccessControl
 {
+    using StringsUpgradeable for uint256;
     using ERC1155WhitelistStorage for ERC1155WhitelistStorage.Layout;
-    uint256 public constant DECIMALS = 18;
+    
     error NoWhitelist();
     error NoUserMint();
     error BlacklistedToken();
@@ -124,6 +126,16 @@ contract ERC1155WhitelistUpgradeable is
     }
 
     /// @dev get functions
+    /// @dev we will update token metadata uri into onchain image
+    /// @param tokenId token ID
+    function uri(uint256 tokenId) public view override returns (string memory) {
+        return string(abi.encodePacked(ERC1155WhitelistStorage.layout().baseURI, tokenId.toString()));
+    }
+
+    function contractURI() public view returns (string memory) {
+        return ERC1155WhitelistStorage.layout().contractURI;
+    }
+
     function getProxyInfo(address proxySpender) external view returns (bytes32) {
         return ERC1155WhitelistStorage.layout().proxySpenders[proxySpender].name;
     }
@@ -177,5 +189,13 @@ contract ERC1155WhitelistUpgradeable is
                 i++;
             }
         }
+    }
+
+    function setTokenBaseURI(string calldata _uri) external onlySuperAdminRole {
+        ERC1155WhitelistStorage.layout().baseURI = _uri;
+    }
+
+    function setContractURI(string calldata contractUri) external onlySuperAdminRole {
+        ERC1155WhitelistStorage.layout().contractURI = contractUri;
     }
 }
