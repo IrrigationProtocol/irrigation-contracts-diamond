@@ -13,10 +13,10 @@ enum UnderlyingAssetType {
     ERC20
 }
 
-struct TrancheMetadata {
-    uint128 depositIndex;
-    TrancheLevel level;
-    /// claimed amount after maturity peroid is over
+struct TrancheMetadata {    
+    // farmer's market value for tranche. it is same as totalSupply when minting
+    uint256 fmv;
+    // underlying asset amount claimed after tranche is mature
     uint256 claimedAmount;
 }
 
@@ -24,21 +24,20 @@ struct UnderlyingAssetMetadata {
     // zero address if underlying asset is pods
     address contractAddress;
     UnderlyingAssetType assetType;
-    uint64 maturityDate;
-    // uint256 trancheAIndex;
-    // total amount deposited in underlying asset
-    // sum of pods if underlying asset is pods
+    uint64 maturityDate;    
+    // total amount of deposited underlying asset
+    // sum of pods for all deposited podlines if underlying asset is pods
     uint256 totalDeposited;
 }
 
-
 /// @notice stores group of podlines that user deposited
 struct DepositPods {
-    /// indexes of pods group
+    // indexes of pods group
     uint256[] underlyingPodIndexes;
-    /// represent divided podline after transfer some pods
-    uint128[] startIndexAndOffsets;
-    /// FMV Farmer Market Value in USD
+    // represent divided podline by each tranche level after transfer some pods
+    // 1,3 - startIndex and Offsets for tranche A, 2,4 - for tranche B, 3,5 - for tranche Z
+    uint128[6] startIndexAndOffsets;
+    // FMV Farmer Market Value in USD
     uint256 fmv;
 }
 
@@ -46,15 +45,14 @@ library TrancheBondStorage {
     struct Layout {
         // Stores all pods that users deposited, mapping from podline index to pods amount
         mapping(uint256 => uint256) depositedPlots;
-        // Pods group deposited to create tranche, mapping from deposit index to pods groups
+        // Pods group deposited to create tranche, mapping from deposit id to pods groups
         mapping(uint256 => DepositPods) depositedPods;
-
+        // Mapping from deposit id to underlying asset metadata
         mapping(uint256 => UnderlyingAssetMetadata) underlyingAssets;
-        // Mapping from tranch index to A,B,Z tranches. the total number of tranchePods is always 3 times than count of depositedPods
+        // Mapping from tranch index to A,B,Z tranches. the total number of tranches is always 4 times the number of deposits
         mapping(uint256 => TrancheMetadata) tranches;
-        // Count of deposited pods group, also it is used as a latest index
-        uint256 curDepositPodsCount;
-        // uint256 curTrancheCount;
+        // total number of deposits, also it is used as a latest id for storage to store deposited assets
+        uint256 curDepositCount;
     }
 
     bytes32 internal constant STORAGE_SLOT = keccak256("irrigation.contracts.storage.TrancheBond");

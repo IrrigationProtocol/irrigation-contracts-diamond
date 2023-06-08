@@ -29,6 +29,8 @@ contract AuctionUpgradeable is EIP2535Initializable, IrrigationAccessControl {
     using TrancheBondStorage for TrancheBondStorage.Layout;
     /// @dev errors
     error InsufficientFee();
+    error NotListTrancheZ();
+
     event AuctionCreated(
         address seller,
         uint256 startTime,
@@ -111,8 +113,7 @@ contract AuctionUpgradeable is EIP2535Initializable, IrrigationAccessControl {
                     FEE_DENOMINATOR
             );
         } else {
-            TrancheMetadata memory tranche = TrancheBondStorage.layout().tranches[_trancheIndex];
-            require(tranche.level != TrancheLevel.Z, "not list Z tranche");
+            if(_trancheIndex & 3 == 3) revert NotListTrancheZ();
             IERC1155Upgradeable(address(this)).safeTransferFrom(
                 msg.sender,
                 address(this),
