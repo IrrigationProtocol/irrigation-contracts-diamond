@@ -32,7 +32,7 @@ contract ERC1155WhitelistUpgradeable is
 {
     using StringsUpgradeable for uint256;
     using ERC1155WhitelistStorage for ERC1155WhitelistStorage.Layout;
-    
+
     error NoWhitelist();
     error NoUserMint();
     error BlacklistedToken();
@@ -94,6 +94,11 @@ contract ERC1155WhitelistUpgradeable is
         _mintBatch(to, ids, amounts, data);
     }
 
+    function burnTotalAmount(address to, uint256 tokenId) external {
+        uint256 balance = balanceOf(to, tokenId);
+        burn(to, tokenId, balance);
+    }
+
     function onERC1155Received(
         address operator,
         address from,
@@ -129,7 +134,8 @@ contract ERC1155WhitelistUpgradeable is
     /// @dev we will update token metadata uri into onchain image
     /// @param tokenId token ID
     function uri(uint256 tokenId) public view override returns (string memory) {
-        return string(abi.encodePacked(ERC1155WhitelistStorage.layout().baseURI, tokenId.toString()));
+        return
+            string(abi.encodePacked(ERC1155WhitelistStorage.layout().baseURI, tokenId.toString()));
     }
 
     function contractURI() public view returns (string memory) {

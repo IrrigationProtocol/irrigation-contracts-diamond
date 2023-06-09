@@ -113,7 +113,7 @@ contract AuctionUpgradeable is EIP2535Initializable, IrrigationAccessControl {
                     FEE_DENOMINATOR
             );
         } else {
-            if(_trancheIndex & 3 == 3) revert NotListTrancheZ();
+            if (_trancheIndex & 3 == 3) revert NotListTrancheZ();
             IERC1155Upgradeable(address(this)).safeTransferFrom(
                 msg.sender,
                 address(this),
@@ -122,8 +122,9 @@ contract AuctionUpgradeable is EIP2535Initializable, IrrigationAccessControl {
                 Constants.EMPTY
             );
             /// @dev fee is calculated from usd value, and notation amount is BDV
-            uint256 beanPrice = IPriceOracleUpgradeable(address(this)).getPrice(Constants.BEAN);
-            uint256 feeAmount = (((sellAmount * beanPrice) / 1e18) *
+            uint256 ethPrice = IPriceOracleUpgradeable(address(this)).getUnderlyingPriceETH();
+            // tranche nft decimals is 6 and price decimals 18
+            uint256 feeAmount = (((sellAmount * 1e30) / ethPrice) *
                 AuctionStorage.layout().feeNumerator) / FEE_DENOMINATOR;
             if (msg.value < feeAmount) revert InsufficientFee();
             else if (msg.value > feeAmount) payable(msg.sender).transfer(msg.value - feeAmount);
@@ -433,7 +434,7 @@ contract AuctionUpgradeable is EIP2535Initializable, IrrigationAccessControl {
         uint256 denominator = (10 **
             (18 -
                 IERC20MetadataUpgradeable(purchaseToken).decimals() +
-                (sellToken != address(0) ? IERC20MetadataUpgradeable(sellToken).decimals() : 18)));
+                (sellToken != address(0) ? IERC20MetadataUpgradeable(sellToken).decimals() : 6)));
         return FullMath.mulDivRoundingUp128(purchaseAmount, price, denominator);
     }
 

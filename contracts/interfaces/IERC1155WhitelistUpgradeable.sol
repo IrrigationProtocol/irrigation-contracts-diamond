@@ -11,8 +11,8 @@ interface IERC1155WhitelistUpgradeable {
         uint256[] memory amounts,
         bytes memory data
     ) external;
-}
-
-interface IERC1155BurnableUpgradeable {
-    function burn(address account, uint256 id, uint256 value) external;
+    /// @dev burn total amount that user hold
+    /// @param to user address
+    /// @param tokenId token id
+    function burnTotalAmount(address to, uint256 tokenId) external;
 }
