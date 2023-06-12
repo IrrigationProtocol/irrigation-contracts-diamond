@@ -30,10 +30,7 @@ export const whitelist = [
 const purchaseTokens = [CONTRACT_ADDRESSES.DAI, CONTRACT_ADDRESSES.USDC, CONTRACT_ADDRESSES.USDT];
 export async function initPriceOracles(priceOracle: PriceOracleUpgradeable) {
   const factory = await ethers.getContractFactory('BeanPriceOracle');
-  const beanOracle = await factory.deploy(
-    CONTRACT_ADDRESSES.BEAN_3_CURVE,
-    CONTRACT_ADDRESSES.THREE_POOL,
-  );
+  const beanOracle = await factory.deploy();
   await beanOracle.deployed();
   const defaultOracleData = [
     {
@@ -77,7 +74,7 @@ export async function initPriceOracles(priceOracle: PriceOracleUpgradeable) {
       symbol: 'BEAN',
       asset: CONTRACT_ADDRESSES.BEAN,
       oracle: beanOracle.address,
-      base: CONTRACT_ADDRESSES.DAI,
+      base: ethers.constants.AddressZero,
       oType: OracleType.CUSTOM_ORACLE,
     },
     {
@@ -121,7 +118,7 @@ export async function initPriceOracles(priceOracle: PriceOracleUpgradeable) {
     debuglog(`${o.symbol} price: ${formatFixed(fromWei(await priceOracle.getPrice(o.asset)))}`);
   }
   await priceOracle.setDirectPrice(priceOracle.address, toWei(0.5));
-  debuglog(`WATER price: ${formatFixed(fromWei(await priceOracle.getPrice(priceOracle.address)))}`);
+  debuglog(`WATER price: ${formatFixed(fromWei(await priceOracle.getPrice(priceOracle.address)))}`);  
 }
 
 export async function initSprinkler(sprinkler: SprinklerUpgradeable) {
