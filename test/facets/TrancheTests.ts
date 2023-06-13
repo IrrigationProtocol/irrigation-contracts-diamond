@@ -81,7 +81,6 @@ export function suite() {
         // console.log('---first:', fromD6(podIndex), fromD6(podsAmount));
         podIndex = await beanstalk.podIndex();
         await beanstalk.sow(toD6(40), 0, 0);
-        const notDepositedPodIndex = podIndex;
         // await beanstalk.transferPlot(owner.address, sender.address, notDepositedPodIndex, 0, "65039999");
         // console.log(await beanstalk.plot(sender.address, notDepositedPodIndex));
         // simulate separate podlines
@@ -109,8 +108,7 @@ export function suite() {
         expect(await trancheCollection.uri(trancheId)).to.be.eq(`${process.env.TRANCHE_NFT_METADATA_BASE_URL}${trancheId}`);
         const { tranche, depositPods, underlyingAsset } = await trancheBond.getTranchePods(trancheId);
         assert(fromWei(tokenBalance) > 0, `tranche nft balance is ${tokenBalance}`);
-        const expectedBalance = depositPods.fmv.mul(20).div(100);
-        // console.log('----', underlyingAsset.totalDeposited, underlyingAsset.totalDeposited.mul(20).div(100));
+        const expectedBalance = depositPods.totalFMV.mul(20).div(100);
         expect(tranche.fmv).to.be.eq(expectedBalance);
         assert(
           fromWei(tokenBalance) === fromWei(expectedBalance),
@@ -126,12 +124,21 @@ export function suite() {
         trancheId = 6;
         const { tranche, underlyingAsset, depositPods } = await trancheBond.getTranchePods(trancheId);
         expect(tranche.fmv).to.be.eq(await trancheCollection.balanceOf(owner.address, trancheId));
-        expect(tranche.fmv).to.be.eq(depositPods.fmv.mul(30).div(100));
+        expect(tranche.fmv).to.be.eq(depositPods.totalFMV.mul(30).div(100));
       });
 
       it('not eligible user should fail creating tranche with pods', async () => {
         await expect(trancheBond.connect(signers[3]).createTranchesWithPods(podsGroup.indexes, [0, 0], podsGroup.amounts, 0)).to.be.revertedWithCustomError(trancheBond, 'NotEligible');
       });
+
+      it('calculate median of pod in line', async () => {
+        const trancheId = 5;
+        const { offset, pods } = await trancheBond.getAvailablePodsForUser(5, ethers.constants.AddressZero);
+        const { ids, podAmounts } = await trancheBond.getAvailablePodlinesForTranche(5);
+        let sum = toD6(0);
+        for (const podAmount of podAmounts) { sum = sum.add(podAmount); }
+        expect(sum).to.be.eq(pods);
+      })
     });
 
     describe('#tranche nft', async function () {
@@ -337,10 +344,10 @@ export function suite() {
         const trancheId = 5;
         let { tranche, depositPods, underlyingAsset } = await trancheBond.getTranchePods(5);
         const { offset, pods } = await trancheBond.getAvailablePodsForUser(trancheId, sender.address);
-        const oldPods = await beanstalk.plot(trancheBond.address, depositPods.underlyingPodIndexes[0])
+        const oldPods = await beanstalk.plot(trancheBond.address, depositPods.podIndexes[0])
         const tx = await trancheBond.connect(sender).receivePodsWithTranches(5);
-        const pods0 = await beanstalk.plot(sender.address, depositPods.underlyingPodIndexes[0])
-        const pods1 = await beanstalk.plot(sender.address, depositPods.underlyingPodIndexes[1])
+        const pods0 = await beanstalk.plot(sender.address, depositPods.podIndexes[0])
+        const pods1 = await beanstalk.plot(sender.address, depositPods.podIndexes[1])
         const expectedReceivePods = pods;
         depositPods = (await trancheBond.getTranchePods(5)).depositPods;
         expect(pods0.add(pods1)).to.be.eq(expectedReceivePods);
@@ -362,14 +369,14 @@ export function suite() {
         const tx = await trancheBond.receivePodsWithTranches(trancheId);
         // depositPods = (await trancheBond.getTranchePods(trancheId)).depositPods;
         // console.log('after receive pods for tranche B', depositPods.startIndexAndOffsets);
-        const receivePods = Number(depositPods.startIndexAndOffsets[0]) === 1 ? toD6(0) : (await beanstalk.plot(owner.address, depositPods.underlyingPodIndexes[0].add(depositPods.startIndexAndOffsets[3])));
+        const receivePods = Number(depositPods.startIndexAndOffsets[0]) === 1 ? toD6(0) : (await beanstalk.plot(owner.address, depositPods.podIndexes[0].add(depositPods.startIndexAndOffsets[3])));
         let podIndex = toD6(0);
         if (offset.gt(podsGroup.amounts[0])) {
           podIndex = offset.sub(podsGroup.amounts[0]);
         } else {
           podIndex = Number(depositPods.startIndexAndOffsets[0]) === 0 ? toD6(0) : depositPods.startIndexAndOffsets[3];
         }
-        const pods2 = await beanstalk.plot(owner.address, depositPods.underlyingPodIndexes[1].add(podIndex));
+        const pods2 = await beanstalk.plot(owner.address, depositPods.podIndexes[1].add(podIndex));
         expect(pods).to.be.eq(receivePods.add(pods2));
       });
 
@@ -379,9 +386,9 @@ export function suite() {
         const { offset, pods } = await trancheBond.getAvailablePodsForUser(trancheId, owner.address);
         // console.log(depositPods.startIndexAndOffsets);
         const tx = await trancheBond.receivePodsWithTranches(trancheId);
-        const pods0 = await beanstalk.plot(owner.address, depositPods.underlyingPodIndexes[0].add(depositPods.startIndexAndOffsets[4]));
-        // const receivePods = await beanstalk.plot(owner.address, depositPods.underlyingPodIndexes[1].add(depositPods.startIndexAndOffsets[4]));
-        const receivePods = await beanstalk.plot(owner.address, depositPods.underlyingPodIndexes[1].add(Number(depositPods.startIndexAndOffsets[1]) === 0 ? 0 : depositPods.startIndexAndOffsets[4]));
+        const pods0 = await beanstalk.plot(owner.address, depositPods.podIndexes[0].add(depositPods.startIndexAndOffsets[4]));
+        // const receivePods = await beanstalk.plot(owner.address, depositPods.podIndexes[1].add(depositPods.startIndexAndOffsets[4]));
+        const receivePods = await beanstalk.plot(owner.address, depositPods.podIndexes[1].add(Number(depositPods.startIndexAndOffsets[1]) === 0 ? 0 : depositPods.startIndexAndOffsets[4]));
         expect(pods).to.be.eq(pods0.add(receivePods));
         // depositPods = (await trancheBond.getTranchePods(trancheId)).depositPods;        
         // console.log(depositPods.startIndexAndOffsets);
@@ -393,8 +400,8 @@ export function suite() {
         const { offset, pods } = await trancheBond.getAvailablePodsForUser(trancheId, owner.address);
         // console.log(depositPods.startIndexAndOffsets);
         const tx = await trancheBond.receivePodsWithTranches(trancheId);
-        const pods0 = await beanstalk.plot(owner.address, depositPods.underlyingPodIndexes[0].add(depositPods.startIndexAndOffsets[3]));
-        const pods2 = offset.add(pods).gt(podsGroup.amounts[0]) ? (await beanstalk.plot(owner.address, depositPods.underlyingPodIndexes[1])) : toD6(0);
+        const pods0 = await beanstalk.plot(owner.address, depositPods.podIndexes[0].add(depositPods.startIndexAndOffsets[3]));
+        const pods2 = offset.add(pods).gt(podsGroup.amounts[0]) ? (await beanstalk.plot(owner.address, depositPods.podIndexes[1])) : toD6(0);
         expect(pods).to.be.eq(pods0.add(pods2));
         // depositPods = (await trancheBond.getTranchePods(trancheId)).depositPods;
         // console.log(depositPods.startIndexAndOffsets);

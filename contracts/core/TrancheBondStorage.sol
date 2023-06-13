@@ -13,7 +13,7 @@ enum UnderlyingAssetType {
     ERC20
 }
 
-struct TrancheMetadata {    
+struct TrancheMetadata {
     // farmer's market value for tranche. it is same as totalSupply when minting
     uint256 fmv;
     // underlying asset amount claimed after tranche is mature
@@ -24,7 +24,7 @@ struct UnderlyingAssetMetadata {
     // zero address if underlying asset is pods
     address contractAddress;
     UnderlyingAssetType assetType;
-    uint64 maturityDate;    
+    uint64 maturityDate;
     // total amount of deposited underlying asset
     // sum of pods for all deposited podlines if underlying asset is pods
     uint256 totalDeposited;
@@ -32,19 +32,23 @@ struct UnderlyingAssetMetadata {
 
 /// @notice stores group of podlines that user deposited
 struct DepositPods {
-    // indexes of pods group
-    uint256[] underlyingPodIndexes;
+    // array of indexes for each plot
+    uint256[] podIndexes;
+    // array of pods for each plot
+    uint256[] amounts;
+    // array of fmves for each plot
+    uint256[] fmvs;
+    // FMV Farmer Market Value in USD
+    uint256 totalFMV;
     // represent divided podline by each tranche level after transfer some pods
     // 1,3 - startIndex and Offsets for tranche A, 2,4 - for tranche B, 3,5 - for tranche Z
     uint128[6] startIndexAndOffsets;
-    // FMV Farmer Market Value in USD
-    uint256 fmv;
 }
 
 library TrancheBondStorage {
     struct Layout {
         // Stores all pods that users deposited, mapping from podline index to pods amount
-        mapping(uint256 => uint256) depositedPlots;
+        // mapping(uint256 => uint256) depositedPlots;
         // Pods group deposited to create tranche, mapping from deposit id to pods groups
         mapping(uint256 => DepositPods) depositedPods;
         // Mapping from deposit id to underlying asset metadata
