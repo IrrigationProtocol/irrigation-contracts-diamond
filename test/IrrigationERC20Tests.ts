@@ -1,11 +1,15 @@
 import { ethers } from "hardhat";
 import { dc, assert, expect, toWei, FERTILIZER_TOKEN_ID } from "../scripts/common";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
-import { IrrigationDiamond  } from "../typechain-types/hardhat-diamond-abi/HardhatDiamondABI.sol";
+import { IrrigationDiamond } from "../typechain-types/hardhat-diamond-abi/HardhatDiamondABI.sol";
 import { IERC20Upgradeable__factory } from "../typechain-types/";
 import { getInterfaceID } from "../scripts/FacetSelectors";
 
-export function suite () {
+const NAME = 'Water Token';
+const SYMBOL = 'WATER';
+const DECIMALS = 18;
+
+export function suite() {
   describe("Irrigation ERC20 Testing", async function () {
     let signers: SignerWithAddress[];
     let owner: string;
@@ -25,9 +29,16 @@ export function suite () {
       assert(await irrigationDiamond.supportsInterface(IERC20InterfaceID._hex), "Doesn't support IERC20Upgradeable");
     });
 
+    it("Test Water ERC20 token name, symbol, and decimals", async () => {
+      const waterToken = await ethers.getContractAt('WaterUpgradeable', irrigationDiamond.address);
+      expect(await waterToken.name()).to.be.equal(NAME);
+      expect(await waterToken.symbol()).to.be.equal(SYMBOL);
+      expect(await waterToken.decimals()).to.be.eq(DECIMALS);
+    }
+    )
     it("Testing Irrigation ERC20 transfer", async () => {
-      const gnusSupply = await irrigationDiamond["totalSupply()"]();
-      assert(gnusSupply.eq(toWei(100000000)), `Irrigation Supply should be 100000000, but is ${ethers.utils.formatEther(gnusSupply)}`);
+      const waterSupply = await irrigationDiamond["totalSupply()"]();
+      assert(waterSupply.eq(toWei(100000000)), `Irrigation Supply should be 100000000, but is ${ethers.utils.formatEther(waterSupply)}`);
 
       const ownerSupply = await irrigationDiamond["balanceOf(address)"](owner);
       assert(ownerSupply.gt(toWei(100)), `Owner balanceOf should be > 100, but is ${ethers.utils.formatEther(ownerSupply)}`);
