@@ -10,6 +10,7 @@ import "../utils/EIP2535Initializable.sol";
 import "../utils/IrrigationAccessControl.sol";
 import "../libraries/FullMath.sol";
 import "../libraries/Constants.sol";
+import "../libraries/PodTransferHelper.sol";
 
 import "../interfaces/IPodsOracleUpgradeable.sol";
 import "../interfaces/IERC1155WhitelistUpgradeable.sol";
@@ -153,7 +154,6 @@ contract TrancheBondUpgradeable is EIP2535Initializable, IrrigationAccessControl
             if (pods == 0) break;
             uint256 originalPodIndex = depositPods.podIndexes[i];
             uint256 podsForEachPlot = depositPods.amounts[i];
-            // TrancheBondStorage.layout().depositedPlots[originalPodIndex];
             /// when pods for the tranche is placed in this range, transfer the plot
             if (offset < podsForEachPlot) {
                 uint256 _offset = offset;
@@ -236,6 +236,114 @@ contract TrancheBondUpgradeable is EIP2535Initializable, IrrigationAccessControl
         emit ReceivePodsWithTranche(trancheId, receivePodIndexes, totalPods);
     }
 
+    function receivePodsForTranche(uint256 trancheId) external {
+        uint256[3] memory offsetFMVs = [uint256(0), 20, 50];
+        (uint256 depositId, uint8 trancheLevel) = getTrancheInfo(trancheId);
+        DepositPods memory depositPlots = TrancheBondStorage.layout().depositedPods[depositId];
+        UnderlyingAssetMetadata memory underlyingAsset = TrancheBondStorage
+            .layout()
+            .underlyingAssets[depositId];
+        if (underlyingAsset.assetType != UnderlyingAssetType.PODS) revert NotTranchePods();
+        if (block.timestamp < underlyingAsset.maturityDate) revert NotMatureTranche();
+
+        ///@dev plot for tranche is correspond to [offsetFMV + claimedFMV, offsetFMV + claimedFMV + userFMV]
+        uint256 claimedFMV = TrancheBondStorage.layout().tranches[trancheId].claimedFMV;
+        uint256 offsetFMV = (offsetFMVs[trancheLevel] * depositPlots.totalFMV) /
+            FMV_DENOMINATOR +
+            TrancheBondStorage.layout().tranches[trancheId].claimedFMV;
+        uint256 fmv = IERC1155Upgradeable(address(this)).balanceOf(msg.sender, trancheId);
+        // uint256 podlineCount = depositPlots.podIndexes.length;
+        uint256 startIndex = depositPlots.startIndexAndOffsets[trancheLevel];
+        uint256 startOffset = depositPlots.startIndexAndOffsets[trancheLevel + 3];
+        // uint256 startIndex = depositPlots.curStarts[trancheLevel];
+        uint256 startIndexForSeniorLevel = trancheLevel == 0
+            ? 0
+            : depositPlots.startIndexAndOffsets[trancheLevel - 1];
+        uint256 startOffsetForSeniorLevel = trancheLevel == 0
+            ? 0
+            : depositPlots.startIndexAndOffsets[trancheLevel + 2];
+
+        // uint256[] memory receivePodIndexes = new uint256[](podlineCount);
+
+        for (uint256 i; i < depositPlots.podIndexes.length; ) {
+            if (fmv == 0) break;
+            DepositPods memory _depositPlots = depositPlots;
+            uint256 podsForEachPlot = _depositPlots.amounts[i];
+            uint256 fmvForEachPlot = _depositPlots.fmvs[i];
+
+            // uint256 _fmv = fmv;
+            /// if plot for the tranche is placed in this range
+            if (fmvForEachPlot >= offsetFMV) {
+                uint256 originalPodIndex = _depositPlots.podIndexes[i];
+                uint256 start;
+                uint256 realPodIndex = originalPodIndex;
+                uint256 _offsetFMV = offsetFMV;
+                uint256 availableFMV = fmvForEachPlot - _offsetFMV;
+                uint256 requiredPods;
+                uint256 _transferredFMV;
+                if (startIndex == i) {
+                    realPodIndex = originalPodIndex + startOffset;
+                    start = 0;
+                } else if (startIndexForSeniorLevel == i) {
+                    realPodIndex = originalPodIndex + startOffsetForSeniorLevel;
+                    start =
+                        (podsForEachPlot * _offsetFMV) /
+                        fmvForEachPlot -
+                        startOffsetForSeniorLevel;
+                } else {
+                    start = (podsForEachPlot * _offsetFMV) / fmvForEachPlot;
+                }
+                {
+                    if (availableFMV >= fmv) {
+                        _transferredFMV = fmv;
+                        requiredPods = (podsForEachPlot * _transferredFMV) / fmvForEachPlot;
+                    } else {
+                        uint256 _pods = podsForEachPlot;
+                        uint256 _availableFMV = availableFMV;
+                        // requiredPods = _offsetFMV == 0
+                        //     ? _pods
+                        //     : ((_pods * _availableFMV) / fmvForEachPlot);
+                        requiredPods = (_pods * _availableFMV) / fmvForEachPlot;
+                        unchecked {
+                            _transferredFMV = _availableFMV;
+                        }
+                    }
+                }
+                WaterCommonStorage.layout().beanstalk.transferPlot(
+                    address(this),
+                    msg.sender,
+                    realPodIndex,
+                    start,
+                    requiredPods + start
+                );
+                // receivePodIndexes[i] = realPodIndex + start;
+                // offset is 0 from next podline
+                // {
+                // offsetFMV = 0;
+                // fmv -= _transferredFMV;
+                // }
+            } else {
+                offsetFMV -= fmvForEachPlot;
+            }
+            unchecked {
+                i++;
+            }
+        }
+        // update startIndex and startOffset for current tranche pods
+        TrancheBondStorage.layout().depositedPods[depositId].startIndexAndOffsets[
+            trancheLevel
+        ] = uint128(startIndex);
+        TrancheBondStorage.layout().depositedPods[depositId].startIndexAndOffsets[
+            trancheLevel + 3
+        ] = uint128(startOffset);
+        {
+            uint256 _trancheId = trancheId;
+            TrancheBondStorage.layout().tranches[_trancheId].claimedFMV = claimedFMV;
+            IERC1155WhitelistUpgradeable(address(this)).burnTotalAmount(msg.sender, _trancheId);
+            // emit ReceivePodsWithTranche(_trancheId, receivePodIndexes, 0);
+        }
+    }
+
     function _createTranchesFromDeposit(
         uint256 depositId,
         uint256 totalFMVInUSD,
@@ -248,7 +356,8 @@ contract TrancheBondUpgradeable is EIP2535Initializable, IrrigationAccessControl
             uint256 fmv = (totalFMVInUSD * numeratorFMV[i]) / FMV_DENOMINATOR;
             TrancheBondStorage.layout().tranches[trancheId] = TrancheMetadata({
                 fmv: fmv,
-                claimedAmount: 0
+                claimedAmount: 0,
+                claimedFMV: 0
             });
 
             /// mint tranche nft with trancheId and totalSupply
@@ -306,49 +415,48 @@ contract TrancheBondUpgradeable is EIP2535Initializable, IrrigationAccessControl
             tranche.claimedAmount;
     }
 
-    /// @notice return offset and pods to calculate how much pods users can receive
+    function getPlotsForTranche(
+        uint256 trancheId
+    ) external view returns (uint256[] memory starts, uint256[] memory podAmounts) {
+        uint256 trancheFMV = TrancheBondStorage.layout().tranches[trancheId].fmv;
+        return _plotsForTranche(trancheId, trancheFMV, 0);
+    }
+
+    /// @notice return start pod indexes and pod amounts to calculate how much pods users can receive
     /// @param trancheId tranche nft id
-    /// @return ids start ids in podlines
+    /// @return starts start ids in podlines
     /// @return podAmounts pods in podlines
 
-    function getAvailablePodlinesForTranche(
-        uint256 trancheId
-    ) external view returns (uint256[] memory ids, uint256[] memory podAmounts) {
-        uint256 depositId = trancheId >> 2;
-        // UnderlyingAssetMetadata memory underlyingAsset = TrancheBondStorage
-        //     .layout()
-        //     .underlyingAssets[depositId];
-        DepositPods memory depositPods = TrancheBondStorage.layout().depositedPods[depositId];
-        // if (underlyingAsset.assetType != UnderlyingAssetType.PODS) revert NotTranchePods();
-        (uint256 offset, uint256 pods) = getAvailablePodsForUser(trancheId, Constants.ZERO);
-
-        if (pods == 0) revert InsufficientPods();
-        uint256 podlineCount = depositPods.podIndexes.length;
-        ids = new uint256[](podlineCount);
+    function _plotsForTranche(
+        uint256 trancheId,
+        uint256 userFMV,
+        uint256 claimedFMV
+    ) internal view returns (uint256[] memory starts, uint256[] memory podAmounts) {
+        uint256[3] memory offsetFMVs = [uint256(0), 20, 50];
+        (uint256 depositId, uint8 trancheLevel) = getTrancheInfo(trancheId);
+        DepositPods memory depositPlots = TrancheBondStorage.layout().depositedPods[depositId];
+        ///@dev plot for tranche is correspond to [offsetFMV + claimedFMV, offsetFMV + claimedFMV + userFMV]
+        uint256 offsetFMV = (offsetFMVs[trancheLevel] * depositPlots.totalFMV) /
+            FMV_DENOMINATOR +
+            claimedFMV;
+        uint256 fmv = userFMV;
+        uint256 podlineCount = depositPlots.podIndexes.length;
+        starts = new uint256[](podlineCount);
         podAmounts = new uint256[](podlineCount);
-        uint256 indexForReceivePods;
         for (uint256 i; i < podlineCount; ) {
-            if (pods == 0) break;
-            uint256 originalPodIndex = depositPods.podIndexes[i];
-            uint256 podsForEachPlot = depositPods.amounts[i];
-            /// if pods for the tranche is placed in this range
-            if (offset < podsForEachPlot) {
-                uint256 availablePods;
-                if (podsForEachPlot >= offset + pods) {
-                    availablePods = pods;
-                } else {
-                    // go to next podline
-                    availablePods = podsForEachPlot - offset;
-                }
-
-                ids[indexForReceivePods] = originalPodIndex + offset;
-                podAmounts[indexForReceivePods] = availablePods;
-                indexForReceivePods++;
-                // offset is always 0 from second podline
-                offset = 0;
-                pods -= availablePods;
+            if (fmv == 0) break;
+            uint256 podsForEachPlot = depositPlots.amounts[i];
+            uint256 fmvForEachPlot = depositPlots.fmvs[i];
+            /// if plot for the tranche is placed in this range
+            if (fmvForEachPlot >= offsetFMV) {
+                (uint256 start, uint256 amount, uint256 reserveFMV) = PodTransferHelper
+                    .getPlotSplittedByFMV(podsForEachPlot, fmvForEachPlot, offsetFMV, fmv);
+                starts[i] = start;
+                podAmounts[i] = amount;
+                fmv = reserveFMV;
+                offsetFMV = 0;
             } else {
-                offset -= podsForEachPlot;
+                offsetFMV -= fmvForEachPlot;
             }
             unchecked {
                 i++;
@@ -359,10 +467,6 @@ contract TrancheBondUpgradeable is EIP2535Initializable, IrrigationAccessControl
     function getFMV(uint256 trancheId) external view returns (uint256) {
         return TrancheBondStorage.layout().tranches[trancheId].fmv;
     }
-
-    // function getDepositPlot(uint256 podIndex) external view returns (uint256) {
-    //     return TrancheBondStorage.layout().depositedPlots[podIndex];
-    // }
 
     /// @dev deposit Id
     /// @param trancheId tranche Id

@@ -18,6 +18,7 @@ struct TrancheMetadata {
     uint256 fmv;
     // underlying asset amount claimed after tranche is mature
     uint256 claimedAmount;
+    uint256 claimedFMV;
 }
 
 struct UnderlyingAssetMetadata {

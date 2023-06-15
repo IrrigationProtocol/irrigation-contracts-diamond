@@ -16,3 +16,7 @@ interface IERC1155WhitelistUpgradeable {
     /// @param tokenId token id
     function burnTotalAmount(address to, uint256 tokenId) external;
 }
+
+interface IERC1155BurnableUpgradeable{
+    function burn(address account, uint256 id, uint256 value) external;
+}
