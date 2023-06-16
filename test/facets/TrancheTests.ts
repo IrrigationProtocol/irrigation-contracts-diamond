@@ -109,7 +109,7 @@ export function suite() {
         expect(await trancheCollection.uri(trancheId)).to.be.eq(`${process.env.TRANCHE_NFT_METADATA_BASE_URL}${trancheId}`);
         const { tranche, depositPods, underlyingAsset } = await trancheBond.getTranchePods(trancheId);
         assert(fromWei(tokenBalance) > 0, `tranche nft balance is ${tokenBalance}`);
-        const expectedBalance = depositPods.totalFMV.mul(20).div(100);
+        const expectedBalance = underlyingAsset.totalFMV.mul(20).div(100);
         expect(tranche.fmv).to.be.eq(expectedBalance);
         assert(
           fromWei(tokenBalance) === fromWei(expectedBalance),
@@ -125,7 +125,7 @@ export function suite() {
         trancheId = 6;
         const { tranche, underlyingAsset, depositPods } = await trancheBond.getTranchePods(trancheId);
         expect(tranche.fmv).to.be.eq(await trancheCollection.balanceOf(owner.address, trancheId));
-        expect(tranche.fmv).to.be.eq(depositPods.totalFMV.mul(30).div(100));
+        expect(tranche.fmv).to.be.eq(underlyingAsset.totalFMV.mul(30).div(100));
       });
 
       it('not eligible user should fail creating tranche with pods', async () => {
@@ -154,9 +154,9 @@ export function suite() {
           if (podsZ[i].gt(0))
             sumZ = sumZ.add(podsZ[i].mul(depositPods.fmvs[i]).div(depositPods.amounts[i]));
         }
-        expectWithTolerance(sumOfFMVForTrancheA, depositPods.totalFMV.mul(20).div(100));
-        expectWithTolerance(sumB, depositPods.totalFMV.mul(30).div(100));
-        expectWithTolerance(sumZ, depositPods.totalFMV.mul(50).div(100));
+        expectWithTolerance(sumOfFMVForTrancheA, underlyingAsset.totalFMV.mul(20).div(100));
+        expectWithTolerance(sumB, underlyingAsset.totalFMV.mul(30).div(100));
+        expectWithTolerance(sumZ, underlyingAsset.totalFMV.mul(50).div(100));
       });
     });
 
@@ -334,17 +334,22 @@ export function suite() {
       it('should be able to receive pods as many as user nft balance for tranche A', async () => {
         const trancheId = 5;
         const { depositPods, underlyingAsset, tranche } = await trancheBond.getTranchePods(trancheId);
-        const { offset, pods } = await trancheBond.getAvailablePodsForUser(trancheId, sender.address);
-        expect(offset).to.be.eq(0);
+        const { starts, podAmounts } = await trancheBond.getPlotsForUser(trancheId, sender.address);
+        expect(starts[0]).to.be.eq(0); expect(starts[1]).to.be.eq(0);
         const balance = await trancheCollection.balanceOf(sender.address, trancheId);
-        expect(pods).to.be.eq(underlyingAsset.totalDeposited.mul(20).div(100).mul(balance).div(tranche.fmv));
+        expectWithTolerance(podAmounts[0].mul(depositPods.fmvs[0]).div(depositPods.amounts[0]), balance);
       });
 
       it('should be able to receive pods correct for tranche B', async () => {
         const { depositPods, underlyingAsset } = await trancheBond.getTranchePods(6);
-        const { offset, pods } = await trancheBond.getAvailablePodsForUser(6, owner.address);
-        expect(offset).to.be.eq(underlyingAsset.totalDeposited.mul(20).div(100));
-        expect(pods).to.be.eq(underlyingAsset.totalDeposited.mul(30).div(100));
+        const { starts, podAmounts } = await trancheBond.getPlotsForUser(6, owner.address);        
+        expect(starts[1]).to.be.eq(0);
+        const balance = await trancheCollection.balanceOf(owner.address, 6);
+        let expectedFMV = toD6(0);
+        for (let i = 0; i < starts.length; i++) {
+          expectedFMV = expectedFMV.add(podAmounts[i].mul(depositPods.fmvs[i]).div(depositPods.amounts[i]));
+        }        
+        expectWithTolerance(expectedFMV, balance);        
       });
 
       it('should revert with not mature error before maturity period is over ', async () => {
