@@ -36,7 +36,13 @@ contract TrancheBondUpgradeable is EIP2535Initializable, IrrigationAccessControl
     uint256 public constant MATURITY_PERIOD = 180 days;
 
     /// @dev Events
-    event CreateTranche(uint depositIndex, address user, uint totalFMV, uint depositedAt, uint beanPrice);
+    event CreateTranche(
+        uint depositIndex,
+        address user,
+        uint totalFMV,
+        uint depositedAt,
+        uint beanPrice
+    );
     event ReceivePodsWithTranche(uint trancheId, address user, uint[] podIndexes, uint totalPods);
 
     /// @dev Errors
@@ -48,6 +54,7 @@ contract TrancheBondUpgradeable is EIP2535Initializable, IrrigationAccessControl
     // errors for general tranche
     error NotOwnerOfTranche();
     error NotMatureTranche();
+    error NotSortedPlots();
 
     // errors for farmer's market rule
     error NotEligible();
@@ -76,9 +83,12 @@ contract TrancheBondUpgradeable is EIP2535Initializable, IrrigationAccessControl
         // calculate directly price with 6 decimals from beanstalk
         uint256 beanPrice = IBeanstalkPrice(Constants.BEANSTALK_PRICE).price().price;
         for (uint256 i; i < indexes.length; ) {
-            uint256 _index = indexes[i];
+            uint256[] memory _indexes = indexes;
+            uint256 _index = _indexes[i];
             uint256 _start = starts[i];
             uint256 _end = ends[i];
+            /// should input plots sorted by index
+            if (i >= 1 && _index <= _indexes[i - 1]) revert NotSortedPlots();
             WaterCommonStorage.layout().beanstalk.transferPlot(
                 msg.sender,
                 address(this),
@@ -153,12 +163,12 @@ contract TrancheBondUpgradeable is EIP2535Initializable, IrrigationAccessControl
 
         uint256 startIndex;
         uint256 startOffset;
-        // uint256[] memory receivePodIndexes = new uint256[](depositPlots.podIndexes.length);
+        uint256[] memory receivePodIndexes = new uint256[](depositPlots.podIndexes.length);
+        uint256 totalPods;
 
         for (uint256 i; i < depositPlots.podIndexes.length; ) {
             if (fmv == 0) break;
             DepositPods memory _depositPlots = depositPlots;
-            // uint256 podsForEachPlot = _depositPlots.amounts[i];
             uint256 plotFMV = _depositPlots.fmvs[i];
             uint256 _fmv = fmv;
             uint256 _level = trancheLevel;
@@ -190,18 +200,21 @@ contract TrancheBondUpgradeable is EIP2535Initializable, IrrigationAccessControl
                         start,
                         amount + start
                     );
-                    //     receivePodIndexes[i] = originalPodIndex + offset + start;
-                    fmv = reserveFMV;
-                    startIndex = i;
+                    receivePodIndexes[i] = originalPodIndex + offset + start;
                     // absolute offset from orignal pod index of podline
                     startOffset = offset + start + amount;
                 }
+                startIndex = i;
+                totalPods += amount;
+                _fmv = reserveFMV;
                 // console.log('---startIndex, startOffset %s %s', startIndex, startOffset);
                 // offset is always 0 from next podline
-                offsetFMV = 0;
+                _offsetFMV = 0;
             } else {
-                offsetFMV -= plotFMV;
+                _offsetFMV -= plotFMV;
             }
+            offsetFMV = _offsetFMV;
+            fmv = _fmv;
             unchecked {
                 i++;
             }
@@ -215,10 +228,9 @@ contract TrancheBondUpgradeable is EIP2535Initializable, IrrigationAccessControl
         ] = uint128(startOffset);
         {
             uint256 _trancheId = trancheId;
-            TrancheBondStorage.layout().tranches[_trancheId].claimedFMV = claimedFMV + fmv;            
+            TrancheBondStorage.layout().tranches[_trancheId].claimedFMV = claimedFMV + fmv;
             IERC1155BurnableUpgradeable(address(this)).burn(msg.sender, _trancheId, fmv);
-            /// @dev should add pod indexes that user received, later  
-            emit ReceivePodsWithTranche(_trancheId, msg.sender, new uint256[](0), 0);
+            emit ReceivePodsWithTranche(_trancheId, msg.sender, receivePodIndexes, totalPods);
         }
     }
 
