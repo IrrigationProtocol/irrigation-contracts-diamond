@@ -20,6 +20,7 @@ import {
   PriceOracleUpgradeable,
   TrancheBondUpgradeable,
   WaterTowerUpgradeable,
+  WaterUpgradeable,
 } from '../../typechain-types';
 import { AuctionType } from '../types';
 import { getBean, getBeanMetapool, getBeanstalk, getMockPlots, getUsdc } from '../utils/mint';
@@ -41,7 +42,9 @@ export function suite() {
     let auctionContract: AuctionUpgradeable;
     let trancheBond: TrancheBondUpgradeable;
     let waterTower: WaterTowerUpgradeable;
+    let water: WaterUpgradeable;
     let priceOracle: PriceOracleUpgradeable;
+
     let podsGroup: any;
     let bean: IBean;
     let beanstalk: IBeanstalkUpgradeable;
@@ -65,20 +68,23 @@ export function suite() {
       priceOracle = await ethers.getContractAt('PriceOracleUpgradeable', rootAddress);
       trancheBond = await ethers.getContractAt('TrancheBondUpgradeable', rootAddress);
       trancheCollection = await ethers.getContractAt('ERC1155WhitelistUpgradeable', rootAddress);
+      water = await ethers.getContractAt('WaterUpgradeable', rootAddress);
+
+
       // beanstalk
       bean = await getBean();
       beanstalk = await getBeanstalk();
     });
 
     describe('#create tranche', async function () {
-      it('should fail creating tranche with accounts not locked water on water tower', async () => {
+      it('creating tranche should be failed without locking more than 32 WATER on water tower', async () => {
+        const userInfo = await waterTower.userInfo(owner.address);
+        await waterTower.withdraw(userInfo.amount);
         await expect(trancheBond.createTranchesWithPods([500, 200], [0, 0], [20, 20], 0)).revertedWithCustomError(trancheBond, 'NotEligible');
       });
 
       it('should fail creating tranche with not sorted plots', async () => {
         /// deposit water to use farmer's market
-        const water = await ethers.getContractAt('WaterUpgradeable', irrigationDiamond.address);
-        const waterTower = await ethers.getContractAt('WaterTowerUpgradeable', irrigationDiamond.address);
         await water.approve(waterTower.address, toWei(32));
         await waterTower.deposit(toWei(32), false);
         /// approve pods
@@ -91,7 +97,7 @@ export function suite() {
           [20, 20],
           180 * 86400)).revertedWithCustomError(trancheBond, 'NotSortedPlots');
       });
-      
+
       it('should mint tranche nft when creating tranche', async () => {
         /// buy beans and pods and assign
         const beanMetaPool = await getBeanMetapool();

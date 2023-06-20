@@ -3,6 +3,8 @@ pragma solidity 0.8.17;
 
 import "@gnus.ai/contracts-upgradeable-diamond/contracts/token/ERC20/IERC20Upgradeable.sol";
 import "@gnus.ai/contracts-upgradeable-diamond/contracts/token/ERC20/utils/SafeERC20Upgradeable.sol";
+// import "@gnus.ai/contracts-upgradeable-diamond/contracts/security/ReentrancyGuardUpgradeable.sol";
+
 import "./WaterTowerStorage.sol";
 import "../utils/EIP2535Initializable.sol";
 import "../utils/IrrigationAccessControl.sol";
@@ -34,9 +36,9 @@ contract WaterTowerUpgradeable is
 
     /// @notice deposit water token
     function deposit(uint256 amount, bool bAutoIrrigate) external {
-        setAutoIrrigate(bAutoIrrigate);
-        _deposit(msg.sender, amount);
+        setAutoIrrigate(bAutoIrrigate);        
         IERC20Upgradeable(address(this)).safeTransferFrom(msg.sender, address(this), amount);
+        _deposit(msg.sender, amount);
     }
 
     // withdraw water token
@@ -112,7 +114,7 @@ contract WaterTowerUpgradeable is
         );
     }
 
-    /// @dev if amount is 0, claim max claimalble amount
+    /// @dev if amount is 0, claim with max claimable amount
     function _claimReward(address user, uint256 amount) internal returns (uint256) {
         uint256 curPoolIndex = WaterTowerStorage.layout().curPoolIndex;
         _updateUserPool(user, WaterTowerStorage.layout().pools[curPoolIndex], curPoolIndex);
@@ -199,26 +201,8 @@ contract WaterTowerUpgradeable is
                 0,
                 usdtAmount
             );
-            /// calculation through curve router
-            // address[9] memory route = [
-            //     Constants.ETHER,
-            //     Constants.TRI_CRYPTO_POOL,
-            //     Constants.USDT,
-            //     Constants.CURVE_BEAN_METAPOOL,
-            //     Constants.BEAN,
-            //     Constants.ZERO,
-            //     Constants.ZERO,
-            //     Constants.ZERO,
-            //     Constants.ZERO
-            // ];
-            // uint256[3][4] memory swapParams = [
-            //     [uint(2), 0, 3],
-            //     [uint(3), 0, 2],
-            //     [uint(0), 0, 0],
-            //     [uint(0), 0, 0]
-            // ];
-            // uint256 beanAmount = ICurveSwapRouter(Constants.CURVE_ROUTER)
-            //     .get_exchange_multiple_amount(route, swapParams, ethAmount);
+            
+            /// @dev calculate swap water amount through Sprinkler
             waterAmount = ISprinklerUpgradeable(address(this)).getWaterAmount(
                 Constants.BEAN,
                 beanAmount
@@ -229,7 +213,7 @@ contract WaterTowerUpgradeable is
         } else return (0, 0);
     }
 
-    function addETHReward() public payable {
+    function addETHReward() external payable {
         if (msg.value == 0) revert InsufficientEther();
         WaterTowerStorage.layout().totalRewards += msg.value;
     }
