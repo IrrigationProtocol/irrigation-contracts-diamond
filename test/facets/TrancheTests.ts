@@ -346,6 +346,28 @@ export function suite() {
       });
     });
 
+    describe('#tranche pods by FMV', async function () {
+      it('should distribute pods based on FMV correctly', async () => {
+        const trancheId = 5;
+        const { depositPods, underlyingAsset } = await trancheBond.getTranchePods(trancheId);
+        const { starts, podAmounts } = await trancheBond.getPlotsForTranche(trancheId);
+    
+        // Calculate the expected FMV distribution
+        const totalFMV = underlyingAsset.totalFMV;
+        const fmvDistribution = [];
+        for (let i = 0; i < depositPods.amounts.length; i++) {
+          const fmv = depositPods.fmvs[i];
+          const expectedPodAmount = totalFMV.mul(fmv).div(depositPods.amounts[i]);
+          fmvDistribution.push(expectedPodAmount);
+        }
+    
+        // Check if the actual pod amounts match the expected distribution
+        for (let i = 0; i < starts.length; i++) {
+          expect(podAmounts[i]).to.be.eq(fmvDistribution[i]);
+        }
+      });
+    });
+    
     describe('#receive pods with matured tranche', async function () {
 
       it('deposited pods amount should be same as original amount before transfer pods', async () => {
