@@ -2,6 +2,7 @@
 pragma solidity ^0.8.17;
 
 import "@gnus.ai/contracts-upgradeable-diamond/contracts/interfaces/IERC1155Upgradeable.sol";
+import "@gnus.ai/contracts-upgradeable-diamond/contracts/security/ReentrancyGuardUpgradeable.sol";
 
 import "./TrancheBondStorage.sol";
 import "./WaterCommonStorage.sol";
@@ -25,7 +26,11 @@ import "../interfaces/IBeanstalkPrice.sol";
 ///         tranche A and Tranche B nft holders can list owned nfts on our auction market.
 ///         users can set maturity date when creating tranche, and after maturity date, can receive underlying assets with tranche
 
-contract TrancheBondUpgradeable is EIP2535Initializable, IrrigationAccessControl {
+contract TrancheBondUpgradeable is
+    EIP2535Initializable,
+    IrrigationAccessControl,
+    ReentrancyGuardUpgradeable
+{
     using TrancheBondStorage for TrancheBondStorage.Layout;
     using WaterTowerStorage for WaterTowerStorage.Layout;
 
@@ -71,7 +76,7 @@ contract TrancheBondUpgradeable is EIP2535Initializable, IrrigationAccessControl
         uint256[] calldata starts,
         uint256[] calldata ends,
         uint256 maturityPeriod
-    ) external onlyWaterHolder {
+    ) external onlyWaterHolder nonReentrant {
         if (indexes.length != starts.length || indexes.length != ends.length) revert InvalidPods();
         uint256[] memory podIndexes = new uint256[](indexes.length);
         uint256[] memory amounts = new uint256[](indexes.length);
@@ -142,7 +147,7 @@ contract TrancheBondUpgradeable is EIP2535Initializable, IrrigationAccessControl
     }
 
     /// @dev receive pods with tranches after maturity date is over
-    function receivePodsForTranche(uint256 trancheId) external {
+    function receivePodsForTranche(uint256 trancheId) external nonReentrant {
         (uint256 depositId, uint8 trancheLevel) = getTrancheInfo(trancheId);
         DepositPods memory depositPlots = TrancheBondStorage.layout().depositedPods[depositId];
         UnderlyingAssetMetadata memory underlyingAsset = TrancheBondStorage

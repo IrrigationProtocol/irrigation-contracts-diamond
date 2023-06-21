@@ -3,6 +3,7 @@ pragma solidity ^0.8.17;
 
 import "./WaterCommonStorage.sol";
 import "@gnus.ai/contracts-upgradeable-diamond/contracts/interfaces/IERC20MetadataUpgradeable.sol";
+import "@gnus.ai/contracts-upgradeable-diamond/contracts/security/ReentrancyGuardUpgradeable.sol";
 import "../interfaces/ICustomOracle.sol";
 import {IBeanstalkUpgradeable} from "../beanstalk/IBeanstalkUpgradeable.sol";
 import "./SprinklerStorage.sol";
@@ -16,7 +17,8 @@ import "../interfaces/IPriceOracleUpgradeable.sol";
 contract SprinklerUpgradeable is
     EIP2535Initializable,
     IrrigationAccessControl,
-    ISprinklerUpgradeable
+    ISprinklerUpgradeable,
+    ReentrancyGuardUpgradeable
 {
     using SprinklerStorage for SprinklerStorage.Layout;
     /// @dev errors
@@ -75,7 +77,7 @@ contract SprinklerUpgradeable is
     function exchangeTokenToWater(
         address _token,
         uint256 _amount
-    ) external onlyListedAsset(_token) returns (uint256 waterAmount) {
+    ) external onlyListedAsset(_token) nonReentrant returns (uint256 waterAmount) {
         require(_token != address(this), "Invalid token");
         require(_amount != 0, "Invalid amount");
 
@@ -93,7 +95,7 @@ contract SprinklerUpgradeable is
      * @notice Exchange ETH to water
      * @return waterAmount received water amount
      */
-    function exchangeETHToWater() external payable returns (uint256 waterAmount) {
+    function exchangeETHToWater() external payable nonReentrant returns (uint256 waterAmount) {
         require(msg.value != 0, "Invalid amount");
         waterAmount = getWaterAmount(Constants.ETHER, msg.value);
         if (waterAmount > sprinkleableWater()) revert InsufficientWater();
@@ -103,8 +105,7 @@ contract SprinklerUpgradeable is
     }
 
     function transferWater(uint256 amount) internal {
-        address _waterToken = address(this);
-        TransferHelper.safeTransfer(_waterToken, msg.sender, amount);
+        TransferHelper.safeTransfer(address(this), msg.sender, amount);
         SprinklerStorage.layout().availableWater =
             SprinklerStorage.layout().availableWater -
             amount;

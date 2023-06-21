@@ -10,8 +10,7 @@ import "@gnus.ai/contracts-upgradeable-diamond/contracts/token/ERC1155/IERC1155U
 import "./utils/EIP2535Initializable.sol";
 
 contract IrrigationDiamond is Diamond, ERC165StorageUpgradeable, EIP2535Initializable {
-    using LibDiamond for LibDiamond.DiamondStorage;
-    uint256 constant DECIMALS = 1e18;
+    using LibDiamond for LibDiamond.DiamondStorage;    
 
     constructor(
         address _contractOwner,

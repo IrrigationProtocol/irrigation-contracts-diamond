@@ -3,7 +3,7 @@ pragma solidity 0.8.17;
 
 import "@gnus.ai/contracts-upgradeable-diamond/contracts/token/ERC20/IERC20Upgradeable.sol";
 import "@gnus.ai/contracts-upgradeable-diamond/contracts/token/ERC20/utils/SafeERC20Upgradeable.sol";
-// import "@gnus.ai/contracts-upgradeable-diamond/contracts/security/ReentrancyGuardUpgradeable.sol";
+import "@gnus.ai/contracts-upgradeable-diamond/contracts/security/ReentrancyGuardUpgradeable.sol";
 
 import "./WaterTowerStorage.sol";
 import "../utils/EIP2535Initializable.sol";
@@ -19,6 +19,7 @@ import "../interfaces/IWaterTowerUpgradeable.sol";
 contract WaterTowerUpgradeable is
     EIP2535Initializable,
     IrrigationAccessControl,
+    ReentrancyGuardUpgradeable,
     IWaterTowerUpgradeable
 {
     using WaterTowerStorage for WaterTowerStorage.Layout;
@@ -34,27 +35,32 @@ contract WaterTowerUpgradeable is
 
     uint256 internal constant IRRIGATE_BONUS_DOMINATOR = 100;
 
+    function initWaterTower() external EIP2535Initializer {
+        __IrrigationAccessControl_init();
+        __ReentrancyGuard_init();
+    }
+
     /// @notice deposit water token
     function deposit(uint256 amount, bool bAutoIrrigate) external {
-        setAutoIrrigate(bAutoIrrigate);        
+        setAutoIrrigate(bAutoIrrigate);
         IERC20Upgradeable(address(this)).safeTransferFrom(msg.sender, address(this), amount);
         _deposit(msg.sender, amount);
     }
 
     // withdraw water token
-    function withdraw(uint256 amount) external {
+    function withdraw(uint256 amount) external nonReentrant {
         _withdraw(msg.sender, amount);
         IERC20Upgradeable(address(this)).safeTransfer(msg.sender, amount);
     }
 
     /// @notice claim ETH rewards
-    function claim(uint256 amount) external {
+    function claim(uint256 amount) external nonReentrant {
         uint256 claimAmount = _claimReward(msg.sender, amount);
         (bool success, ) = msg.sender.call{value: claimAmount}("");
         require(success, "Claim failed");
     }
 
-    function irrigate(uint256 amount) external {
+    function irrigate(uint256 amount) external nonReentrant {
         _irrigate(msg.sender, amount);
     }
 
@@ -201,7 +207,7 @@ contract WaterTowerUpgradeable is
                 0,
                 usdtAmount
             );
-            
+
             /// @dev calculate swap water amount through Sprinkler
             waterAmount = ISprinklerUpgradeable(address(this)).getWaterAmount(
                 Constants.BEAN,
@@ -221,7 +227,9 @@ contract WaterTowerUpgradeable is
     function updateMonthlyReward(uint256 monthlyRewards) internal onlySuperAdminRole {
         uint256 totalRewards = WaterTowerStorage.layout().totalRewards;
         if (monthlyRewards > totalRewards) revert InsufficientReward();
-        totalRewards -= monthlyRewards;
+        unchecked {
+            totalRewards -= monthlyRewards;
+        }
         WaterTowerStorage.layout().totalRewards = totalRewards;
         WaterTowerStorage.curPool().monthlyRewards = monthlyRewards;
     }

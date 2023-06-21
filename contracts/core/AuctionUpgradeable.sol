@@ -3,6 +3,8 @@ pragma solidity 0.8.17;
 
 import "@gnus.ai/contracts-upgradeable-diamond/contracts/interfaces/IERC20MetadataUpgradeable.sol";
 import "@gnus.ai/contracts-upgradeable-diamond/contracts/interfaces/IERC1155Upgradeable.sol";
+import "@gnus.ai/contracts-upgradeable-diamond/contracts/security/ReentrancyGuardUpgradeable.sol";
+
 import "./AuctionStorage.sol";
 import "./TrancheBondStorage.sol";
 import "../utils/EIP2535Initializable.sol";
@@ -24,7 +26,11 @@ import "../interfaces/IWaterTowerUpgradeable.sol";
 ///     * buyer shuold have enough balance for bid tokens (price * buy amount)
 ///     4. anyone(buyer or seller) close auction after end time
 
-contract AuctionUpgradeable is EIP2535Initializable, IrrigationAccessControl {
+contract AuctionUpgradeable is
+    EIP2535Initializable,
+    IrrigationAccessControl,
+    ReentrancyGuardUpgradeable
+{
     using AuctionStorage for AuctionStorage.Layout;
     using TrancheBondStorage for TrancheBondStorage.Layout;
     /// @dev errors
@@ -186,7 +192,7 @@ contract AuctionUpgradeable is EIP2535Initializable, IrrigationAccessControl {
         uint256 auctionId,
         uint128 purchaseAmount,
         address purchaseToken
-    ) external supportedPurchase(purchaseToken) {
+    ) external supportedPurchase(purchaseToken) nonReentrant {
         AuctionData memory auction = AuctionStorage.layout().auctions[auctionId];
         require(
             auction.auctionType != AuctionType.TimedAuction && auction.seller != address(0),
@@ -272,7 +278,7 @@ contract AuctionUpgradeable is EIP2535Initializable, IrrigationAccessControl {
         return currentBidId;
     }
 
-    function closeAuction(uint256 auctionId) external {
+    function closeAuction(uint256 auctionId) external nonReentrant {
         AuctionData memory auction = AuctionStorage.layout().auctions[auctionId];
         uint96 currentTime = uint96(block.timestamp);
         require(
@@ -284,18 +290,19 @@ contract AuctionUpgradeable is EIP2535Initializable, IrrigationAccessControl {
         _settleAuction(auctionId);
     }
 
-    function claimForCanceledBid(uint256 auctionId, uint256 bidId) external {
+    function claimForCanceledBid(uint256 auctionId, uint256 bidId) external nonReentrant {
         AuctionData memory auction = AuctionStorage.layout().auctions[auctionId];
         Bid memory bid = AuctionStorage.layout().bids[auctionId][bidId];
         require(auction.status == AuctionStatus.Closed, "no closed auction");
         require(bid.bidder == msg.sender, "bidder only can claim");
         require(!bid.bCleared, "already settled bid");
+        AuctionStorage.layout().bids[auctionId][bidId].bCleared = true;
+
         TransferHelper.safeTransfer(
             bid.purchaseToken,
             bid.bidder,
             getPayAmount(bid.purchaseToken, bid.bidAmount, bid.bidPrice, auction.sellToken)
         );
-        AuctionStorage.layout().bids[auctionId][bidId].bCleared = true;
     }
 
     function _settleAuction(uint256 auctionId) internal {

@@ -118,7 +118,7 @@ export async function initPriceOracles(priceOracle: PriceOracleUpgradeable) {
     debuglog(`${o.symbol} price: ${formatFixed(fromWei(await priceOracle.getPrice(o.asset)))}`);
   }
   await priceOracle.setDirectPrice(priceOracle.address, toWei(0.5));
-  debuglog(`WATER price: ${formatFixed(fromWei(await priceOracle.getPrice(priceOracle.address)))}`);  
+  debuglog(`WATER price: ${formatFixed(fromWei(await priceOracle.getPrice(priceOracle.address)))}`);
 }
 
 export async function initSprinkler(sprinkler: SprinklerUpgradeable) {
@@ -152,7 +152,7 @@ export async function initAuction(auction: AuctionUpgradeable) {
 
 export async function initTrancheBond(contractAddress: string) {
   const erc1155whitelist = await ethers.getContractAt('ERC1155WhitelistUpgradeable', contractAddress);
-  await erc1155whitelist.addProxySpender(contractAddress,  ethers.utils.formatBytes32String('Irrigation'));  
+  await erc1155whitelist.addProxySpender(contractAddress, ethers.utils.formatBytes32String('Irrigation'));
   await erc1155whitelist.setTokenBaseURI(process.env.TRANCHE_NFT_METADATA_BASE_URL);
 }
 
