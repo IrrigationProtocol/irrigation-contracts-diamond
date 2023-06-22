@@ -22,6 +22,7 @@ export function suite() {
     let token2: IERC20Upgradeable;
     let sender: SignerWithAddress;
     let tester2: SignerWithAddress;
+    let receiver: SignerWithAddress;
     let sprinkler: SprinklerUpgradeable;
     let waterToken: WaterUpgradeable;
     let priceOracle: PriceOracleUpgradeable;
@@ -32,6 +33,7 @@ export function suite() {
       owner = signers[0];
       sender = signers[1];
       tester2 = signers[2];
+      receiver = signers[3];
       token1 = await ethers.getContractAt('IERC20Upgradeable', CONTRACT_ADDRESSES.DAI);
       token2 = await ethers.getContractAt('IERC20Upgradeable', CONTRACT_ADDRESSES.BEAN);
       sprinkler = await ethers.getContractAt('SprinklerUpgradeable', irrigationMainAddress);
@@ -155,7 +157,30 @@ export function suite() {
       expect(waterBalance.mul(waterPrice).eq(etherPrice.mul(toWei(0.1))));
       const waterAmountForETH = await sprinkler.getWaterAmount(CONTRACT_ADDRESSES.ETHER, toWei(0.1));
       expect(waterAmountForETH.eq(waterBalance));
-
     });
+
+    it('Test SuperAdmin should be able to withdraw only ether swapped', async () => {
+      let reserveEther = await sprinkler.getReserveToken(CONTRACT_ADDRESSES.ETHER);
+      expect(reserveEther).to.be.eq(toWei(0.1));
+      let updatedReceiverEtherBalance = await ethers.provider.getBalance(receiver.address);
+      await sprinkler.withdrawToken(CONTRACT_ADDRESSES.ETHER, receiver.address, toWei(0.1));
+      updatedReceiverEtherBalance = (await ethers.provider.getBalance(receiver.address)).sub(updatedReceiverEtherBalance);
+      expect(updatedReceiverEtherBalance).to.be.eq(toWei(0.1));
+      reserveEther = await sprinkler.getReserveToken(CONTRACT_ADDRESSES.ETHER);
+      expect(reserveEther).to.be.eq(toWei(0));
+      /// even if contract ether balance is enough, withdraw ether should be failed. so we will not confuse swapped ether
+      /// from ether for reward
+      await owner.sendTransaction({ to: sprinkler.address, value: toWei(0.02) });
+      /// overflowed operation error even if our contract has enough balance
+      await expect(sprinkler.withdrawToken(CONTRACT_ADDRESSES.ETHER, receiver.address, toWei(0.001))).to.be.revertedWith('');
+    });
+
+    it('Test SuperAdmin should be able to withdraw swapped tokens', async () => {
+      let reserveDAI = await sprinkler.getReserveToken(token1.address);
+      expect(reserveDAI).to.be.eq(toWei(100));      
+      await sprinkler.withdrawToken(CONTRACT_ADDRESSES.DAI, receiver.address, toWei(100));      
+      expect(await token1.balanceOf(receiver.address)).to.be.eq(toWei(100));      
+    });
+
   });
 }

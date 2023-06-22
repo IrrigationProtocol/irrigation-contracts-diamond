@@ -35,7 +35,7 @@ contract WaterTowerUpgradeable is
 
     uint256 internal constant IRRIGATE_BONUS_DOMINATOR = 100;
 
-    function initWaterTower() external EIP2535Initializer {
+    function initWaterTower() external EIP2535Initializer onlySuperAdminRole {
         __IrrigationAccessControl_init();
         __ReentrancyGuard_init();
     }

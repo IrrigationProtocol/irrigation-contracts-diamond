@@ -19,15 +19,7 @@ async function main() {
   if (require.main === module) {
     debug.enable('Irrigation.*:log');
   }
-  log(`initialize contracts on ${networkName}`);
-  const waterCommonContract = await ethers.getContractAt(
-    'WaterCommonUpgradeable',
-    deployments[networkName]?.DiamondAddress,
-  );
-  try {
-    const beanstalk = await waterCommonContract.beanstalk();
-    log(`beanstalk: `, beanstalk);
-  } catch { }
+  log(`initialize contracts on ${networkName}`);  
   const contractAddress = deployments[networkName]?.DiamondAddress;
   const [deployer] = await ethers.getSigners();
   await mintAllTokensForTesting(deployer.address);

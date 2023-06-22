@@ -70,25 +70,25 @@ contract SprinklerUpgradeable is
 
     /**
      * @notice Exchange whitelisted asset(BEAN, BEAN:3CRV, Spot, and so on) to water
-     * @param _token source token address
-     * @param _amount source token amount
+     * @param token source token address
+     * @param amount source token amount
      * @return waterAmount received water amount
      */
     function exchangeTokenToWater(
-        address _token,
-        uint256 _amount
-    ) external onlyListedAsset(_token) nonReentrant returns (uint256 waterAmount) {
-        require(_token != address(this), "Invalid token");
-        require(_amount != 0, "Invalid amount");
+        address token,
+        uint256 amount
+    ) external onlyListedAsset(token) nonReentrant returns (uint256 waterAmount) {
+        require(token != address(this), "Invalid token");
+        require(amount != 0, "Invalid amount");
 
-        waterAmount = getWaterAmount(_token, _amount);
+        waterAmount = getWaterAmount(token, amount);
         if (waterAmount > sprinkleableWater()) revert InsufficientWater();
         require(waterAmount != 0, "No water output"); // if price is 0, amount can be 0
 
-        TransferHelper.safeTransferFrom(_token, msg.sender, address(this), _amount);
+        TransferHelper.safeTransferFrom(token, msg.sender, address(this), amount);
         transferWater(waterAmount);
-
-        emit WaterExchanged(msg.sender, _token, _amount, waterAmount, false);
+        SprinklerStorage.layout().reserves[token] += amount;
+        emit WaterExchanged(msg.sender, token, amount, waterAmount, false);
     }
 
     /**
@@ -101,14 +101,8 @@ contract SprinklerUpgradeable is
         if (waterAmount > sprinkleableWater()) revert InsufficientWater();
         require(waterAmount != 0, "No water output"); // if price is 0 or tokenMultiplier is 0, amount can be 0
         transferWater(waterAmount);
+        SprinklerStorage.layout().reserves[Constants.ETHER] += msg.value;
         emit WaterExchanged(msg.sender, Constants.ETHER, msg.value, waterAmount, false);
-    }
-
-    function transferWater(uint256 amount) internal {
-        TransferHelper.safeTransfer(address(this), msg.sender, amount);
-        SprinklerStorage.layout().availableWater =
-            SprinklerStorage.layout().availableWater -
-            amount;
     }
 
     function depositWater(uint256 amount) public {
@@ -118,6 +112,33 @@ contract SprinklerUpgradeable is
             amount;
         TransferHelper.safeTransferFrom(address(this), msg.sender, address(this), amount);
         emit DepositWater(amount);
+    }
+
+    /// internal functions
+    function transferWater(uint256 amount) internal {
+        TransferHelper.safeTransfer(address(this), msg.sender, amount);
+        SprinklerStorage.layout().availableWater =
+            SprinklerStorage.layout().availableWater -
+            amount;
+    }
+
+    /// admin functions
+
+    /// @notice withdraw external tokens that users swapped for Water
+    /// @param token token address
+    /// @param to destination address
+    /// @param amount token amount
+    function withdrawToken(address token, address to, uint256 amount) external onlySuperAdminRole {
+        /// @dev can't withdraw water token
+        require(token != address(this), "Not withdraw Water");
+        if (token == Constants.ETHER) {
+            TransferHelper.safeTransferETH(to, amount);
+        } else {
+            TransferHelper.safeTransfer(token, to, amount);
+        }
+        if (SprinklerStorage.layout().whitelistAssets[token].isListed)
+            SprinklerStorage.layout().reserves[token] -= amount;
+        emit WithdrawToken(token, msg.sender, amount);
     }
 
     /// getters
@@ -150,6 +171,10 @@ contract SprinklerUpgradeable is
     /// @notice get water amount available for sprinkler
     function sprinkleableWater() public view returns (uint256) {
         return SprinklerStorage.layout().availableWater;
+    }
+
+    function getReserveToken(address token) external view returns (uint256) {
+        return SprinklerStorage.layout().reserves[token];
     }
 
     modifier onlyListedAsset(address _token) {

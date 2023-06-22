@@ -13,6 +13,7 @@ interface ISprinklerUpgradeable {
     event AddWhiteListAsset(address indexed token, uint256 tokenMultiplier);
     event UnListAsset(address indexed token);
     event DepositWater(uint256 amount);
+    event WithdrawToken(address indexed token, address to, uint256 amount);
     
     function getWaterAmount(
         address _token,

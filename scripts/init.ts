@@ -153,7 +153,7 @@ export async function initAuction(auction: AuctionUpgradeable) {
 export async function initTrancheBond(contractAddress: string) {
   const erc1155whitelist = await ethers.getContractAt('ERC1155WhitelistUpgradeable', contractAddress);
   await erc1155whitelist.addProxySpender(contractAddress, ethers.utils.formatBytes32String('Irrigation'));
-  await erc1155whitelist.setTokenBaseURI(process.env.TRANCHE_NFT_METADATA_BASE_URL);
+  await erc1155whitelist.setTokenBaseURI(process.env.TRANCHE_NFT_METADATA_BASE_URL || 'http://localhost/');
 }
 
 export async function initAll(contractAddress: string) {
