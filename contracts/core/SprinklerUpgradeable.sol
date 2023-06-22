@@ -3,8 +3,9 @@ pragma solidity ^0.8.17;
 
 import "./WaterCommonStorage.sol";
 import "@gnus.ai/contracts-upgradeable-diamond/contracts/interfaces/IERC20MetadataUpgradeable.sol";
+import "@gnus.ai/contracts-upgradeable-diamond/contracts/security/ReentrancyGuardUpgradeable.sol";
 import "../interfaces/ICustomOracle.sol";
-import "../beanstalk/IBeanstalkUpgradeable.sol";
+import {IBeanstalkUpgradeable} from "../beanstalk/IBeanstalkUpgradeable.sol";
 import "./SprinklerStorage.sol";
 import "../utils/EIP2535Initializable.sol";
 import "../utils/IrrigationAccessControl.sol";
@@ -16,7 +17,8 @@ import "../interfaces/IPriceOracleUpgradeable.sol";
 contract SprinklerUpgradeable is
     EIP2535Initializable,
     IrrigationAccessControl,
-    ISprinklerUpgradeable
+    ISprinklerUpgradeable,
+    ReentrancyGuardUpgradeable
 {
     using SprinklerStorage for SprinklerStorage.Layout;
     /// @dev errors
@@ -43,11 +45,14 @@ contract SprinklerUpgradeable is
             "already added asset"
         );
 
-        uint256 _tokenMultiplier = _multiplier != 0
-            ? _multiplier
-            : 10 **
-                (IERC20MetadataUpgradeable(address(this)).decimals() -
-                    IERC20MetadataUpgradeable(_token).decimals());
+        uint256 _tokenMultiplier;
+        if (_token == Constants.ETHER) _tokenMultiplier = 1;
+        else
+            _tokenMultiplier = _multiplier != 0
+                ? _multiplier
+                : 10 **
+                    (IERC20MetadataUpgradeable(address(this)).decimals() -
+                        IERC20MetadataUpgradeable(_token).decimals());
         WhitelistAsset memory newAsset = WhitelistAsset(_tokenMultiplier, true);
         SprinklerStorage.layout().whitelistAssets[_token] = newAsset;
         SprinklerStorage.layout().allWhiteList.push(_token);
@@ -72,17 +77,16 @@ contract SprinklerUpgradeable is
     function exchangeTokenToWater(
         address _token,
         uint256 _amount
-    ) external onlyListedAsset(_token) returns (uint256 waterAmount) {
-        address _waterToken = address(this);
-        require(_token != _waterToken, "Invalid token");
+    ) external onlyListedAsset(_token) nonReentrant returns (uint256 waterAmount) {
+        require(_token != address(this), "Invalid token");
         require(_amount != 0, "Invalid amount");
 
         waterAmount = getWaterAmount(_token, _amount);
         if (waterAmount > sprinkleableWater()) revert InsufficientWater();
-        // require(waterAmount != 0, "No water output"); // if price is 0, amount can be 0
+        require(waterAmount != 0, "No water output"); // if price is 0, amount can be 0
 
         TransferHelper.safeTransferFrom(_token, msg.sender, address(this), _amount);
-        TransferHelper.safeTransfer(_waterToken, msg.sender, waterAmount);
+        transferWater(waterAmount);
 
         emit WaterExchanged(msg.sender, _token, _amount, waterAmount, false);
     }
@@ -91,14 +95,20 @@ contract SprinklerUpgradeable is
      * @notice Exchange ETH to water
      * @return waterAmount received water amount
      */
-    function exchangeETHToWater() external payable returns (uint256 waterAmount) {
-        address _waterToken = address(this);
+    function exchangeETHToWater() external payable nonReentrant returns (uint256 waterAmount) {
         require(msg.value != 0, "Invalid amount");
         waterAmount = getWaterAmount(Constants.ETHER, msg.value);
         if (waterAmount > sprinkleableWater()) revert InsufficientWater();
-        // require(waterAmount != 0, "No water output"); // if price is 0, amount can be 0
-        TransferHelper.safeTransfer(_waterToken, msg.sender, waterAmount);
+        require(waterAmount != 0, "No water output"); // if price is 0 or tokenMultiplier is 0, amount can be 0
+        transferWater(waterAmount);
         emit WaterExchanged(msg.sender, Constants.ETHER, msg.value, waterAmount, false);
+    }
+
+    function transferWater(uint256 amount) internal {
+        TransferHelper.safeTransfer(address(this), msg.sender, amount);
+        SprinklerStorage.layout().availableWater =
+            SprinklerStorage.layout().availableWater -
+            amount;
     }
 
     function depositWater(uint256 amount) public {

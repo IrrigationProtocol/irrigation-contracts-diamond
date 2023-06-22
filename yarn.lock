@@ -520,13 +520,13 @@
     ts-interface-checker "^0.1.9"
 
 "@gnus.ai/contracts-upgradeable-diamond@^4.8.1":
-  version "4.8.1"
-  resolved "https://registry.npmjs.org/@gnus.ai/contracts-upgradeable-diamond/-/contracts-upgradeable-diamond-4.8.1.tgz"
-  integrity sha512-b3kEjYlLeBdir06zuwL8p+XXmwZ6gvLIqWC8yLHDmOPZ8LWvFnuDPJK0t57cS2ER80v4cYE8jPp0Lcrv7GKYiQ==
+  version "4.9.1"
+  resolved "https://registry.yarnpkg.com/@gnus.ai/contracts-upgradeable-diamond/-/contracts-upgradeable-diamond-4.9.1.tgz#49998c9d08701d4616a197828333838b7fb3a0f6"
+  integrity sha512-d8NH2bCl2QBimDu3BubJ3dAETZzu1LNcn0l8H49OJekhp4AE/EfhRpMLZBOnlYTeP66A7inaOnybSuUQKdk/Kg==
 
-"@irrigation/zk-utils@github:IrrigationProtocol/zk-utils":
+"@irrigation/zk-utils@git+https://github.com/IrrigationProtocol/zk-utils":
   version "0.1.0"
-  resolved "git+ssh://git@github.com/IrrigationProtocol/zk-utils.git#bca2f351be73ea55be1777c0b4ca0be873eb99a6"
+  resolved "git+https://github.com/IrrigationProtocol/zk-utils#bca2f351be73ea55be1777c0b4ca0be873eb99a6"
   dependencies:
     bn.js "^5.1.1"
     elliptic "^6.5.1"

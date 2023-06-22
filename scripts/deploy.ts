@@ -44,7 +44,7 @@ export async function deployIrrigationDiamond(networkDeployInfo: INetworkDeployI
   );
   dc.DiamondCutFacet = diamondCutFacet;
 
-  // we use the hash of 'irrigation' insteand of random number
+  // we use the hash of 'irrigation' instead of random number
   const salt = ethers.utils.keccak256(ethers.utils.toUtf8Bytes('Irrigation'));
   let contractDeployer;
   if (process.env.CONTRACT_DEPLOYER_KEY) {

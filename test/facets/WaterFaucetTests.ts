@@ -66,7 +66,7 @@ export function suite() {
 
     it('Testing WaterFaucet claim', async () => {
       let updatedBalance = await water.balanceOf(sender.address);
-      let tx = await waterFaucet.connect(sender).claim(0, 1);
+      let tx = await waterFaucet.connect(sender).claimFaucet(0, 1);
       // console.log(tx);
       await expect(tx)
         .to.emit(irrigationDiamond, 'EpochClaimed')

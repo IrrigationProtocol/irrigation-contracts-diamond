@@ -10,7 +10,7 @@ import {
 } from '../../typechain-types';
 import { BigNumber } from 'ethers';
 import { CONTRACT_ADDRESSES } from '../../scripts/shared';
-import { initSprinkler, whitelist } from '../../scripts/init';
+import { whitelist } from '../../scripts/init';
 import { expect } from 'chai';
 
 export function suite() {
@@ -37,7 +37,6 @@ export function suite() {
       sprinkler = await ethers.getContractAt('SprinklerUpgradeable', irrigationMainAddress);
       waterToken = await ethers.getContractAt('WaterUpgradeable', irrigationMainAddress);
       priceOracle = await ethers.getContractAt('PriceOracleUpgradeable', irrigationMainAddress);
-      await initSprinkler(sprinkler);
     });
     it('Test Sprinkler sprinkleable water amount should be enough', async () => {
       expect(await sprinkler.sprinkleableWater()).to.be.eq(toWei(10_000));
@@ -57,8 +56,7 @@ export function suite() {
       );
       assert(
         gotWhitelist[gotWhitelist.length - 1] == whitelist[gotWhitelist.length - 1],
-        `expected whitelist token ${whitelist[gotWhitelist.length - 1]}, but ${
-          gotWhitelist[gotWhitelist.length - 1]
+        `expected whitelist token ${whitelist[gotWhitelist.length - 1]}, but ${gotWhitelist[gotWhitelist.length - 1]
         }`,
       );
     });
@@ -142,10 +140,22 @@ export function suite() {
       );
     });
 
-    it('Test Sprinkler should revert for exchange with amount bigger than sprinkleable amount', async () => {      
+    it('Test Sprinkler should revert for exchange with amount bigger than sprinkleable amount', async () => {
       await expect(
         sprinkler.connect(sender).exchangeTokenToWater(token1.address, toWei(990_000)),
       ).to.be.revertedWithCustomError(sprinkler, 'InsufficientWater');
+    });
+
+    it('Test Sprinkler should buy the same amount of water as getWaterAmount with ether', async () => {
+      let waterBalance = await waterToken.balanceOf(sender.address);
+      await sprinkler.connect(sender).exchangeETHToWater({ value: toWei(0.1) });
+      waterBalance = (await waterToken.balanceOf(sender.address)).sub(waterBalance);
+      const etherPrice = await priceOracle.getPrice(CONTRACT_ADDRESSES.ETHER);
+      const waterPrice = await priceOracle.getPrice(waterToken.address);
+      expect(waterBalance.mul(waterPrice).eq(etherPrice.mul(toWei(0.1))));
+      const waterAmountForETH = await sprinkler.getWaterAmount(CONTRACT_ADDRESSES.ETHER, toWei(0.1));
+      expect(waterAmountForETH.eq(waterBalance));
+
     });
   });
 }

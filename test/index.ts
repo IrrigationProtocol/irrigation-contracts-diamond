@@ -27,6 +27,7 @@ import * as PodsOracleTests from './PodsOracleTests';
 import * as TrancheTests from './facets/TrancheTests';
 import * as PriceOracleTests from './facets/PriceOracleTests';
 import { mintAllTokensForTesting } from './utils/mint';
+import { initAll } from '../scripts/init';
 
 const debugging = process.env.JB_IDE_HOST !== undefined;
 
@@ -89,6 +90,7 @@ describe.only('Irrigation Diamond DApp Testing', async function () {
     debuglog('Facets Deployed');
     debuglog('Minting tokens');
     await mintAllTokensForTesting(deployer);
+    await initAll(irrigationDiamond.address);
   });
 
   describe('Facet Cut Testing', async function () {

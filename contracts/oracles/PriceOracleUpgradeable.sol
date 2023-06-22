@@ -25,7 +25,7 @@ contract PriceOracleUpgradeable is EIP2535Initializable, IrrigationAccessControl
 
     function getUnderlyingPriceETH() public view returns (uint) {
         /// @dev feed decimals for ether/usd is 8, so multiplier is 10**(18-8)
-        return getChainlinkPrice(getChainlinkFeed(Constants.ETHER)) * 10 ** 10;
+        return getChainlinkPrice(getChainlinkFeed(Constants.ETHER)) * 1e10;
     }
 
     function getPrice(address asset) public view returns (uint256 price) {

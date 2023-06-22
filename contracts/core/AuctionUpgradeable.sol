@@ -2,13 +2,19 @@
 pragma solidity 0.8.17;
 
 import "@gnus.ai/contracts-upgradeable-diamond/contracts/interfaces/IERC20MetadataUpgradeable.sol";
+import "@gnus.ai/contracts-upgradeable-diamond/contracts/interfaces/IERC1155Upgradeable.sol";
+import "@gnus.ai/contracts-upgradeable-diamond/contracts/security/ReentrancyGuardUpgradeable.sol";
+
 import "./AuctionStorage.sol";
 import "./TrancheBondStorage.sol";
 import "../utils/EIP2535Initializable.sol";
 import "../utils/IrrigationAccessControl.sol";
 import "../libraries/TransferHelper.sol";
 import "../libraries/FullMath.sol";
-import "../interfaces/ITrancheNotationUpgradeable.sol";
+import "../libraries/Constants.sol";
+
+import "../interfaces/IPriceOracleUpgradeable.sol";
+import "../interfaces/IWaterTowerUpgradeable.sol";
 
 /// @title Auction Market for whitelisted erc20 tokens
 /// @dev  Auction contract allows users sell allowed tokens or buy listed tokens with allowed purchase tokens(stable coins)
@@ -20,9 +26,16 @@ import "../interfaces/ITrancheNotationUpgradeable.sol";
 ///     * buyer shuold have enough balance for bid tokens (price * buy amount)
 ///     4. anyone(buyer or seller) close auction after end time
 
-contract AuctionUpgradeable is EIP2535Initializable, IrrigationAccessControl {
+contract AuctionUpgradeable is
+    EIP2535Initializable,
+    IrrigationAccessControl,
+    ReentrancyGuardUpgradeable
+{
     using AuctionStorage for AuctionStorage.Layout;
     using TrancheBondStorage for TrancheBondStorage.Layout;
+    /// @dev errors
+    error InsufficientFee();
+    error NotListTrancheZ();
 
     event AuctionCreated(
         address seller,
@@ -95,7 +108,7 @@ contract AuctionUpgradeable is EIP2535Initializable, IrrigationAccessControl {
         uint128 priceRangeStart,
         uint128 priceRangeEnd,
         AuctionType auctionType
-    ) external returns (uint256) {
+    ) external payable returns (uint256) {
         uint256 _trancheIndex = trancheIndex;
         if (_trancheIndex == 0) {
             TransferHelper.safeTransferFrom(
@@ -106,14 +119,22 @@ contract AuctionUpgradeable is EIP2535Initializable, IrrigationAccessControl {
                     FEE_DENOMINATOR
             );
         } else {
-            TranchePods memory tranche = TrancheBondStorage.layout().tranches[_trancheIndex];
-            require(tranche.level != TrancheLevel.Z, "not list Z tranche");
-            ITrancheNotationUpgradeable(address(this)).transferFromTrNotation(
-                _trancheIndex,
-                sellAmount,
+            if (_trancheIndex & 3 == 3) revert NotListTrancheZ();
+            IERC1155Upgradeable(address(this)).safeTransferFrom(
                 msg.sender,
-                address(this)
+                address(this),
+                trancheIndex,
+                uint256(sellAmount),
+                Constants.EMPTY
             );
+            /// @dev fee is calculated from usd value, and notation amount is BDV
+            uint256 ethPrice = IPriceOracleUpgradeable(address(this)).getUnderlyingPriceETH();
+            // tranche nft decimals is 6 and price decimals 18
+            uint256 feeAmount = (((sellAmount * 1e30) / ethPrice) *
+                AuctionStorage.layout().feeNumerator) / FEE_DENOMINATOR;
+            if (msg.value < feeAmount) revert InsufficientFee();
+            else if (msg.value > feeAmount) payable(msg.sender).transfer(msg.value - feeAmount);
+            IWaterTowerUpgradeable(address(this)).addETHReward{value: feeAmount}();
         }
         require(sellAmount > 0, "cannot zero sell amount");
         require(startTime == 0 || startTime >= block.timestamp, "start time must be in the future");
@@ -171,7 +192,7 @@ contract AuctionUpgradeable is EIP2535Initializable, IrrigationAccessControl {
         uint256 auctionId,
         uint128 purchaseAmount,
         address purchaseToken
-    ) external supportedPurchase(purchaseToken) {
+    ) external supportedPurchase(purchaseToken) nonReentrant {
         AuctionData memory auction = AuctionStorage.layout().auctions[auctionId];
         require(
             auction.auctionType != AuctionType.TimedAuction && auction.seller != address(0),
@@ -195,11 +216,12 @@ contract AuctionUpgradeable is EIP2535Initializable, IrrigationAccessControl {
         if (auction.assetType == AssetType.ERC20) {
             TransferHelper.safeTransfer(auction.sellToken, msg.sender, purchaseAmount);
         } else {
-            ITrancheNotationUpgradeable(address(this)).transferFromTrNotation(
+            IERC1155Upgradeable(address(this)).safeTransferFrom(
+                address(this),
+                msg.sender,
                 trancheIndex,
                 purchaseAmount,
-                address(this),
-                msg.sender
+                Constants.EMPTY
             );
         }
 
@@ -239,12 +261,7 @@ contract AuctionUpgradeable is EIP2535Initializable, IrrigationAccessControl {
             Bid memory lastBid = AuctionStorage.layout().bids[auctionId][auction.curBidId];
             require(bidPrice > lastBid.bidPrice, "low Bid");
         }
-        uint256 payAmount = getPayAmount(
-            purchaseToken,
-            bidAmount,
-            bidPrice,
-            auction.sellToken
-        );
+        uint256 payAmount = getPayAmount(purchaseToken, bidAmount, bidPrice, auction.sellToken);
 
         TransferHelper.safeTransferFrom(purchaseToken, msg.sender, address(this), payAmount);
         Bid memory bid = Bid({
@@ -261,7 +278,7 @@ contract AuctionUpgradeable is EIP2535Initializable, IrrigationAccessControl {
         return currentBidId;
     }
 
-    function closeAuction(uint256 auctionId) external {
+    function closeAuction(uint256 auctionId) external nonReentrant {
         AuctionData memory auction = AuctionStorage.layout().auctions[auctionId];
         uint96 currentTime = uint96(block.timestamp);
         require(
@@ -273,23 +290,19 @@ contract AuctionUpgradeable is EIP2535Initializable, IrrigationAccessControl {
         _settleAuction(auctionId);
     }
 
-    function claimForCanceledBid(uint256 auctionId, uint256 bidId) external {
+    function claimForCanceledBid(uint256 auctionId, uint256 bidId) external nonReentrant {
         AuctionData memory auction = AuctionStorage.layout().auctions[auctionId];
         Bid memory bid = AuctionStorage.layout().bids[auctionId][bidId];
         require(auction.status == AuctionStatus.Closed, "no closed auction");
         require(bid.bidder == msg.sender, "bidder only can claim");
         require(!bid.bCleared, "already settled bid");
+        AuctionStorage.layout().bids[auctionId][bidId].bCleared = true;
+
         TransferHelper.safeTransfer(
             bid.purchaseToken,
             bid.bidder,
-            getPayAmount(
-                bid.purchaseToken,
-                bid.bidAmount,
-                bid.bidPrice,
-                auction.sellToken
-            )
+            getPayAmount(bid.purchaseToken, bid.bidAmount, bid.bidPrice, auction.sellToken)
         );
-        AuctionStorage.layout().bids[auctionId][bidId].bCleared = true;
     }
 
     function _settleAuction(uint256 auctionId) internal {
@@ -300,11 +313,12 @@ contract AuctionUpgradeable is EIP2535Initializable, IrrigationAccessControl {
             if (trancheIndex == 0) {
                 TransferHelper.safeTransfer(auction.sellToken, auction.seller, auction.reserve);
             } else {
-                ITrancheNotationUpgradeable(address(this)).transferFromTrNotation(
+                IERC1155Upgradeable(address(this)).safeTransferFrom(
+                    address(this),
+                    auction.seller,
                     trancheIndex,
                     auction.reserve,
-                    address(this),
-                    auction.seller
+                    Constants.EMPTY
                 );
             }
 
@@ -338,11 +352,12 @@ contract AuctionUpgradeable is EIP2535Initializable, IrrigationAccessControl {
             if (auction.assetType == AssetType.ERC20) {
                 TransferHelper.safeTransfer(auction.sellToken, auction.seller, availableAmount);
             } else {
-                ITrancheNotationUpgradeable(address(this)).transferFromTrNotation(
+                IERC1155Upgradeable(address(this)).safeTransferFrom(
+                    address(this),
+                    auction.seller,
                     trancheIndex,
                     availableAmount,
-                    address(this),
-                    auction.seller
+                    Constants.EMPTY
                 );
             }
         }
@@ -368,34 +383,25 @@ contract AuctionUpgradeable is EIP2535Initializable, IrrigationAccessControl {
             TransferHelper.safeTransfer(
                 bid.purchaseToken,
                 bid.bidder,
-                getPayAmount(
-                    bid.purchaseToken,
-                    repayAmount,
-                    bid.bidPrice,
-                    sellToken
-                )
+                getPayAmount(bid.purchaseToken, repayAmount, bid.bidPrice, sellToken)
             );
         }
         if (trancheIndex == 0) {
             TransferHelper.safeTransfer(sellToken, bid.bidder, settledAmount);
         } else {
-            ITrancheNotationUpgradeable(address(this)).transferFromTrNotation(
+            IERC1155Upgradeable(address(this)).safeTransferFrom(
+                address(this),
+                bid.bidder,
                 trancheIndex,
                 settledAmount,
-                address(this),
-                bid.bidder
+                Constants.EMPTY
             );
         }
 
         TransferHelper.safeTransfer(
             bid.purchaseToken,
             seller,
-            getPayAmount(
-                bid.purchaseToken,
-                settledAmount,
-                bid.bidPrice,
-                sellToken
-            )
+            getPayAmount(bid.purchaseToken, settledAmount, bid.bidPrice, sellToken)
         );
     }
 
@@ -435,7 +441,7 @@ contract AuctionUpgradeable is EIP2535Initializable, IrrigationAccessControl {
         uint256 denominator = (10 **
             (18 -
                 IERC20MetadataUpgradeable(purchaseToken).decimals() +
-                (sellToken != address(0) ? IERC20MetadataUpgradeable(sellToken).decimals() : 18)));
+                (sellToken != address(0) ? IERC20MetadataUpgradeable(sellToken).decimals() : 6)));
         return FullMath.mulDivRoundingUp128(purchaseAmount, price, denominator);
     }
 

@@ -1,5 +1,4 @@
 import { ethers } from 'hardhat';
-import * as networkHelpers from '@nomicfoundation/hardhat-network-helpers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 
 import {
@@ -16,8 +15,8 @@ import { IrrigationDiamond } from '../../typechain-types/hardhat-diamond-abi/Har
 import { AuctionUpgradeable, IERC20Upgradeable } from '../../typechain-types';
 import { AuctionType } from '../types';
 import { BigNumber } from 'ethers';
-import { initAuction } from '../../scripts/init';
 import { CONTRACT_ADDRESSES } from '../../scripts/shared';
+import { skipTime } from '../utils/time';
 
 export function suite() {
   describe('Irrigation Auction Testing', async function () {
@@ -55,7 +54,6 @@ export function suite() {
       sender = signers[1];
       secondBidder = signers[2];
       auctionContract = await ethers.getContractAt('AuctionUpgradeable', irrigationDiamond.address);
-      await initAuction(auctionContract);
       expect(await auctionContract.isSupportedPurchaseToken(usdc.address)).to.be.eq(true);
       // 1.5% auction fee
       expect((await auctionContract.getAuctionFee()).numerator).to.be.eq(BigNumber.from(15));
@@ -72,8 +70,8 @@ export function suite() {
         toWei(0.5),
         AuctionType.TimedAndFixed,
       ];
-      await token1.approve(auctionContract.address, toWei(1000));
-      await networkHelpers.time.setNextBlockTimestamp(Math.floor(Date.now() / 1000) + 3600);
+      await token1.approve(auctionContract.address, toWei(1000));      
+      await skipTime(3600)
       const tx = await auctionContract.createAuction(
         0,
         86400 * 2,
@@ -175,11 +173,8 @@ export function suite() {
       ).to.be.revertedWith('too big amount than reverse');
       await expect(
         auctionContract.connect(secondBidder).placeBid(1, toWei(9), dai.address, toWei(0.21524)),
-      ).to.be.revertedWith('too small bid amount');
-      // set the timestamp of the next block but don't mine a new block
-      await networkHelpers.time.setNextBlockTimestamp(
-        Math.floor(Date.now() / 1000) + 86400 * 2 + 3601,
-      );
+      ).to.be.revertedWith('too small bid amount');            
+      await skipTime(86400 * 2 + 3601);
       await expect(
         auctionContract.connect(secondBidder).placeBid(1, toWei(20), dai.address, toWei(0.21523)),
       ).to.be.revertedWith('auction is inactive');

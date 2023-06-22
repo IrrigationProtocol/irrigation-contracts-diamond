@@ -39,7 +39,7 @@ contract WaterFaucetUpgradeable is EIP2535Initializable, IrrigationAccessControl
         emit EpochStarted(epoch, amountPerUser, totalAmount);
     }
 
-    function claim(uint256 epoch, uint256 fertTokenId) external {
+    function claimFaucet(uint256 epoch, uint256 fertTokenId) external {
         require(!WaterFaucetStorage.layout().claimed[msg.sender][epoch], "already claimed");
 
         /// we may be able to get this information directly from the beanstalk proxy contract

@@ -8,35 +8,57 @@ enum TrancheLevel {
     Z
 }
 
-struct TranchePods {
-    uint256 depositPodsIndex;
-    TrancheLevel level;
+enum UnderlyingAssetType {
+    PODS,
+    ERC20
+}
+
+struct TrancheMetadata {
+    // farmer's market value for tranche. it is same as totalSupply when minting
     uint256 fmv;
+    // fmv claimed after tranche is mature
+    uint256 claimedFMV;
+}
+
+struct UnderlyingAssetMetadata {
+    // zero address if underlying asset is pods
+    address contractAddress;
+    UnderlyingAssetType assetType;
+    uint64 maturityDate;
+    // total amount of deposited underlying asset
+    // sum of pods for all deposited podlines if underlying asset is pods
+    uint256 totalDeposited;
+    // calculated FMV
+    uint256 totalFMV;
 }
 
 /// @notice stores group of podlines that user deposited
-
 struct DepositPods {
-    /// indexes of pods group
-    uint256[] underlyingPodIndexes;
-    /// FMV Farmer Market Value
-    uint256 fmv;
-    /// created timestamp
-    uint256 depositedAt;
+    // array of indexes for each plot
+    uint256[] podIndexes;
+    // array of pods for each plot
+    uint256[] amounts;
+    // array of fmves for each plot
+    uint256[] fmvs;
+    // FMV Farmer Market Value in USD
+    // uint256 totalFMV;
+    // represent divided podline by each tranche level after transfer some pods
+    // 1,3 - startIndex and Offsets for tranche A, 2,4 - for tranche B, 3,5 - for tranche Z
+    uint128[6] startIndexAndOffsets;
 }
 
 library TrancheBondStorage {
     struct Layout {
         // Stores all pods that users deposited, mapping from podline index to pods amount
-        mapping(uint256 => uint256) depositedPlots;
-        // Pods group deposited to create tranche, mapping from deposit index to pods groups
+        // mapping(uint256 => uint256) depositedPlots;
+        // Pods group deposited to create tranche, mapping from deposit id to pods groups
         mapping(uint256 => DepositPods) depositedPods;
-        // Mapping from tranch index to A,B,Z tranches. the total number of tranchePods is always 3 times than count of depositedPods
-        mapping(uint256 => TranchePods) tranches;
-        // Count of deposited pods group, also it is used as a latest index
-        uint256 curDepositPodsCount;
-        // Mapping tranche index  => account => tranche value that the accout hold in usd unit
-        // mapping(uint256 => mapping(address => uint256)) notations;
+        // Mapping from deposit id to underlying asset metadata
+        mapping(uint256 => UnderlyingAssetMetadata) underlyingAssets;
+        // Mapping from tranch index to A,B,Z tranches. the total number of tranches is always 4 times the number of deposits
+        mapping(uint256 => TrancheMetadata) tranches;
+        // total number of deposits, also it is used as a latest id for storage to store deposited assets
+        uint256 curDepositCount;
     }
 
     bytes32 internal constant STORAGE_SLOT = keccak256("irrigation.contracts.storage.TrancheBond");

@@ -10,7 +10,8 @@
     "init:dev": "npx hardhat run scripts/init.dev.ts",
     "clear:dev": "ts-node scripts/clear.dev.ts",
     "deploy": "npx hardhat run scripts/deploy.ts",
-    "postinstall": "patch-package"
+    "postinstall": "patch-package",
+    "node:local": "./forked_node.sh"
   },
   "author": "",
   "license": "ISC",
@@ -38,7 +39,7 @@
     "typescript": "^4.7.4"
   },
   "dependencies": {
-    "@irrigation/zk-utils": "github:IrrigationProtocol/zk-utils",
+    "@irrigation/zk-utils": "git+https://github.com/IrrigationProtocol/zk-utils",
     "@nomicfoundation/hardhat-chai-matchers": "^1.0.6",
     "@nomicfoundation/hardhat-network-helpers": "^1.0.7",
     "@nomicfoundation/hardhat-toolbox": "^2.0.2",

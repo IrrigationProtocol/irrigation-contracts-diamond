@@ -52,3 +52,10 @@ export const delaySecond = async (second: number): Promise<void> =>
   new Promise((resolve) => {
     setTimeout(resolve, second * 1000);
   });
+
+// the func is used, when expected value is slightly smaller than real value due to overflow operation by integer division
+export const expectWithTolerance = (expectedValue: BigNumber, realValue: BigNumber) => {
+  expect(expectedValue).lte(realValue);
+  // tolerance is 0.01%
+  expect(expectedValue).gt(realValue.mul(9999).div(10000));
+}

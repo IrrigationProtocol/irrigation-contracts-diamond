@@ -2,23 +2,47 @@
 
 pragma solidity ^0.8.17;
 
-import {WaterTowerUpgradeable} from "./WaterTowerUpgradeable.sol";
 import {IERC20Upgradeable} from "@gnus.ai/contracts-upgradeable-diamond/contracts/token/ERC20/IERC20Upgradeable.sol";
 
+/// @notice User Setting Info
+struct UserInfo {
+    bool isAutoIrrigate;
+    // last poolIndex that user interact
+    uint256 lastPoolIndex;
+    // total claimable reward of user
+    uint256 pending;
+    // reward rate in this month = sum (block time * amount)
+    uint256 rewardRate;
+    // deposited water amount
+    uint256 amount;
+}
+
+struct PoolInfo {
+    // sum of all user reward rate in this month
+    uint256 totalRewardRate;
+    uint256 monthlyRewards;
+    uint256 endTime;
+}
+
 library WaterTowerStorage {
-    struct UserInfo {
-        uint256 amount;
-        uint256 debt;
-        uint256 pending;
-        bool isAutoIrrigate;
-    }
-
     struct Layout {
-        mapping(address => UserInfo) userInfo;
+        // total ether reward received from other markets
+        uint256 totalRewards;
+        // current pool index
+        uint256 curPoolIndex;
+        // total water deposit amount
         uint256 totalDeposits;
-        uint256 sharePerWater;
+        // water amount sent as irrigate bonus
+        uint256 totalBonus;
+        // pool info per month
+        mapping(uint256 => PoolInfo) pools;
+        // deposit amount, pending reward, and setting for user
+        mapping(address => UserInfo) users;
 
-        /// Middle token address for irrigating reward
+        /// @dev config variables
+        // bonus percent for irrigator
+        uint256 irrigateBonusRate;
+        // Middle asset for irrigating ether reward
         address middleAssetForIrrigate;
     }
 
@@ -29,5 +53,13 @@ library WaterTowerStorage {
         assembly {
             l.slot := slot
         }
+    }
+
+    function curPool() internal view returns (PoolInfo storage) {
+        return layout().pools[layout().curPoolIndex];
+    }
+
+    function userInfo(address user) internal view returns (UserInfo storage) {
+        return layout().users[user];
     }
 }

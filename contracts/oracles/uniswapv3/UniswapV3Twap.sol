@@ -37,8 +37,12 @@ library UniswapV3Twap {
     ) public view returns (uint256) {
         uint160 sqrtPriceX96 = getSqrtTwapX96(pool, twapInterval);
         address token0 = IUniswapV3Pool(pool).token0();
-        if (token == token0)
-            return FullMath.mulDiv(amount, (uint256(sqrtPriceX96) * uint256(sqrtPriceX96)), Q192);
-        else return FullMath.mulDiv(amount, Q192, (uint256(sqrtPriceX96) * uint256(sqrtPriceX96)));
+        if (token == token0) {
+            // return FullMath.mulDiv(amount, (uint256(sqrtPriceX96) * uint256(sqrtPriceX96)), Q192);
+            return (amount * (uint256(sqrtPriceX96) * uint256(sqrtPriceX96))) / Q192;
+        } else {
+            // return FullMath.mulDiv(amount, Q192, (uint256(sqrtPriceX96) * uint256(sqrtPriceX96)));
+            return (amount * Q192) / (uint256(sqrtPriceX96) * uint256(sqrtPriceX96));
+        }
     }
 }
