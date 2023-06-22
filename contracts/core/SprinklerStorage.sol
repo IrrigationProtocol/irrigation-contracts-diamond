@@ -18,7 +18,9 @@ library SprinklerStorage {
         address[] allWhiteList;
         mapping(address => WhitelistAsset) whitelistAssets;
         /// water amount available for sprinkler
-        uint256 availableWater;        
+        uint256 availableWater;
+        /// swapped amount - withdran amount
+        mapping(address => uint256) reserves;
     }
 
     bytes32 internal constant STORAGE_SLOT = keccak256("irrigation.contracts.storage.Sprinkler");

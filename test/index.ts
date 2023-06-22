@@ -122,14 +122,14 @@ describe.only('Irrigation Diamond DApp Testing', async function () {
 
     after(() => {
       PriceOracleTests.suite(networkDeployedInfo);
-      IrrigationERC20Tests.suite();
-      // ZscTests.suite();
-      SprinklerTests.suite();
-      // WaterFaucetTests.suite();
+      IrrigationERC20Tests.suite();      
+      SprinklerTests.suite();      
       WaterTowerTests.suite();
       AuctionTests.suite();
       PodsOracleTests.suite();
       TrancheTests.suite();
+      // WaterFaucetTests.suite();
+      // ZscTests.suite();
     });
   });
 });
