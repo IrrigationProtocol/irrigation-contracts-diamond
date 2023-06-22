@@ -31,6 +31,11 @@ import { initAll } from '../scripts/init';
 
 const debugging = process.env.JB_IDE_HOST !== undefined;
 
+if (!process.env.FORK_URL) {
+  console.log('Unit test is supported only on chain forked from mainnet');
+  process.exit(0);
+}
+
 export async function logEvents(tx: ContractTransaction) {
   const receipt = await tx.wait();
 
@@ -122,8 +127,8 @@ describe.only('Irrigation Diamond DApp Testing', async function () {
 
     after(() => {
       PriceOracleTests.suite(networkDeployedInfo);
-      IrrigationERC20Tests.suite();      
-      SprinklerTests.suite();      
+      IrrigationERC20Tests.suite();
+      SprinklerTests.suite();
       WaterTowerTests.suite();
       AuctionTests.suite();
       PodsOracleTests.suite();
