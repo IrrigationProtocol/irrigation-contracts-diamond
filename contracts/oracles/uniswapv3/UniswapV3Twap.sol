@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import "@uniswap/v3-core/contracts/libraries/TickMath.sol";
-import "@uniswap/v3-core/contracts/libraries/FullMath.sol";
+// import "@uniswap/v3-core/contracts/libraries/FullMath.sol";
 
 library UniswapV3Twap {
     uint256 internal constant Q192 = 0x1000000000000000000000000000000000000000000000000;
