@@ -26,7 +26,7 @@ export function suite() {
       waterTower = await ethers.getContractAt('WaterTowerUpgradeable', irrigationDiamond.address);
     });
 
-    it('Test WaterTower next epoch info', async () => {
+    it('first pool should be empty and endTime should be month end', async () => {
       const { totalRewardRate, monthlyRewards, endTime } = await waterTower.getPoolInfo(0);
       expect(totalRewardRate).to.be.eq(0);
       expect(monthlyRewards).to.be.eq(0);
@@ -34,7 +34,7 @@ export function suite() {
       assert(endAt.getDate() === 30 || endAt.getDate() === 31, `pool should be exited at month end, but end date is ${endAt}`);
     });
 
-    it('Test WaterTower deposit', async () => {
+    it('Test WaterTower deposit and setAutoIrrigate', async () => {
       let updatedBalance = await water.balanceOf(irrigationDiamond.address);
       await water.connect(owner).transfer(sender.address, toWei(100));
       await water.connect(sender).approve(irrigationDiamond.address, toWei(100));
@@ -48,7 +48,6 @@ export function suite() {
           updatedBalance,
         )}`,
       );
-      // let userPoolInfo = await waterTower.userPoolInfo(1, sender.address);
       let userInfo = await waterTower.userInfo(sender.address);
       assert(
         userInfo.amount.eq(toWei(100)),
@@ -202,15 +201,16 @@ export function suite() {
       await skipTime(30 * 86400);
       // set monthly reward and start pool
       await waterTower.setPool(0, toWei(0.5));
-      const testerReward = await waterTower.userETHReward(tester.address);
+      let testerReward = await waterTower.userETHReward(tester.address);
       const oldDepositAmount = (await waterTower.userInfo(tester.address)).amount;
       const { waterAmount, bonusAmount } = await waterTower.getBonusForIrrigate(testerReward);
-      await waterTower.autoIrrigate(tester.address);
+      const tx = await waterTower.autoIrrigate(tester.address, testerReward.sub(toWei(0.001)));
+      let txReceipt = await tx.wait();
+      const totalGas = txReceipt.gasUsed.mul(txReceipt.effectiveGasPrice);
+      testerReward = await waterTower.userETHReward(tester.address);
+      expect(testerReward).to.be.eq(toWei(0.001).sub(totalGas));
       expect((await waterTower.userInfo(tester.address)).amount.sub(oldDepositAmount)).to.be.gt(bonusAmount);
       expect(bonusAmount).to.be.gt(toD6(0.01));
-      // deposit for eligible of tranche feature      
-      await water.approve(waterTower.address, toWei(1000));
-      await waterTower.deposit(toWei(100), false);
     });
   });
 }
