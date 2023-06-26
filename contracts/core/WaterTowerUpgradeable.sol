@@ -8,7 +8,6 @@ import "@gnus.ai/contracts-upgradeable-diamond/contracts/security/ReentrancyGuar
 import "./WaterTowerStorage.sol";
 import "../utils/EIP2535Initializable.sol";
 import "../utils/IrrigationAccessControl.sol";
-import "../libraries/TransferHelper.sol";
 import "../curve/ICurveSwapRouter.sol";
 import "../curve/ICurveMetaPool.sol";
 import "../libraries/Constants.sol";

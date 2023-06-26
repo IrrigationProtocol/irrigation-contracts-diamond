@@ -4,12 +4,14 @@ pragma solidity ^0.8.17;
 import "./WaterCommonStorage.sol";
 import "@gnus.ai/contracts-upgradeable-diamond/contracts/interfaces/IERC20MetadataUpgradeable.sol";
 import "@gnus.ai/contracts-upgradeable-diamond/contracts/security/ReentrancyGuardUpgradeable.sol";
+import "@gnus.ai/contracts-upgradeable-diamond/contracts/token/ERC20/utils/SafeERC20Upgradeable.sol";
+import "@gnus.ai/contracts-upgradeable-diamond/contracts/interfaces/IERC20Upgradeable.sol";
+
 import "../interfaces/ICustomOracle.sol";
 import {IBeanstalkUpgradeable} from "../beanstalk/IBeanstalkUpgradeable.sol";
 import "./SprinklerStorage.sol";
 import "../utils/EIP2535Initializable.sol";
 import "../utils/IrrigationAccessControl.sol";
-import "../libraries/TransferHelper.sol";
 import "../libraries/Constants.sol";
 import "../interfaces/ISprinklerUpgradeable.sol";
 import "../interfaces/IPriceOracleUpgradeable.sol";
@@ -21,6 +23,7 @@ contract SprinklerUpgradeable is
     ReentrancyGuardUpgradeable
 {
     using SprinklerStorage for SprinklerStorage.Layout;
+    using SafeERC20Upgradeable for IERC20Upgradeable;
     /// @dev errors
     error InsufficientWater();
     error InvalidSwapToken();
@@ -29,6 +32,7 @@ contract SprinklerUpgradeable is
     error ExistingAsset();
     error NoWaterWithdraw();
     error NoSprinklerWhitelist();
+    error InsufficientEther();
 
     /// @dev admin setters
     /**
@@ -89,7 +93,7 @@ contract SprinklerUpgradeable is
         if (waterAmount > sprinkleableWater()) revert InsufficientWater();
         if (waterAmount == 0) revert ZeroWaterOut();
 
-        TransferHelper.safeTransferFrom(token, msg.sender, address(this), amount);
+        IERC20Upgradeable(token).safeTransferFrom(msg.sender, address(this), amount);
         transferWater(waterAmount);
         SprinklerStorage.layout().reserves[token] += amount;
         emit WaterExchanged(msg.sender, token, amount, waterAmount, false);
@@ -120,13 +124,13 @@ contract SprinklerUpgradeable is
         SprinklerStorage.layout().availableWater =
             SprinklerStorage.layout().availableWater +
             amount;
-        TransferHelper.safeTransferFrom(address(this), msg.sender, address(this), amount);
+        IERC20Upgradeable(address(this)).safeTransferFrom(msg.sender, address(this), amount);
         emit DepositWater(amount);
     }
 
     /// internal functions
     function transferWater(uint256 amount) internal {
-        TransferHelper.safeTransfer(address(this), msg.sender, amount);
+        IERC20Upgradeable(address(this)).safeTransfer(msg.sender, amount);
         SprinklerStorage.layout().availableWater =
             SprinklerStorage.layout().availableWater -
             amount;
@@ -140,11 +144,12 @@ contract SprinklerUpgradeable is
     /// @param amount token amount
     function withdrawToken(address token, address to, uint256 amount) external onlySuperAdminRole {
         /// @dev can't withdraw water token
-        if(token == address(this)) revert NoWaterWithdraw();
+        if (token == address(this)) revert NoWaterWithdraw();
         if (token == Constants.ETHER) {
-            TransferHelper.safeTransferETH(to, amount);
+            (bool success, ) = to.call{value: amount}(new bytes(0));
+            if(!success) revert InsufficientEther();
         } else {
-            TransferHelper.safeTransfer(token, to, amount);
+            IERC20Upgradeable(token).safeTransfer(to, amount);
         }
         if (SprinklerStorage.layout().whitelistAssets[token].isListed)
             SprinklerStorage.layout().reserves[token] -= amount;
@@ -188,7 +193,8 @@ contract SprinklerUpgradeable is
     }
 
     modifier onlyListedAsset(address _token) {
-        if (!SprinklerStorage.layout().whitelistAssets[_token].isListed) revert NoSprinklerWhitelist();
+        if (!SprinklerStorage.layout().whitelistAssets[_token].isListed)
+            revert NoSprinklerWhitelist();
         _;
     }
 }

@@ -70,7 +70,7 @@ export function suite() {
         toWei(0.5),
         AuctionType.TimedAndFixed,
       ];
-      await token1.approve(auctionContract.address, toWei(1000));      
+      await token1.approve(auctionContract.address, toWei(1000));
       await skipTime(3600)
       const tx = await auctionContract.createAuction(
         0,
@@ -173,14 +173,14 @@ export function suite() {
       ).to.be.revertedWith('too big amount than reverse');
       await expect(
         auctionContract.connect(secondBidder).placeBid(1, toWei(9), dai.address, toWei(0.21524)),
-      ).to.be.revertedWith('too small bid amount');            
+      ).to.be.revertedWith('too small bid amount');
       await skipTime(86400 * 2 + 3601);
       await expect(
         auctionContract.connect(secondBidder).placeBid(1, toWei(20), dai.address, toWei(0.21523)),
       ).to.be.revertedWith('auction is inactive');
     });
 
-    it('Testing Auction close', async () => {      
+    it('Testing Auction close', async () => {
       await auctionContract.connect(sender).closeAuction(1);
       await expect(auctionContract.connect(sender).closeAuction(1)).to.be.rejectedWith(
         "auction can't be closed",
@@ -188,7 +188,7 @@ export function suite() {
     });
 
     it('Testing Auction claim canceled bid', async () => {
-      const bid = await auctionContract.getBid(1, 1);      
+      const bid = await auctionContract.getBid(1, 1);
       const payAmount = await auctionContract.getPayAmount(
         dai.address,
         bid.bidAmount,
@@ -196,13 +196,13 @@ export function suite() {
         token1.address,
       );
       // bid with dai is only one
-      let updatedDaiBalance = await dai.balanceOf(auctionContract.address);      
+      let updatedDaiBalance = await dai.balanceOf(auctionContract.address);
       // bids with usdc are all done
       await auctionContract.connect(sender).claimForCanceledBid(1, 1);
       updatedDaiBalance = updatedDaiBalance.sub(await dai.balanceOf(auctionContract.address));
       expect(updatedDaiBalance).to.be.equal(payAmount);
       expect(await usdc.balanceOf(auctionContract.address)).to.be.equal(0);
-      
+
       await expect(auctionContract.connect(sender).claimForCanceledBid(1, 1)).to.be.rejectedWith(
         'already settled bid',
       );
@@ -261,6 +261,21 @@ export function suite() {
       await dai.transfer(sender.address, toWei(50));
       await dai.connect(sender).approve(auctionContract.address, toWei(50));
       await auctionContract.connect(sender).buyNow(2, toWei(1), dai.address);
+    });
+
+    it('Creating Auction with invalid token should be failed', async () => {
+      await expect(auctionContract.createAuction(
+        0,
+        86400 * 2,
+        CONTRACT_ADDRESSES.ETHER,
+        0,
+        toWei(100),
+        toWei(10),
+        toWei(5),
+        toWei(2),
+        toWei(10),
+        AuctionType.FixedPrice,
+      )).to.be.revertedWith('Address: call to non-contract');
     });
   });
 }
