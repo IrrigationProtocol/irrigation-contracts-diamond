@@ -177,10 +177,17 @@ export function suite() {
 
     it('Test SuperAdmin should be able to withdraw swapped tokens', async () => {
       let reserveDAI = await sprinkler.getReserveToken(token1.address);
-      expect(reserveDAI).to.be.eq(toWei(100));      
-      await sprinkler.withdrawToken(CONTRACT_ADDRESSES.DAI, receiver.address, toWei(100));      
-      expect(await token1.balanceOf(receiver.address)).to.be.eq(toWei(100));      
+      expect(reserveDAI).to.be.eq(toWei(100));
+      await sprinkler.withdrawToken(CONTRACT_ADDRESSES.DAI, receiver.address, toWei(100));
+      expect(await token1.balanceOf(receiver.address)).to.be.eq(toWei(100));
     });
+
+    it('exchangeTokenToWater with ether should not be worked', async () => {
+      await waterToken.approve(sprinkler.address, toWei(100_000));
+      await sprinkler.depositWater(toWei(100_000));
+      await expect(sprinkler.exchangeTokenToWater(CONTRACT_ADDRESSES.ETHER, toWei(1))).
+        to.be.revertedWithCustomError(sprinkler, 'InvalidSwapToken');
+    });    
 
   });
 }

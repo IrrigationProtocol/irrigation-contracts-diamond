@@ -23,6 +23,12 @@ contract SprinklerUpgradeable is
     using SprinklerStorage for SprinklerStorage.Layout;
     /// @dev errors
     error InsufficientWater();
+    error InvalidSwapToken();
+    error InvalidAmount();
+    error ZeroWaterOut();
+    error ExistingAsset();
+    error NoWaterWithdraw();
+    error NoSprinklerWhitelist();
 
     /// @dev admin setters
     /**
@@ -40,10 +46,8 @@ contract SprinklerUpgradeable is
      * @param _multiplier token multiplier, if this is 0, multiplier is calculated from decimals of token
      */
     function addAssetToWhiteList(address _token, uint256 _multiplier) external onlySuperAdminRole {
-        require(
-            SprinklerStorage.layout().whitelistAssets[_token].tokenMultiplier == 0,
-            "already added asset"
-        );
+        if (SprinklerStorage.layout().whitelistAssets[_token].tokenMultiplier != 0)
+            revert ExistingAsset();
 
         uint256 _tokenMultiplier;
         if (_token == Constants.ETHER) _tokenMultiplier = 1;
@@ -78,12 +82,12 @@ contract SprinklerUpgradeable is
         address token,
         uint256 amount
     ) external onlyListedAsset(token) nonReentrant returns (uint256 waterAmount) {
-        require(token != address(this), "Invalid token");
-        require(amount != 0, "Invalid amount");
+        if (token == address(this) || token == Constants.ETHER) revert InvalidSwapToken();
+        if (amount == 0) revert InvalidAmount();
 
         waterAmount = getWaterAmount(token, amount);
         if (waterAmount > sprinkleableWater()) revert InsufficientWater();
-        require(waterAmount != 0, "No water output"); // if price is 0, amount can be 0
+        if (waterAmount == 0) revert ZeroWaterOut();
 
         TransferHelper.safeTransferFrom(token, msg.sender, address(this), amount);
         transferWater(waterAmount);
@@ -95,18 +99,24 @@ contract SprinklerUpgradeable is
      * @notice Exchange ETH to water
      * @return waterAmount received water amount
      */
-    function exchangeETHToWater() external payable nonReentrant returns (uint256 waterAmount) {
-        require(msg.value != 0, "Invalid amount");
+    function exchangeETHToWater()
+        external
+        payable
+        onlyListedAsset(Constants.ETHER)
+        nonReentrant
+        returns (uint256 waterAmount)
+    {
+        if (msg.value == 0) revert InvalidAmount();
         waterAmount = getWaterAmount(Constants.ETHER, msg.value);
         if (waterAmount > sprinkleableWater()) revert InsufficientWater();
-        require(waterAmount != 0, "No water output"); // if price is 0 or tokenMultiplier is 0, amount can be 0
+        if (waterAmount == 0) revert ZeroWaterOut(); // if price is 0 or tokenMultiplier is 0, amount can be 0
         transferWater(waterAmount);
         SprinklerStorage.layout().reserves[Constants.ETHER] += msg.value;
         emit WaterExchanged(msg.sender, Constants.ETHER, msg.value, waterAmount, false);
     }
 
     function depositWater(uint256 amount) public {
-        require(amount != 0, "Invalid amount");
+        if (amount == 0) revert InvalidAmount();
         SprinklerStorage.layout().availableWater =
             SprinklerStorage.layout().availableWater +
             amount;
@@ -130,7 +140,7 @@ contract SprinklerUpgradeable is
     /// @param amount token amount
     function withdrawToken(address token, address to, uint256 amount) external onlySuperAdminRole {
         /// @dev can't withdraw water token
-        require(token != address(this), "Not withdraw Water");
+        if(token == address(this)) revert NoWaterWithdraw();
         if (token == Constants.ETHER) {
             TransferHelper.safeTransferETH(to, amount);
         } else {
@@ -178,7 +188,7 @@ contract SprinklerUpgradeable is
     }
 
     modifier onlyListedAsset(address _token) {
-        require(SprinklerStorage.layout().whitelistAssets[_token].isListed, "not allowed token");
+        if (!SprinklerStorage.layout().whitelistAssets[_token].isListed) revert NoSprinklerWhitelist();
         _;
     }
 }
