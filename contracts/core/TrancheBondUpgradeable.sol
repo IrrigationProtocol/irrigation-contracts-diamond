@@ -17,8 +17,6 @@ import "../interfaces/IPodsOracleUpgradeable.sol";
 import "../interfaces/IERC1155WhitelistUpgradeable.sol";
 import "../interfaces/IBeanstalkPrice.sol";
 
-// import "hardhat/console.sol";
-
 /// @title  TrancheBond Contract
 /// @notice Allows users deposit underlying assets like pods,
 ///         create tranche and receive underlying assets with tranche
@@ -195,8 +193,7 @@ contract TrancheBondUpgradeable is
                         _fmv,
                         _level,
                         _startIndexAndOffsets
-                    );
-                // console.log('offset, updatedStart %s %s %s', offset, updatedStart, i);
+                    );                
                 unchecked {
                     WaterCommonStorage.layout().beanstalk.transferPlot(
                         address(this),
@@ -212,7 +209,6 @@ contract TrancheBondUpgradeable is
                 startIndex = i;
                 totalPods += amount;
                 _fmv = reserveFMV;
-                // console.log('---startIndex, startOffset %s %s', startIndex, startOffset);
                 // offset is always 0 from next podline
                 _offsetFMV = 0;
             } else {

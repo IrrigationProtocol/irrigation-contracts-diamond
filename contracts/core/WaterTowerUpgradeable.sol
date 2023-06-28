@@ -2,13 +2,11 @@
 pragma solidity 0.8.17;
 
 import "@gnus.ai/contracts-upgradeable-diamond/contracts/token/ERC20/IERC20Upgradeable.sol";
-import "@gnus.ai/contracts-upgradeable-diamond/contracts/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@gnus.ai/contracts-upgradeable-diamond/contracts/security/ReentrancyGuardUpgradeable.sol";
 
 import "./WaterTowerStorage.sol";
 import "../utils/EIP2535Initializable.sol";
 import "../utils/IrrigationAccessControl.sol";
-import "../libraries/TransferHelper.sol";
 import "../curve/ICurveSwapRouter.sol";
 import "../curve/ICurveMetaPool.sol";
 import "../libraries/Constants.sol";
@@ -16,14 +14,21 @@ import "../interfaces/ISprinklerUpgradeable.sol";
 import "../interfaces/IPriceOracleUpgradeable.sol";
 import "../interfaces/IWaterTowerUpgradeable.sol";
 
+/// @title  WaterTower Contract
+/// @notice Allows users deposit Water token and receive ETH reward
+/// @dev    Admin should setup pool with monthly reward, at the end of each month.
+///         Once admin set total monthly reward, users can receive ETH reward for last month
+///         by the percentage of deposited water amount.
+///         Note that users should run any more than one transaction in the month to receive
+///         ETH reward.
+
 contract WaterTowerUpgradeable is
     EIP2535Initializable,
     IrrigationAccessControl,
     ReentrancyGuardUpgradeable,
     IWaterTowerUpgradeable
 {
-    using WaterTowerStorage for WaterTowerStorage.Layout;
-    using SafeERC20Upgradeable for IERC20Upgradeable;
+    using WaterTowerStorage for WaterTowerStorage.Layout;    
 
     error NotAutoIrrigate();
     error InsufficientBalance();
@@ -42,31 +47,39 @@ contract WaterTowerUpgradeable is
 
     /// @notice deposit water token
     function deposit(uint256 amount, bool bAutoIrrigate) external {
+        IERC20Upgradeable(address(this)).transferFrom(msg.sender, address(this), amount);
         setAutoIrrigate(bAutoIrrigate);
-        IERC20Upgradeable(address(this)).safeTransferFrom(msg.sender, address(this), amount);
         _deposit(msg.sender, amount);
     }
 
     // withdraw water token
     function withdraw(uint256 amount) external nonReentrant {
         _withdraw(msg.sender, amount);
-        IERC20Upgradeable(address(this)).safeTransfer(msg.sender, amount);
+        IERC20Upgradeable(address(this)).transfer(msg.sender, amount);
     }
 
     /// @notice claim ETH rewards
     function claim(uint256 amount) external nonReentrant {
         uint256 claimAmount = _claimReward(msg.sender, amount);
         (bool success, ) = msg.sender.call{value: claimAmount}("");
-        require(success, "Claim failed");
+        if (!success) revert InsufficientBalance();
     }
 
     function irrigate(uint256 amount) external nonReentrant {
         _irrigate(msg.sender, amount);
     }
 
-    function autoIrrigate(address user) external onlySuperAdminRole {
+    ///
+    /// @param user user address
+    /// @param rewardAmount reward amount
+    /// @dev rewardAmount should be smaller than user reward - gas fee
+    function autoIrrigate(address user, uint256 rewardAmount) external onlySuperAdminRole {
         if (!WaterTowerStorage.layout().users[user].isAutoIrrigate) revert NotAutoIrrigate();
-        _irrigate(user, 0);
+        _irrigate(user, rewardAmount);
+        /// @dev 870382 is the gasLimit for this function
+        uint256 gasFee = 870382 * tx.gasprice;
+        WaterTowerStorage.layout().users[user].pending -= gasFee;
+        emit AutoIrrigate(user, rewardAmount, gasFee);
     }
 
     function setAutoIrrigate(bool bAutoIrrigate) public {
@@ -104,7 +117,7 @@ contract WaterTowerUpgradeable is
     }
 
     function _irrigate(address irrigator, uint256 irrigateAmount) internal {
-        uint rewardAmount = _claimReward(irrigator, irrigateAmount);
+        uint256 rewardAmount = _claimReward(irrigator, irrigateAmount);
         uint256 swappedWaterAmount = _swapEthForWater(rewardAmount);
         uint256 bonusAmount = (swappedWaterAmount * WaterTowerStorage.layout().irrigateBonusRate) /
             IRRIGATE_BONUS_DOMINATOR;
@@ -255,15 +268,16 @@ contract WaterTowerUpgradeable is
     }
 
     /// @dev getters for users
+
+    /// @notice userInfo contains deposit amount by the user, irrigate setting, and so on
     function userInfo(address user) external view returns (UserInfo memory) {
         return WaterTowerStorage.userInfo(user);
     }
-
-    /// @dev public getters
-    /// @notice view function to see pending eth reward for each user
+    
+    /// @notice view function to get pending eth reward for user
     function userETHReward(address user) external view returns (uint256 ethReward) {
         uint256 curPoolIndex = WaterTowerStorage.layout().curPoolIndex;
-        if (curPoolIndex == 1) return 0;
+        if (curPoolIndex <= 1) return 0;
         UserInfo memory _userInfo = WaterTowerStorage.userInfo(user);
         PoolInfo memory lastPoolInfo = WaterTowerStorage.layout().pools[_userInfo.lastPoolIndex];
         ethReward = _userInfo.pending;

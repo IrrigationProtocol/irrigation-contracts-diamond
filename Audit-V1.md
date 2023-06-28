@@ -10,25 +10,59 @@
 
 2. this files should be auditted
 
-   | Core facets                              |
+   | Core Facets                              |
    | ---------------------------------------- |
-   | core/AuctionStorage.sol                  |
-   | core/AuctionUpgradeable.sol              |
-   | core/ERC1155WhitelistStorage.sol         |
-   | core/ERC1155WhitelistUpgradeable.sol     |
-   | core/SprinklerStorage.sol                |
-   | core/SprinklerUpgradeable.sol            |
-   | core/TrancheBondStorage.sol              |
-   | core/TrancheBondUpgradeable.sol          |
-   | core/WaterCommonStorage.sol              |
-   | core/WaterCommonUpgradeable.sol          |
-   | core/WaterTowerStorage.sol               |
+   | core/SprinklerUpgradeable.sol            |     
    | core/WaterTowerUpgradeable.sol           |
-   | tokens/WaterUpgradeable.sol              |
-   | oracles/PriceOralcleStorage.sol          |
+   | core/TrancheBondUpgradeable.sol          | 
+   | core/AuctionUpgradeable.sol              |
+   
+   | Base Components Facets                   |
+   | ---------------------------------------- |
+   | core/ERC1155WhitelistUpgradeable.sol     |
+   | core/WaterCommonUpgradeable.sol          |
    | oracles/PriceOralcleUpgradeable.sol      |
    | oracles/PodsOralcleUpgradeable.sol       |
-      
+
+   | Utility Token Facet                      |
+   | ---------------------------------------- |
+   | tokens/WaterUpgradeable.sol              |
+
+   | Core Storage Libraries                   |
+   | ---------------------------------------- |   
+   | core/SprinklerStorage.sol                |
+   | core/WaterTowerStorage.sol               |
+   | core/TrancheBondStorage.sol              |
+   | core/AuctionStorage.sol                  |
+   | core/ERC1155WhitelistStorage.sol         |
+   | core/WaterCommonStorage.sol              |
+   | oracles/PriceOralcleStorage.sol          |
+   
+   | Diamond standard                         |
+   | ---------------------------------------- |   
+   | IrrigationDiamond.sol                    |
+   | utils/Diamond.sol                        |
+   | utils/DiamondCutFacet.sol                |
+   | utils/DiamondLoupeFacet.sol              |
+   | utils/EIP2535Initializable.sol           |
+   | utils/IrrigationAccessControl.sol        |
+   | utils/OwnershipFacet.sol                 |
+
+   | Utility and Oracle Libraries             |
+   | ---------------------------------------- |   
+   | libraries/FullMath.sol                   |
+   | libraries/PodTransferHelper.sol          |
+   | libraries/Oracle/LibPrice.sol            |
+   | oracles/BeanPriceOracle.sol              |
+   | oracles/ChainlinkOracle.sol              |
+   | oracles/uniswapv3/UniswapV3Twap.sol      |
+   | oracles/AggregatorV2V3Interface.sol      |
+
+   | Interfaces                               |
+   | ---------------------------------------- |   
+   | interfaces/*.*                           |
+   | curve/*.*                                |
+   
 
 3. this files are on development, so don't need audit
 
@@ -43,7 +77,8 @@
    | libraries                                |
    | --------------------------------------   |
    | libraries/Encryption/libEncryption.sol   |
-   | libraries/ZkVerifier/*.sol               |
+   | libraries/ZkVerifier/*.*                 |
+   | utils/Utils.sol                          |
    
 
 

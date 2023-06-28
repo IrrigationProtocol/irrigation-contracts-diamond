@@ -2,6 +2,8 @@
 pragma solidity 0.8.17;
 
 import "@gnus.ai/contracts-upgradeable-diamond/contracts/interfaces/IERC20MetadataUpgradeable.sol";
+import "@gnus.ai/contracts-upgradeable-diamond/contracts/interfaces/IERC20Upgradeable.sol";
+import "@gnus.ai/contracts-upgradeable-diamond/contracts/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@gnus.ai/contracts-upgradeable-diamond/contracts/interfaces/IERC1155Upgradeable.sol";
 import "@gnus.ai/contracts-upgradeable-diamond/contracts/security/ReentrancyGuardUpgradeable.sol";
 
@@ -9,7 +11,6 @@ import "./AuctionStorage.sol";
 import "./TrancheBondStorage.sol";
 import "../utils/EIP2535Initializable.sol";
 import "../utils/IrrigationAccessControl.sol";
-import "../libraries/TransferHelper.sol";
 import "../libraries/FullMath.sol";
 import "../libraries/Constants.sol";
 
@@ -33,9 +34,11 @@ contract AuctionUpgradeable is
 {
     using AuctionStorage for AuctionStorage.Layout;
     using TrancheBondStorage for TrancheBondStorage.Layout;
+    using SafeERC20Upgradeable for IERC20Upgradeable;
     /// @dev errors
     error InsufficientFee();
     error NotListTrancheZ();
+    error NoTransferEther();
 
     event AuctionCreated(
         address seller,
@@ -100,7 +103,7 @@ contract AuctionUpgradeable is
     function createAuction(
         uint96 startTime,
         uint96 duration,
-        address sellToken,
+        IERC20Upgradeable sellToken,
         uint256 trancheIndex,
         uint128 sellAmount,
         uint128 minBidAmount,
@@ -111,8 +114,7 @@ contract AuctionUpgradeable is
     ) external payable returns (uint256) {
         uint256 _trancheIndex = trancheIndex;
         if (_trancheIndex == 0) {
-            TransferHelper.safeTransferFrom(
-                sellToken,
+            sellToken.safeTransferFrom(
                 msg.sender,
                 address(this),
                 (uint256(sellAmount) * (FEE_DENOMINATOR + AuctionStorage.layout().feeNumerator)) /
@@ -133,7 +135,10 @@ contract AuctionUpgradeable is
             uint256 feeAmount = (((sellAmount * 1e30) / ethPrice) *
                 AuctionStorage.layout().feeNumerator) / FEE_DENOMINATOR;
             if (msg.value < feeAmount) revert InsufficientFee();
-            else if (msg.value > feeAmount) payable(msg.sender).transfer(msg.value - feeAmount);
+            else if (msg.value > feeAmount) {
+                (bool success, ) = msg.sender.call{value: msg.value - feeAmount}("");
+                if (!success) revert NoTransferEther();
+            }
             IWaterTowerUpgradeable(address(this)).addETHReward{value: feeAmount}();
         }
         require(sellAmount > 0, "cannot zero sell amount");
@@ -143,8 +148,8 @@ contract AuctionUpgradeable is
         AuctionStorage.layout().currentAuctionId = AuctionStorage.layout().currentAuctionId + 1;
         uint96 _startTime = startTime == 0 ? uint96(block.timestamp) : startTime;
         uint96 _duration = duration;
-        address _sellToken = sellToken;
         uint128 _sellAmount = sellAmount;
+        address _sellToken = address(sellToken);
         uint128 _minBidAmount = minBidAmount;
         uint128 _fixedPrice = fixedPrice;
         uint128 _priceRangeStart = priceRangeStart;
@@ -191,8 +196,8 @@ contract AuctionUpgradeable is
     function buyNow(
         uint256 auctionId,
         uint128 purchaseAmount,
-        address purchaseToken
-    ) external supportedPurchase(purchaseToken) nonReentrant {
+        IERC20Upgradeable purchaseToken
+    ) external supportedPurchase(address(purchaseToken)) nonReentrant {
         AuctionData memory auction = AuctionStorage.layout().auctions[auctionId];
         require(
             auction.auctionType != AuctionType.TimedAuction && auction.seller != address(0),
@@ -202,19 +207,20 @@ contract AuctionUpgradeable is
         uint256 trancheIndex = auction.trancheIndex;
         require(purchaseAmount <= availableAmount, "big amount");
 
+        address _purchaseToken = address(purchaseToken);
         // need auction conditions
         // consider decimals of purchase token and sell token
         uint256 payAmount = getPayAmount(
-            purchaseToken,
+            _purchaseToken,
             purchaseAmount,
             auction.fixedPrice,
             auction.sellToken
         );
         AuctionStorage.layout().auctions[auctionId].reserve = availableAmount - purchaseAmount;
-        TransferHelper.safeTransferFrom(purchaseToken, msg.sender, auction.seller, payAmount);
+        purchaseToken.safeTransferFrom(msg.sender, auction.seller, payAmount);
 
         if (auction.assetType == AssetType.ERC20) {
-            TransferHelper.safeTransfer(auction.sellToken, msg.sender, purchaseAmount);
+            IERC20Upgradeable(auction.sellToken).safeTransfer(msg.sender, purchaseAmount);
         } else {
             IERC1155Upgradeable(address(this)).safeTransferFrom(
                 address(this),
@@ -231,7 +237,7 @@ contract AuctionUpgradeable is
             purchaseAmount,
             auction.sellToken,
             auction.trancheIndex,
-            purchaseToken,
+            _purchaseToken,
             auctionId
         );
     }
@@ -262,8 +268,7 @@ contract AuctionUpgradeable is
             require(bidPrice > lastBid.bidPrice, "low Bid");
         }
         uint256 payAmount = getPayAmount(purchaseToken, bidAmount, bidPrice, auction.sellToken);
-
-        TransferHelper.safeTransferFrom(purchaseToken, msg.sender, address(this), payAmount);
+        IERC20Upgradeable(purchaseToken).safeTransferFrom(msg.sender, address(this), payAmount);
         Bid memory bid = Bid({
             bidder: msg.sender,
             bidAmount: bidAmount,
@@ -298,8 +303,7 @@ contract AuctionUpgradeable is
         require(!bid.bCleared, "already settled bid");
         AuctionStorage.layout().bids[auctionId][bidId].bCleared = true;
 
-        TransferHelper.safeTransfer(
-            bid.purchaseToken,
+        IERC20Upgradeable(bid.purchaseToken).safeTransfer(
             bid.bidder,
             getPayAmount(bid.purchaseToken, bid.bidAmount, bid.bidPrice, auction.sellToken)
         );
@@ -311,7 +315,7 @@ contract AuctionUpgradeable is
         // when there are no bids, all token amount will be transfered back to seller
         if (auction.curBidId == 0) {
             if (trancheIndex == 0) {
-                TransferHelper.safeTransfer(auction.sellToken, auction.seller, auction.reserve);
+                IERC20Upgradeable(auction.sellToken).safeTransfer(auction.seller, auction.reserve);
             } else {
                 IERC1155Upgradeable(address(this)).safeTransferFrom(
                     address(this),
@@ -350,7 +354,7 @@ contract AuctionUpgradeable is
         );
         if (availableAmount > 0) {
             if (auction.assetType == AssetType.ERC20) {
-                TransferHelper.safeTransfer(auction.sellToken, auction.seller, availableAmount);
+                IERC20Upgradeable(auction.sellToken).safeTransfer(auction.seller, availableAmount);
             } else {
                 IERC1155Upgradeable(address(this)).safeTransferFrom(
                     address(this),
@@ -377,17 +381,17 @@ contract AuctionUpgradeable is
     ) internal returns (uint128 settledAmount) {
         settledAmount = bid.bidAmount;
         uint128 repayAmount = 0;
+        IERC20Upgradeable _purchaseToken = IERC20Upgradeable(bid.purchaseToken);
         if (availableAmount < settledAmount) {
             repayAmount = settledAmount - availableAmount;
             settledAmount = availableAmount;
-            TransferHelper.safeTransfer(
-                bid.purchaseToken,
+            _purchaseToken.safeTransfer(
                 bid.bidder,
                 getPayAmount(bid.purchaseToken, repayAmount, bid.bidPrice, sellToken)
             );
         }
         if (trancheIndex == 0) {
-            TransferHelper.safeTransfer(sellToken, bid.bidder, settledAmount);
+            IERC20Upgradeable(sellToken).safeTransfer(bid.bidder, settledAmount);
         } else {
             IERC1155Upgradeable(address(this)).safeTransferFrom(
                 address(this),
@@ -398,8 +402,7 @@ contract AuctionUpgradeable is
             );
         }
 
-        TransferHelper.safeTransfer(
-            bid.purchaseToken,
+        _purchaseToken.safeTransfer(
             seller,
             getPayAmount(bid.purchaseToken, settledAmount, bid.bidPrice, sellToken)
         );
