@@ -2,7 +2,6 @@
 pragma solidity 0.8.17;
 
 import "@gnus.ai/contracts-upgradeable-diamond/contracts/token/ERC20/IERC20Upgradeable.sol";
-import "@gnus.ai/contracts-upgradeable-diamond/contracts/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@gnus.ai/contracts-upgradeable-diamond/contracts/security/ReentrancyGuardUpgradeable.sol";
 
 import "./WaterTowerStorage.sol";
@@ -29,8 +28,7 @@ contract WaterTowerUpgradeable is
     ReentrancyGuardUpgradeable,
     IWaterTowerUpgradeable
 {
-    using WaterTowerStorage for WaterTowerStorage.Layout;
-    using SafeERC20Upgradeable for IERC20Upgradeable;
+    using WaterTowerStorage for WaterTowerStorage.Layout;    
 
     error NotAutoIrrigate();
     error InsufficientBalance();
@@ -49,7 +47,7 @@ contract WaterTowerUpgradeable is
 
     /// @notice deposit water token
     function deposit(uint256 amount, bool bAutoIrrigate) external {
-        IERC20Upgradeable(address(this)).safeTransferFrom(msg.sender, address(this), amount);
+        IERC20Upgradeable(address(this)).transferFrom(msg.sender, address(this), amount);
         setAutoIrrigate(bAutoIrrigate);
         _deposit(msg.sender, amount);
     }
@@ -57,7 +55,7 @@ contract WaterTowerUpgradeable is
     // withdraw water token
     function withdraw(uint256 amount) external nonReentrant {
         _withdraw(msg.sender, amount);
-        IERC20Upgradeable(address(this)).safeTransfer(msg.sender, amount);
+        IERC20Upgradeable(address(this)).transfer(msg.sender, amount);
     }
 
     /// @notice claim ETH rewards
@@ -78,8 +76,8 @@ contract WaterTowerUpgradeable is
     function autoIrrigate(address user, uint256 rewardAmount) external onlySuperAdminRole {
         if (!WaterTowerStorage.layout().users[user].isAutoIrrigate) revert NotAutoIrrigate();
         _irrigate(user, rewardAmount);
-        /// @dev 870391 is the gasLimit for this function
-        uint256 gasFee = 870391 * tx.gasprice;
+        /// @dev 870382 is the gasLimit for this function
+        uint256 gasFee = 870382 * tx.gasprice;
         WaterTowerStorage.layout().users[user].pending -= gasFee;
         emit AutoIrrigate(user, rewardAmount, gasFee);
     }

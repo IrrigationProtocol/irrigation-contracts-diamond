@@ -10,6 +10,7 @@ import "@gnus.ai/contracts-upgradeable-diamond/contracts/interfaces/IERC20Upgrad
 import "../interfaces/ICustomOracle.sol";
 import {IBeanstalkUpgradeable} from "../beanstalk/IBeanstalkUpgradeable.sol";
 import "./SprinklerStorage.sol";
+import "../libraries/TransferHelper.sol";
 import "../utils/EIP2535Initializable.sol";
 import "../utils/IrrigationAccessControl.sol";
 import "../libraries/Constants.sol";
@@ -32,7 +33,7 @@ contract SprinklerUpgradeable is
     error ExistingAsset();
     error NoWaterWithdraw();
     error NoSprinklerWhitelist();
-    error InsufficientEther();
+    error NoWithdrawEther();
 
     /// @dev admin setters
     /**
@@ -121,19 +122,19 @@ contract SprinklerUpgradeable is
 
     function depositWater(uint256 amount) public {
         if (amount == 0) revert InvalidAmount();
+        IERC20Upgradeable(address(this)).transferFrom(msg.sender, address(this), amount);
         SprinklerStorage.layout().availableWater =
             SprinklerStorage.layout().availableWater +
             amount;
-        IERC20Upgradeable(address(this)).safeTransferFrom(msg.sender, address(this), amount);
         emit DepositWater(amount);
     }
 
     /// internal functions
     function transferWater(uint256 amount) internal {
-        IERC20Upgradeable(address(this)).safeTransfer(msg.sender, amount);
         SprinklerStorage.layout().availableWater =
             SprinklerStorage.layout().availableWater -
             amount;
+        IERC20Upgradeable(address(this)).transfer(msg.sender, amount);
     }
 
     /// admin functions
@@ -147,7 +148,7 @@ contract SprinklerUpgradeable is
         if (token == address(this)) revert NoWaterWithdraw();
         if (token == Constants.ETHER) {
             (bool success, ) = to.call{value: amount}(new bytes(0));
-            if(!success) revert InsufficientEther();
+            if (!success) revert NoWithdrawEther();
         } else {
             IERC20Upgradeable(token).safeTransfer(to, amount);
         }

@@ -38,6 +38,7 @@ contract AuctionUpgradeable is
     /// @dev errors
     error InsufficientFee();
     error NotListTrancheZ();
+    error NoTransferEther();
 
     event AuctionCreated(
         address seller,
@@ -134,7 +135,10 @@ contract AuctionUpgradeable is
             uint256 feeAmount = (((sellAmount * 1e30) / ethPrice) *
                 AuctionStorage.layout().feeNumerator) / FEE_DENOMINATOR;
             if (msg.value < feeAmount) revert InsufficientFee();
-            else if (msg.value > feeAmount) payable(msg.sender).transfer(msg.value - feeAmount);
+            else if (msg.value > feeAmount) {
+                (bool success, ) = msg.sender.call{value: msg.value - feeAmount}("");
+                if (!success) revert NoTransferEther();
+            }
             IWaterTowerUpgradeable(address(this)).addETHReward{value: feeAmount}();
         }
         require(sellAmount > 0, "cannot zero sell amount");
