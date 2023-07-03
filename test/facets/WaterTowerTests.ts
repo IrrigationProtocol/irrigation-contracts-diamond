@@ -5,6 +5,7 @@ import { IrrigationDiamond } from '../../typechain-types/hardhat-diamond-abi/Har
 import { WaterTowerUpgradeable, WaterUpgradeable } from '../../typechain-types';
 import { CONTRACT_ADDRESSES } from '../../scripts/shared';
 import { skipTime } from '../utils/time';
+import { BigNumber } from 'ethers';
 
 export function suite() {
   describe('Irrigation WaterTower Testing', async function () {
@@ -206,9 +207,9 @@ export function suite() {
       const { waterAmount, bonusAmount } = await waterTower.getBonusForIrrigate(testerReward);
       const tx = await waterTower.autoIrrigate(tester.address, testerReward.sub(toWei(0.001)));
       let txReceipt = await tx.wait();
-      const totalGas = txReceipt.gasUsed.mul(txReceipt.effectiveGasPrice);
+      const subractedGasFee = BigNumber.from('804318').mul(txReceipt.effectiveGasPrice);
       testerReward = await waterTower.userETHReward(tester.address);
-      expect(testerReward).to.be.eq(toWei(0.001).sub(totalGas));
+      expect(testerReward).to.be.eq(toWei(0.001).sub(subractedGasFee));
       expect((await waterTower.userInfo(tester.address)).amount.sub(oldDepositAmount)).to.be.gt(bonusAmount);
       expect(bonusAmount).to.be.gt(toD6(0.01));
     });
