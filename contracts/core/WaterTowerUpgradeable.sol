@@ -76,8 +76,8 @@ contract WaterTowerUpgradeable is
     function autoIrrigate(address user, uint256 rewardAmount) external onlySuperAdminRole {
         if (!WaterTowerStorage.layout().users[user].isAutoIrrigate) revert NotAutoIrrigate();
         _irrigate(user, rewardAmount);
-        /// @dev 870382 is the gasLimit for this function
-        uint256 gasFee = 870382 * tx.gasprice;
+        /// @dev 804318: precalculated gasLimit
+        uint256 gasFee = 804318 * tx.gasprice;
         WaterTowerStorage.layout().users[user].pending -= gasFee;
         emit AutoIrrigate(user, rewardAmount, gasFee);
     }
@@ -245,7 +245,7 @@ contract WaterTowerUpgradeable is
         }
         WaterTowerStorage.layout().totalRewards = totalRewards;
         WaterTowerStorage.curPool().monthlyRewards = monthlyRewards;
-    }
+}
 
     /// @dev admin setters
     function setMiddleAsset(address middleAsset) external onlySuperAdminRole {

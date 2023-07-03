@@ -216,7 +216,9 @@ contract AuctionUpgradeable is
             auction.fixedPrice,
             auction.sellToken
         );
-        AuctionStorage.layout().auctions[auctionId].reserve = availableAmount - purchaseAmount;
+        unchecked {
+            AuctionStorage.layout().auctions[auctionId].reserve = availableAmount - purchaseAmount;
+        }
         purchaseToken.safeTransferFrom(msg.sender, auction.seller, payAmount);
 
         if (auction.assetType == AssetType.ERC20) {
