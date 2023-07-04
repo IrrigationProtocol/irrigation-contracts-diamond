@@ -39,6 +39,7 @@ contract AuctionUpgradeable is
     error InsufficientFee();
     error NotListTrancheZ();
     error NoTransferEther();
+    error InvalidTrancheAuction();
 
     event AuctionCreated(
         address seller,
@@ -122,6 +123,7 @@ contract AuctionUpgradeable is
             );
         } else {
             if (_trancheIndex & 3 == 3) revert NotListTrancheZ();
+            if (address(sellToken) != Constants.ZERO) revert InvalidTrancheAuction();
             IERC1155Upgradeable(address(this)).safeTransferFrom(
                 msg.sender,
                 address(this),

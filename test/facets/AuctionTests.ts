@@ -277,5 +277,43 @@ export function suite() {
         AuctionType.FixedPrice,
       )).to.be.revertedWith('Address: call to non-contract');
     });
+    
+    it('Tranche Auction with sellToken should be reverted', async () => {
+      await expect(auctionContract.createAuction(0,
+        86400 * 2,
+        token1.address,
+        1,
+        toWei(100),
+        toWei(0.1),
+        toWei(0.9574),
+        toWei(0.1),
+        toWei(0.5),
+        AuctionType.TimedAuction)).to.be.revertedWithCustomError(auctionContract, 'InvalidTrancheAuction');
+    });
+
+    it('Test Auction with max check bids', async () => {
+      let tx = await auctionContract.createAuction(
+        0,
+        86400 * 2,
+        token1.address,
+        0,
+        toWei(100),
+        toWei(0.1),
+        toWei(0.9574),
+        toWei(0.1),
+        toWei(0.5),
+        AuctionType.TimedAuction,
+      );
+      await dai.transfer(sender.address, toWei(50));
+      await dai.connect(sender).approve(auctionContract.address, toWei(50));
+      for (let i = 0; i < 200; i++) {
+        await auctionContract.connect(sender).placeBid(3, toWei(0.1), dai.address, toWei(0.101 + i * 0.001));
+      }
+      await skipTime(86400 * 2);
+      tx = await auctionContract.closeAuction(3);
+      let txReceipt = await tx.wait();
+      const totalGas = txReceipt.gasUsed.mul(txReceipt.effectiveGasPrice);
+      debuglog(`max gas for 200 winners: ${fromWei(totalGas)}`);
+    });
   });
 }

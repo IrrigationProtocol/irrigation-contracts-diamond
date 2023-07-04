@@ -187,7 +187,7 @@ export function suite() {
       await sprinkler.depositWater(toWei(100_000));
       await expect(sprinkler.exchangeTokenToWater(CONTRACT_ADDRESSES.ETHER, toWei(1))).
         to.be.revertedWithCustomError(sprinkler, 'InvalidSwapToken');
-    });    
+    });
 
   });
 }
