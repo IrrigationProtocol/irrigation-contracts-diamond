@@ -28,7 +28,7 @@ contract WaterTowerUpgradeable is
     ReentrancyGuardUpgradeable,
     IWaterTowerUpgradeable
 {
-    using WaterTowerStorage for WaterTowerStorage.Layout;    
+    using WaterTowerStorage for WaterTowerStorage.Layout;
 
     error NotAutoIrrigate();
     error InsufficientBalance();
@@ -88,7 +88,11 @@ contract WaterTowerUpgradeable is
     }
 
     /// @dev internal
+
     /// @dev if user is not updated in current pool index, reward rate is calculated
+    /// @param user user address
+    /// @param poolInfo current pool info
+    /// @param curPoolIndex curren pool index
     function _updateUserPool(
         address user,
         PoolInfo memory poolInfo,
@@ -99,7 +103,7 @@ contract WaterTowerUpgradeable is
             PoolInfo memory lastPoolInfo = WaterTowerStorage.layout().pools[
                 _userInfo.lastPoolIndex
             ];
-            if (_userInfo.rewardRate != 0 && lastPoolInfo.totalRewardRate != 0) {
+            if (_userInfo.rewardRate != 0) {
                 _userInfo.pending +=
                     (_userInfo.rewardRate * lastPoolInfo.monthlyRewards) /
                     lastPoolInfo.totalRewardRate;
@@ -141,7 +145,9 @@ contract WaterTowerUpgradeable is
         uint256 ethReward = WaterTowerStorage.userInfo(user).pending;
         if (ethReward < amount) revert InsufficientReward();
         if (amount == 0) amount = ethReward;
-        WaterTowerStorage.layout().users[user].pending = ethReward - amount;
+        unchecked {
+            WaterTowerStorage.layout().users[user].pending = ethReward - amount;
+        }
         emit Claimed(msg.sender, amount);
         return amount;
     }
@@ -153,9 +159,7 @@ contract WaterTowerUpgradeable is
         WaterTowerStorage.layout().users[user].amount += amount;
         uint256 rewardRate = amount * (poolInfo.endTime - block.timestamp);
         WaterTowerStorage.layout().users[user].rewardRate += rewardRate;
-        WaterTowerStorage.layout().pools[curPoolIndex].totalRewardRate =
-            poolInfo.totalRewardRate +
-            rewardRate;
+        WaterTowerStorage.layout().pools[curPoolIndex].totalRewardRate += rewardRate;
         WaterTowerStorage.layout().totalDeposits += amount;
         emit Deposited(user, amount);
     }
@@ -167,9 +171,7 @@ contract WaterTowerUpgradeable is
         WaterTowerStorage.layout().users[user].amount -= amount;
         uint256 rewardRate = amount * (poolInfo.endTime - block.timestamp);
         WaterTowerStorage.layout().users[user].rewardRate -= rewardRate;
-        WaterTowerStorage.layout().pools[curPoolIndex].totalRewardRate =
-            poolInfo.totalRewardRate -
-            rewardRate;
+        WaterTowerStorage.layout().pools[curPoolIndex].totalRewardRate -= rewardRate;
         WaterTowerStorage.layout().totalDeposits -= amount;
         emit Withdrawn(user, amount);
     }
@@ -245,7 +247,7 @@ contract WaterTowerUpgradeable is
         }
         WaterTowerStorage.layout().totalRewards = totalRewards;
         WaterTowerStorage.curPool().monthlyRewards = monthlyRewards;
-}
+    }
 
     /// @dev admin setters
     function setMiddleAsset(address middleAsset) external onlySuperAdminRole {
@@ -273,7 +275,7 @@ contract WaterTowerUpgradeable is
     function userInfo(address user) external view returns (UserInfo memory) {
         return WaterTowerStorage.userInfo(user);
     }
-    
+
     /// @notice view function to get pending eth reward for user
     function userETHReward(address user) external view returns (uint256 ethReward) {
         uint256 curPoolIndex = WaterTowerStorage.layout().curPoolIndex;
@@ -282,7 +284,7 @@ contract WaterTowerUpgradeable is
         PoolInfo memory lastPoolInfo = WaterTowerStorage.layout().pools[_userInfo.lastPoolIndex];
         ethReward = _userInfo.pending;
         if (_userInfo.lastPoolIndex != curPoolIndex) {
-            if (_userInfo.rewardRate != 0 && lastPoolInfo.totalRewardRate != 0) {
+            if (_userInfo.rewardRate != 0) {
                 ethReward +=
                     (_userInfo.rewardRate * lastPoolInfo.monthlyRewards) /
                     lastPoolInfo.totalRewardRate;

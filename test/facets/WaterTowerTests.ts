@@ -213,5 +213,22 @@ export function suite() {
       expect((await waterTower.userInfo(tester.address)).amount.sub(oldDepositAmount)).to.be.gt(bonusAmount);
       expect(bonusAmount).to.be.gt(toD6(0.01));
     });
+
+    it('totalReward should be same as rewards of total users in same pool', async () => {
+      const currentPoolIndex = await waterTower.getPoolIndex();
+      let currentPool = await waterTower.getPoolInfo(currentPoolIndex);
+      let senderInfo = await waterTower.userInfo(sender.address);
+      let testerInfo = await waterTower.userInfo(tester.address);
+      if (!senderInfo.lastPoolIndex.eq(currentPoolIndex) && senderInfo.rewardRate.gt(0)) {        
+        await waterTower.connect(sender).deposit(0, false);
+        senderInfo = await waterTower.userInfo(sender.address);
+      }
+      currentPool = await waterTower.getPoolInfo(currentPoolIndex);
+      expect(senderInfo.lastPoolIndex).to.be.eq(currentPoolIndex);
+      expect(testerInfo.lastPoolIndex).to.be.eq(currentPoolIndex);
+      let senderReward = senderInfo.rewardRate;
+      let testerReward = testerInfo.rewardRate;
+      expect(currentPool.totalRewardRate).to.be.eq(senderReward.add(testerReward));
+    });
   });
 }
