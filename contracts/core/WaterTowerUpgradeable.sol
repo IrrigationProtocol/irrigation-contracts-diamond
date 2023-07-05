@@ -65,19 +65,27 @@ contract WaterTowerUpgradeable is
         if (!success) revert InsufficientBalance();
     }
 
-    function irrigate(uint256 amount) external nonReentrant {
-        _irrigate(msg.sender, amount);
+    /// @notice irrigate user reward
+    /// @param amount user's ether reward
+    /// @param minSwapAmount minimum middle asset amount swapped by irrigate
+    function irrigate(uint256 amount, uint256 minSwapAmount) external nonReentrant {
+        _irrigate(msg.sender, amount, minSwapAmount);
     }
 
-    ///
+    /// @notice irrigate user reward per a month by admin
     /// @param user user address
     /// @param rewardAmount reward amount
+    /// @param minSwapAmount minimum middle asset amount swapped by irrigate
     /// @dev rewardAmount should be smaller than user reward - gas fee
-    function autoIrrigate(address user, uint256 rewardAmount) external onlySuperAdminRole {
+    function autoIrrigate(
+        address user,
+        uint256 rewardAmount,
+        uint256 minSwapAmount
+    ) external onlySuperAdminRole {
         if (!WaterTowerStorage.layout().users[user].isAutoIrrigate) revert NotAutoIrrigate();
-        _irrigate(user, rewardAmount);
-        /// @dev 804318: precalculated gasLimit
-        uint256 gasFee = 804318 * tx.gasprice;
+        _irrigate(user, rewardAmount, minSwapAmount);
+        /// @dev 870200: precalculated gasLimit
+        uint256 gasFee = 870200 * tx.gasprice;
         WaterTowerStorage.layout().users[user].pending -= gasFee;
         emit AutoIrrigate(user, rewardAmount, gasFee);
     }
@@ -120,9 +128,9 @@ contract WaterTowerUpgradeable is
         }
     }
 
-    function _irrigate(address irrigator, uint256 irrigateAmount) internal {
+    function _irrigate(address irrigator, uint256 irrigateAmount, uint256 minSwapAmount) internal {
         uint256 rewardAmount = _claimReward(irrigator, irrigateAmount);
-        uint256 swappedWaterAmount = _swapEthForWater(rewardAmount);
+        uint256 swappedWaterAmount = _swapEthForWater(rewardAmount, minSwapAmount);
         uint256 bonusAmount = (swappedWaterAmount * WaterTowerStorage.layout().irrigateBonusRate) /
             IRRIGATE_BONUS_DOMINATOR;
         uint256 totalDepositWaterAmount = swappedWaterAmount + bonusAmount;
@@ -176,7 +184,10 @@ contract WaterTowerUpgradeable is
         emit Withdrawn(user, amount);
     }
 
-    function _swapEthForWater(uint256 amount) internal returns (uint256 waterAmount) {
+    function _swapEthForWater(
+        uint256 amount,
+        uint256 minSwapAmount
+    ) internal returns (uint256 waterAmount) {
         if (WaterTowerStorage.layout().middleAssetForIrrigate == Constants.BEAN) {
             /// @dev swap ETH for BEAN using curve router
             address[9] memory route = [
@@ -198,7 +209,7 @@ contract WaterTowerUpgradeable is
             ];
             uint256 beanAmount = ICurveSwapRouter(Constants.CURVE_ROUTER).exchange_multiple{
                 value: amount
-            }(route, swapParams, amount, 0);
+            }(route, swapParams, amount, minSwapAmount);
 
             waterAmount = ISprinklerUpgradeable(address(this)).getWaterAmount(
                 Constants.BEAN,
@@ -209,7 +220,7 @@ contract WaterTowerUpgradeable is
 
     function getBonusForIrrigate(
         uint256 ethAmount
-    ) public view returns (uint256 waterAmount, uint256 bonusAmount) {
+    ) external view returns (uint256 waterAmount, uint256 bonusAmount, uint256 swapAmount) {
         if (WaterTowerStorage.layout().middleAssetForIrrigate == Constants.BEAN) {
             /// @dev swap amount ETH->USDT->BEAN through Curve finance
             uint256 usdtAmount = ICurveMetaPool(Constants.TRI_CRYPTO_POOL).get_dy(
@@ -217,7 +228,7 @@ contract WaterTowerUpgradeable is
                 0,
                 ethAmount
             );
-            uint beanAmount = ICurveMetaPool(Constants.CURVE_BEAN_METAPOOL).get_dy_underlying(
+            swapAmount = ICurveMetaPool(Constants.CURVE_BEAN_METAPOOL).get_dy_underlying(
                 3,
                 0,
                 usdtAmount
@@ -226,12 +237,12 @@ contract WaterTowerUpgradeable is
             /// @dev calculate swap water amount through Sprinkler
             waterAmount = ISprinklerUpgradeable(address(this)).getWaterAmount(
                 Constants.BEAN,
-                beanAmount
+                swapAmount
             );
             bonusAmount =
                 (waterAmount * WaterTowerStorage.layout().irrigateBonusRate) /
                 IRRIGATE_BONUS_DOMINATOR;
-        } else return (0, 0);
+        } else return (0, 0, 0);
     }
 
     function addETHReward() external payable {
