@@ -40,6 +40,15 @@ contract AuctionUpgradeable is
     error NotListTrancheZ();
     error NoTransferEther();
     error InvalidTrancheAuction();
+    error InvalidAuctionFee();
+    error InvalidAuctionAmount();
+    error InvalidStartTime();
+    error InvalidMinBidAmount();
+    error InvalidEndPrice();
+    error NoFixedAuction();
+    error InvalidPurchaseAmount();
+    error LowBid();
+    error OverPriceBid();
 
     event AuctionCreated(
         address seller,
@@ -52,8 +61,9 @@ contract AuctionUpgradeable is
         uint256 fixedPrice,
         uint256 priceRangeStart,
         uint256 priceRangeEnd,
+        uint96 incrementBidPrice,
+        uint8 maxWinners,
         AuctionType auctionType,
-        AssetType assetType,
         uint256 indexed auctionId
     );
 
@@ -111,6 +121,8 @@ contract AuctionUpgradeable is
         uint128 fixedPrice,
         uint128 priceRangeStart,
         uint128 priceRangeEnd,
+        uint96 incrementBidPrice,
+        uint8 maxWinners,
         AuctionType auctionType
     ) external payable returns (uint256) {
         uint256 _trancheIndex = trancheIndex;
@@ -146,9 +158,11 @@ contract AuctionUpgradeable is
         require(sellAmount > 0, "cannot zero sell amount");
         require(startTime == 0 || startTime >= block.timestamp, "start time must be in the future");
         require(minBidAmount > 0 && minBidAmount <= sellAmount, "invalid minBidAmount");
+        require(maxWinners > 0, "invalid maxWinners");
+        if (priceRangeStart > priceRangeEnd) revert InvalidEndPrice();
 
-        AuctionStorage.layout().currentAuctionId = AuctionStorage.layout().currentAuctionId + 1;
-        uint96 _startTime = startTime == 0 ? uint96(block.timestamp) : startTime;
+        AuctionStorage.layout().currentAuctionId += 1;
+        uint96 _startTime = uint96(block.timestamp);
         uint96 _duration = duration;
         uint128 _sellAmount = sellAmount;
         address _sellToken = address(sellToken);
@@ -156,10 +170,8 @@ contract AuctionUpgradeable is
         uint128 _fixedPrice = fixedPrice;
         uint128 _priceRangeStart = priceRangeStart;
         uint128 _priceRangeEnd = priceRangeEnd;
-        AuctionType _auctionType = auctionType;
-        AssetType _assetType = _trancheIndex == 0 ? AssetType.ERC20 : AssetType.Tranche;
-
-        AuctionData memory auction = AuctionData(
+        uint96 _incrementBidPrice = incrementBidPrice;
+        AuctionStorage.layout().auctions[AuctionStorage.layout().currentAuctionId] = AuctionData(
             msg.sender,
             _startTime,
             _duration,
@@ -172,26 +184,31 @@ contract AuctionUpgradeable is
             _priceRangeEnd,
             _sellAmount,
             0,
+            _incrementBidPrice,
+            maxWinners,
             AuctionStatus.Open,
-            _auctionType,
-            _assetType
+            auctionType
         );
-        AuctionStorage.layout().auctions[AuctionStorage.layout().currentAuctionId] = auction;
-        emit AuctionCreated(
-            msg.sender,
-            _startTime,
-            _duration,
-            _sellToken,
-            _trancheIndex,
-            _sellAmount,
-            _minBidAmount,
-            _fixedPrice,
-            _priceRangeStart,
-            _priceRangeEnd,
-            _auctionType,
-            _assetType,
-            AuctionStorage.layout().currentAuctionId
-        );
+        {
+            AuctionType _auctionType = auctionType;
+            uint8 _maxWinners = maxWinners;
+            emit AuctionCreated(
+                msg.sender,
+                _startTime,
+                _duration,
+                _sellToken,
+                _trancheIndex,
+                _sellAmount,
+                _minBidAmount,
+                _fixedPrice,
+                _priceRangeStart,
+                _priceRangeEnd,
+                _incrementBidPrice,
+                _maxWinners,
+                _auctionType,
+                AuctionStorage.layout().currentAuctionId
+            );
+        }
         return AuctionStorage.layout().currentAuctionId;
     }
 
@@ -223,7 +240,7 @@ contract AuctionUpgradeable is
         }
         purchaseToken.safeTransferFrom(msg.sender, auction.seller, payAmount);
 
-        if (auction.assetType == AssetType.ERC20) {
+        if (auction.trancheIndex == 0) {
             IERC20Upgradeable(auction.sellToken).safeTransfer(msg.sender, purchaseAmount);
         } else {
             IERC1155Upgradeable(address(this)).safeTransferFrom(
@@ -250,7 +267,8 @@ contract AuctionUpgradeable is
         uint256 auctionId,
         uint128 bidAmount,
         address purchaseToken,
-        uint128 bidPrice
+        uint128 bidPrice,
+        bool bCheckEndPrice
     ) external supportedPurchase(purchaseToken) returns (uint256) {
         AuctionData memory auction = AuctionStorage.layout().auctions[auctionId];
         require(
@@ -264,13 +282,16 @@ contract AuctionUpgradeable is
         require(auction.minBidAmount <= bidAmount, "too small bid amount");
         require(bidAmount <= auction.reserve, "too big amount than reverse");
         // should add condition for timed
-        // no bid
-        if (auction.curBidId == 0) {
-            require(bidPrice >= auction.priceRangeStart, "low Bid");
-        } else {
-            Bid memory lastBid = AuctionStorage.layout().bids[auctionId][auction.curBidId];
-            require(bidPrice > lastBid.bidPrice, "low Bid");
-        }
+        // last bid price starts from priceRangeStart
+        uint128 availableBidPrice = auction.curBidId == 0
+            ? auction.priceRangeStart
+            : AuctionStorage.layout().bids[auctionId][auction.curBidId].bidPrice +
+                auction.incrementBidPrice;
+        // if bidPrice is 0, place bid in increment way
+        // if incrementBidPrice is 0, can place bid with same price as last bid
+        if (bidPrice == 0) bidPrice = availableBidPrice;
+        else if (bidPrice < availableBidPrice) revert LowBid();
+        if (bCheckEndPrice && auction.priceRangeEnd < bidPrice) revert OverPriceBid();
         uint256 payAmount = getPayAmount(purchaseToken, bidAmount, bidPrice, auction.sellToken);
         IERC20Upgradeable(purchaseToken).safeTransferFrom(msg.sender, address(this), payAmount);
         Bid memory bid = Bid({
@@ -357,7 +378,7 @@ contract AuctionUpgradeable is
                 availableAmount >= auction.minBidAmount
         );
         if (availableAmount > 0) {
-            if (auction.assetType == AssetType.ERC20) {
+            if (auction.trancheIndex == 0) {
                 IERC20Upgradeable(auction.sellToken).safeTransfer(auction.seller, availableAmount);
             } else {
                 IERC1155Upgradeable(address(this)).safeTransferFrom(
@@ -484,7 +505,7 @@ contract AuctionUpgradeable is
 
     function _checkAuctionRangeTime(uint endTime, uint startTime) internal view returns (bool) {
         uint currentTime = block.timestamp;
-        if (startTime > 0 && startTime > currentTime) {
+        if (startTime > currentTime) {
             return false;
         }
         if (endTime > 0 && endTime <= currentTime) {

@@ -68,6 +68,8 @@ export function suite() {
         toWei(0.9574),
         toWei(0.1),
         toWei(0.5),
+        toWei(0.00001),
+        5,
         AuctionType.TimedAndFixed,
       ];
       await token1.approve(auctionContract.address, toWei(1000));
@@ -82,6 +84,8 @@ export function suite() {
         toWei(0.9574),
         toWei(0.1),
         toWei(0.5),
+        toWei(0.00001),
+        5,
         AuctionType.TimedAndFixed,
       );
       expect(tx)
@@ -138,17 +142,17 @@ export function suite() {
       await dai.transfer(sender.address, toWei(100));
       await dai.connect(sender).approve(auctionContract.address, toWei(100));
       let expectedDAIBalance = await dai.balanceOf(sender.address);
-      await auctionContract.connect(sender).placeBid(1, toWei(19), dai.address, toWei(0.2));
-      await auctionContract.connect(sender).placeBid(1, toWei(11), dai.address, toWei(0.205));
+      await auctionContract.connect(sender).placeBid(1, toWei(19), dai.address, toWei(0.2), false);
+      await auctionContract.connect(sender).placeBid(1, toWei(11), dai.address, toWei(0.205), false);
 
       await dai.connect(owner).transfer(secondBidder.address, toWei(100));
       await dai.connect(secondBidder).approve(auctionContract.address, toWei(100));
       await usdc.connect(owner).transfer(secondBidder.address, toD6(100));
       await usdc.connect(secondBidder).approve(auctionContract.address, toD6(100));
-      await auctionContract.connect(secondBidder).placeBid(1, toWei(20), dai.address, toWei(0.21));
+      await auctionContract.connect(secondBidder).placeBid(1, toWei(20), dai.address, toWei(0.21), false);
       await auctionContract
         .connect(secondBidder)
-        .placeBid(1, toWei(10), usdc.address, toWei(0.2101));
+        .placeBid(1, toWei(10), usdc.address, toWei(0.2101), false);
 
       expectedDAIBalance = expectedDAIBalance
         .sub(toWei(19).mul(toWei(0.2)).div(toWei(1)))
@@ -166,17 +170,17 @@ export function suite() {
 
       // failed bidding
       await expect(
-        auctionContract.connect(secondBidder).placeBid(1, toWei(30), dai.address, toWei(0.21)),
-      ).to.be.revertedWith('low Bid');
+        auctionContract.connect(secondBidder).placeBid(1, toWei(30), dai.address, toWei(0.21), false),
+      ).to.be.revertedWithCustomError(auctionContract, 'LowBid');
       await expect(
-        auctionContract.connect(secondBidder).placeBid(1, toWei(50), dai.address, toWei(0.21523)),
+        auctionContract.connect(secondBidder).placeBid(1, toWei(50), dai.address, toWei(0.21523), false),
       ).to.be.revertedWith('too big amount than reverse');
       await expect(
-        auctionContract.connect(secondBidder).placeBid(1, toWei(9), dai.address, toWei(0.21524)),
+        auctionContract.connect(secondBidder).placeBid(1, toWei(9), dai.address, toWei(0.21524), false),
       ).to.be.revertedWith('too small bid amount');
       await skipTime(86400 * 2 + 3601);
       await expect(
-        auctionContract.connect(secondBidder).placeBid(1, toWei(20), dai.address, toWei(0.21523)),
+        auctionContract.connect(secondBidder).placeBid(1, toWei(20), dai.address, toWei(0.21523), false),
       ).to.be.revertedWith('auction is inactive');
     });
 
@@ -223,6 +227,8 @@ export function suite() {
         toWei(5),
         toWei(2),
         toWei(10),
+        toWei(0.001),
+        5,
         AuctionType.FixedPrice,
       ];
       await token1.approve(auctionContract.address, toWei(1000));
@@ -236,6 +242,8 @@ export function suite() {
         toWei(5),
         toWei(2),
         toWei(10),
+        toWei(0.001),
+        5,
         AuctionType.FixedPrice,
       );
       expect(tx)
@@ -274,10 +282,12 @@ export function suite() {
         toWei(5),
         toWei(2),
         toWei(10),
+        toWei(0.001),
+        5,
         AuctionType.FixedPrice,
       )).to.be.revertedWith('Address: call to non-contract');
     });
-    
+
     it('Tranche Auction with sellToken should be reverted', async () => {
       await expect(auctionContract.createAuction(0,
         86400 * 2,
@@ -288,6 +298,8 @@ export function suite() {
         toWei(0.9574),
         toWei(0.1),
         toWei(0.5),
+        toWei(0.001),
+        5,
         AuctionType.TimedAuction)).to.be.revertedWithCustomError(auctionContract, 'InvalidTrancheAuction');
     });
 
@@ -302,12 +314,14 @@ export function suite() {
         toWei(0.9574),
         toWei(0.1),
         toWei(0.5),
+        toWei(0.00001),
+        5,
         AuctionType.TimedAuction,
       );
       await dai.transfer(sender.address, toWei(50));
       await dai.connect(sender).approve(auctionContract.address, toWei(50));
       for (let i = 0; i < 200; i++) {
-        await auctionContract.connect(sender).placeBid(3, toWei(0.1), dai.address, toWei(0.101 + i * 0.001));
+        await auctionContract.connect(sender).placeBid(3, toWei(0.1), dai.address, toWei(0.101 + i * 0.001), false);
       }
       await skipTime(86400 * 2);
       tx = await auctionContract.closeAuction(3);

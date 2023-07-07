@@ -42,9 +42,12 @@ struct AuctionData {
     uint128 priceRangeEnd;
     uint128 reserve;
     uint256 curBidId;
+    uint128 incrementBidPrice;
+    uint8 maxWinners;
     AuctionStatus status;
     AuctionType auctionType;
-    AssetType assetType;
+    // asset type is decided by whether trancheIndex is 0, or not
+    // AssetType assetType;
 }
 
 library AuctionStorage {
@@ -56,6 +59,7 @@ library AuctionStorage {
         mapping(address => bool) supportedSellTokens;
         uint256 feeNumerator;
         address feeReceiver;
+        uint96 maxIncrementRate;
     }
 
     bytes32 internal constant STORAGE_SLOT = keccak256("irrigation.contracts.storage.Auction");
