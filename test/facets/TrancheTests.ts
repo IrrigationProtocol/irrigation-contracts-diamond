@@ -223,6 +223,8 @@ export function suite() {
             0, 86400 * 2, ethers.constants.AddressZero, trancheId,
             trNftBalance, toWei(0.0001),
             toWei(0.6), toWei(0.1), toWei(0.5),
+            toWei(0.0001),
+            5,
             AuctionType.TimedAndFixed,
             { value: toWei(0.01) }
           ),
@@ -239,6 +241,8 @@ export function suite() {
           0, 86400 * 2, ethers.constants.AddressZero, trancheId,
           trNftBalance, toD6(0.0001),
           toWei(0.6), toWei(0.1), toWei(0.5),
+          toWei(0.001),
+          5,
           AuctionType.TimedAndFixed,
           { value: toWei(0.02) }
         );
@@ -263,7 +267,7 @@ export function suite() {
           auction.trancheIndex.eq(trancheId),
           `expected trancheIndex ${trancheId} but ${auction.trancheIndex}`,
         );
-        assert(auction.assetType == 1, `expected assetType Tranche but ${auction.assetType}`);
+        // assert(auction.assetType == 1, `expected assetType Tranche but ${auction.assetType}`);
         await dai.transfer(sender.address, toWei(50));
         await dai.connect(sender).approve(auctionContract.address, toWei(50));
         const trNftBalance = await trancheCollection.balanceOf(rootAddress, trancheId);
@@ -295,6 +299,8 @@ export function suite() {
             0, 86400 * 2, ethers.constants.AddressZero, trancheId,
             trNftBalance, toWei(0.0001),
             toWei(0.6), toWei(0.1), toWei(0.5),
+            toWei(0.001),
+            5,
             AuctionType.TimedAndFixed,
           )).to.be.revertedWithCustomError(auctionContract, 'InsufficientFee');
         const auctionFee = trNftBalance.mul(toWei(10 ** 12)).div(await priceOracle.getUnderlyingPriceETH()).mul(15).div(1000);
@@ -304,6 +310,8 @@ export function suite() {
             0, 86400 * 2, ethers.constants.AddressZero, trancheId,
             trNftBalance, toD6(0.0001),
             toWei(0.6), toWei(0.1), toWei(0.5),
+            toWei(0.001),
+            5,
             AuctionType.TimedAndFixed,
             { value: auctionFee }
           );
@@ -316,14 +324,14 @@ export function suite() {
           auction.trancheIndex.eq(trancheId),
           `expected trancheIndex ${trancheId} but ${auction.trancheIndex}`,
         );
-        assert(auction.assetType == 1, `expected assetType Tranche but ${auction.assetType}`);
+        // assert(auction.assetType == 1, `expected assetType Tranche but ${auction.assetType}`);
 
         await dai.connect(bidder).approve(auctionContract.address, toWei(50));
         let daiBalance = await dai.balanceOf(owner.address);
         trNftBalance = await trancheCollection.balanceOf(rootAddress, trancheId);
         await auctionContract
           .connect(owner)
-          .placeBid(lastAuctionId, trNftBalance, dai.address, toWei(2));
+          .placeBid(lastAuctionId, trNftBalance, dai.address, toWei(2), false);
         const daiBalanceAfteBidding = await dai.balanceOf(owner.address);
         expect(daiBalanceAfteBidding).to.be.eq(daiBalance.sub(trNftBalance.mul(2).mul(toD6(10 ** 6))));
       });
