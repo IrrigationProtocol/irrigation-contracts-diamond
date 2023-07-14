@@ -142,9 +142,8 @@ export function suite() {
       await dai.transfer(sender.address, toWei(100));
       await dai.connect(sender).approve(auctionContract.address, toWei(100));
       let expectedDAIBalance = await dai.balanceOf(sender.address);
-      await auctionContract.connect(sender).placeBid(1, toWei(19), dai.address, toWei(0.2), false);
-      await auctionContract.connect(sender).placeBid(1, toWei(11), dai.address, toWei(0.205), false);
-
+      await expect(auctionContract.connect(sender).placeBid(1, toWei(19), dai.address, toWei(0.2), false)).emit(auctionContract, 'AuctionBid').withArgs(sender.address, toWei(19), dai.address, toWei(0.2), 1, 1);
+      await expect(auctionContract.connect(sender).placeBid(1, toWei(11), dai.address, toWei(0.205), false)).emit(auctionContract, 'AuctionBid').withArgs(sender.address, toWei(11), dai.address, toWei(0.205), 1, 2);
       await dai.connect(owner).transfer(secondBidder.address, toWei(100));
       await dai.connect(secondBidder).approve(auctionContract.address, toWei(100));
       await usdc.connect(owner).transfer(secondBidder.address, toD6(100));
@@ -201,10 +200,7 @@ export function suite() {
       );
       // bid with dai is only one
       let updatedDaiBalance = await dai.balanceOf(auctionContract.address);
-      // bids with usdc are all done
-      await auctionContract.connect(sender).claimForCanceledBid(1, 1);
-      updatedDaiBalance = updatedDaiBalance.sub(await dai.balanceOf(auctionContract.address));
-      expect(updatedDaiBalance).to.be.equal(payAmount);
+      // bids with usdc are all canceled      
       expect(await usdc.balanceOf(auctionContract.address)).to.be.equal(0);
 
       await expect(auctionContract.connect(sender).claimForCanceledBid(1, 1)).to.be.rejectedWith(
@@ -232,6 +228,7 @@ export function suite() {
         AuctionType.FixedPrice,
       ];
       await token1.approve(auctionContract.address, toWei(1000));
+      let updatedContractTokenBalance = await token1.balanceOf(auctionContract.address);
       const tx = await auctionContract.createAuction(
         0,
         86400 * 2,
@@ -250,8 +247,8 @@ export function suite() {
         .to.emit(auctionContract, 'AuctionCreated')
         .withArgs(owner.address, Math.round(Date.now() / 1000), ...params, 2);
 
-      expect(await token1.balanceOf(auctionContract.address)).to.be.equal(
-        toWei(100 + (100 * 30) / 1000),
+      expect((await token1.balanceOf(auctionContract.address)).sub(updatedContractTokenBalance)).to.be.equal(
+        toWei(100 + (100 * 15) / 1000),
       );
       const createdAuction = await auctionContract.getAuction(2);
       assert(
@@ -315,19 +312,37 @@ export function suite() {
         toWei(0.1),
         toWei(0.5),
         toWei(0.00001),
-        5,
+        255,
         AuctionType.TimedAuction,
       );
-      await dai.transfer(sender.address, toWei(50));
-      await dai.connect(sender).approve(auctionContract.address, toWei(50));
-      for (let i = 0; i < 200; i++) {
-        await auctionContract.connect(sender).placeBid(3, toWei(0.1), dai.address, toWei(0.101 + i * 0.001), false);
+      await dai.transfer(sender.address, toWei(600));
+      await dai.connect(sender).approve(auctionContract.address, toWei(600));
+      for (let i = 0; i < 500; i++) {
+        await auctionContract.connect(sender).placeBid(3, toWei(1), dai.address, toWei(0.101 + i * 0.001), false);
       }
+      let auction = await auctionContract.getAuction(3);
+      expect(auction.totalBidAmount).to.be.eq(toWei(100));
+      expect(auction.availableBidDepth).to.be.eq(100);
+      await auctionContract.connect(sender).placeBid(3, toWei(0.5), dai.address, toWei(0.65), false);
+      auction = await auctionContract.getAuction(3);
+      expect(auction.totalBidAmount).to.be.eq(toWei(100.5));
+      expect(auction.availableBidDepth).to.be.eq(101);
+      await dai.connect(owner).approve(auctionContract.address, toWei(100000));
+      // this transction cancels 24 low bids when max gas limit is 500_000
+      await auctionContract.connect(owner).placeBid(3, toWei(50), dai.address, toWei(0.8), false);
+      auction = await auctionContract.getAuction(3);
+      expect(auction.totalBidAmount).to.be.eq(toWei(126.5));
+      expect(auction.availableBidDepth).to.be.eq(77 + 1);
+      expect(auction.curBidId).to.be.eq(502);
+      const lowestBid = await auctionContract.getBid(3, 502 - 77);
+      const highestCancelBid = await auctionContract.getBid(3, 502 - 78);
+      expect(lowestBid.status).to.be.eq(0);
+      expect(highestCancelBid.status).to.be.eq(3);
       await skipTime(86400 * 2);
       tx = await auctionContract.closeAuction(3);
-      let txReceipt = await tx.wait();
-      const totalGas = txReceipt.gasUsed.mul(txReceipt.effectiveGasPrice);
-      debuglog(`max gas for 200 winners: ${fromWei(totalGas)}`);
+      // let txReceipt = await tx.wait();
+      // const totalGas = txReceipt.gasUsed.mul(txReceipt.effectiveGasPrice);
+      // debuglog(`max gas for 255 winners: ${fromWei(totalGas)}`);
     });
   });
 }
