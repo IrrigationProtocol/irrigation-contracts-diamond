@@ -1,3 +1,4 @@
+
 // SPDX-License-Identifier: MIT
 
 pragma solidity ^0.8.17;
@@ -20,12 +21,22 @@ enum AuctionStatus {
     Closed
 }
 
+enum BidStatus {
+    BID,
+    WIN,
+    CANCEL,
+    CLEARED
+}
+
 struct Bid {
     uint128 bidAmount;
     uint128 bidPrice;
     address bidder;
+    // purchase token amount paid out when bidding
+    uint96 paidAmount;
     address purchaseToken;
-    bool bCleared;
+    // bool bCleared;
+    BidStatus status;
 }
 
 /// @dev Contains all data for auction erc20 token and tranche
@@ -42,8 +53,13 @@ struct AuctionData {
     uint128 priceRangeEnd;
     uint128 reserve;
     uint256 curBidId;
-    uint128 incrementBidPrice;
+    uint96 incrementBidPrice;
+    // sum of bidAmounts of bidders
+    uint128 totalBidAmount;
     uint8 maxWinners;
+    // bids in [id = curBidId + 1 - availableBidDepth, curBidId] are winners
+    // availableBidDepth <= maxWinners
+    uint8 availableBidDepth;
     AuctionStatus status;
     AuctionType auctionType;
     // asset type is decided by whether trancheIndex is 0, or not
