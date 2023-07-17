@@ -48,10 +48,13 @@ contract AuctionUpgradeable is
     error InvalidMinBidAmount();
     error InvalidEndPrice();
     error NoFixedAuction();
+    error NoClosedAuction();
     error InvalidPurchaseAmount();
     error LowBid();
     error OverPriceBid();
     error NoCancelBid();
+    error ClaimedBid();
+    error NoBidder();
 
     event AuctionCreated(
         address seller,
@@ -114,6 +117,8 @@ contract AuctionUpgradeable is
         uint256 curBidId,
         uint256 lastWinnerBidId
     );
+
+    event ClaimBid(uint indexed auctionId, uint indexed bidId, uint claimAmount);
 
     uint256 internal constant FEE_DENOMINATOR = 1000;
     uint256 internal constant GAS_LIMIT = 500000;
@@ -312,7 +317,7 @@ contract AuctionUpgradeable is
             bidPrice: _bidPrice,
             purchaseToken: _purchaseToken,
             paidAmount: uint96(payAmount),
-            status: BidStatus.BID
+            status: BidStatus.Bid
         });
         uint256 currentBidId = auction.curBidId + 1;
         auction.curBidId = currentBidId;
@@ -363,13 +368,81 @@ contract AuctionUpgradeable is
         _settleAuction(auctionId);
     }
 
+    /// @notice function to get status of bid
+    /// @param auctionId auction id
+    /// @param bidId  bid id
+    /// @return isWinner true if the bid is winner
+    /// @return isClaimed true if the bid was claimed
+
+    function isWinnerBid(
+        uint256 auctionId,
+        uint256 bidId
+    ) public view returns (bool isWinner, bool isClaimed, uint256 claimAmount) {
+        AuctionData memory auction = AuctionStorage.layout().auctions[auctionId];
+        Bid memory bid = AuctionStorage.layout().bids[auctionId][bidId];
+        if (bid.status == BidStatus.Cleared) isClaimed = true;
+        if (auction.status != AuctionStatus.Closed) {
+            return (false, isClaimed, 0);
+        } else {
+            uint256 curBidId = auction.curBidId;
+            uint256 reserve = auction.reserve;
+            while (curBidId > bidId && reserve > 0) {
+                Bid memory seniorBid = AuctionStorage.layout().bids[auctionId][curBidId];
+                if (seniorBid.status != BidStatus.Cleared) {
+                    if (reserve > seniorBid.bidAmount) {
+                        unchecked {
+                            reserve -= seniorBid.bidAmount;
+                        }
+                    } else reserve = 0;
+                }
+                unchecked {
+                    --curBidId;
+                }
+            }
+            if (reserve > 0)
+                return (
+                    true,
+                    isClaimed,
+                    reserve >= bid.bidAmount ? bid.bidAmount : bid.bidAmount - reserve
+                );
+            else return (false, isClaimed, 0);
+        }
+    }
+
+    /// @notice claim bid for winner or canceled bid after auction is closed
+    function claimBid(uint256 auctionId, uint256 bidId) external nonReentrant {
+        (bool isWinner, bool isClaimed, uint256 claimAmount) = isWinnerBid(auctionId, bidId);
+        if (isClaimed) revert ClaimedBid();
+        AuctionStorage.layout().bids[auctionId][bidId].status = BidStatus.Cleared;
+        Bid memory bid = AuctionStorage.layout().bids[auctionId][bidId];
+        // anyone can claim bid, and transfer sell token to bidder, and transfer bid token to seller
+        // require(bid.bidder == msg.sender, "bidder only can claim");
+        AuctionData memory auction = AuctionStorage.layout().auctions[auctionId];
+        if (auction.status != AuctionStatus.Closed) revert NoClosedAuction();
+        if (isWinner) {
+            AuctionStorage.layout().auctions[auctionId].reserve =
+                auction.reserve -
+                uint128(claimAmount);
+            _settleBid(
+                auction.sellToken,
+                auction.trancheIndex,
+                auction.seller,
+                bid,
+                uint128(claimAmount)
+            );
+        } else {
+            IERC20Upgradeable _purchaseToken = IERC20Upgradeable(bid.purchaseToken);
+            _purchaseToken.safeTransfer(bid.bidder, bid.paidAmount);
+        }
+    }
+
     function claimForCanceledBid(uint256 auctionId, uint256 bidId) external nonReentrant {
         AuctionData memory auction = AuctionStorage.layout().auctions[auctionId];
         Bid memory bid = AuctionStorage.layout().bids[auctionId][bidId];
         require(auction.status == AuctionStatus.Closed, "no closed auction");
         require(bid.bidder == msg.sender, "bidder only can claim");
-        require(bid.status != BidStatus.CLEARED, "already settled bid");
-        AuctionStorage.layout().bids[auctionId][bidId].status = BidStatus.CLEARED;
+        require(bid.status != BidStatus.Cleared, "already settled bid");
+        AuctionStorage.layout().bids[auctionId][bidId].status = BidStatus.Cleared;
 
         IERC20Upgradeable(bid.purchaseToken).safeTransfer(
             bid.bidder,
@@ -387,26 +460,20 @@ contract AuctionUpgradeable is
         while (
             curBidId > 0 &&
             settledBidCount <= auction.maxWinners &&
-            // gasLimit - gasleft() <= GAS_LIMIT &&
+            gasLimit - gasleft() <= GAS_LIMIT &&
             availableAmount > 0
         ) {
             Bid memory bid = AuctionStorage.layout().bids[auctionId][curBidId];
-            if (bid.status != BidStatus.BID) break;
-            if (gasLimit - gasleft() <= GAS_LIMIT) {
-                uint128 settledAmount = _settleBid(
-                    auction.sellToken,
-                    auction.trancheIndex,
-                    auction.seller,
-                    bid,
-                    availableAmount
-                );
-                // console.log("curBid: %s setteld: %s", curBidId, settledAmount);
-                availableAmount -= settledAmount;
-                AuctionStorage.layout().bids[auctionId][curBidId].status = BidStatus.CLEARED;
-            } else {
-                if (availableAmount <= bid.bidAmount) availableAmount = 0;
-                else availableAmount -= bid.bidAmount;
-            }
+            if (bid.status != BidStatus.Bid) break;
+            (uint128 settledAmount /*  uint128 payoutAmount */, ) = _settleBid(
+                auction.sellToken,
+                auction.trancheIndex,
+                auction.seller,
+                bid,
+                availableAmount
+            );
+            availableAmount -= settledAmount;
+            AuctionStorage.layout().bids[auctionId][curBidId].status = BidStatus.Cleared;
             --curBidId;
             ++settledBidCount;
         }
@@ -432,10 +499,17 @@ contract AuctionUpgradeable is
             }
             availableAmount -= refundAmount;
             // AuctionStorage.layout().auctions[auctionId].reserve -= 0;
-        }
+        } else {}
         AuctionStorage.layout().auctions[auctionId].reserve = availableAmount;
         AuctionStorage.layout().auctions[auctionId].status = AuctionStatus.Closed;
+        AuctionStorage.layout().auctions[auctionId].availableBidDepth =
+            auction.availableBidDepth -
+            uint8(settledBidCount);
+        AuctionStorage.layout().auctions[auctionId].totalBidAmount =
+            auction.totalBidAmount -
+            availableAmount;
         emit AuctionClosed(availableAmount, auctionId, auction.curBidId, curBidId);
+        AuctionStorage.layout().auctions[auctionId].curBidId = curBidId;
     }
 
     /// @notice transfer autioning token to bidder and transfer puchase token to seller
@@ -445,19 +519,20 @@ contract AuctionUpgradeable is
         address seller,
         Bid memory bid,
         uint128 availableAmount
-    ) internal returns (uint128 settledAmount) {
+    ) internal returns (uint128 settledAmount, uint128 payoutAmount) {
         settledAmount = bid.bidAmount;
         IERC20Upgradeable _purchaseToken = IERC20Upgradeable(bid.purchaseToken);
+        payoutAmount = bid.paidAmount;
         if (availableAmount < settledAmount) {
             uint128 repayAmount;
             unchecked {
                 repayAmount = settledAmount - availableAmount;
             }
+            // calculate as payout token
+            repayAmount = (repayAmount * bid.paidAmount) / bid.bidAmount;
+            payoutAmount -= repayAmount;
             settledAmount = availableAmount;
-            _purchaseToken.safeTransfer(
-                bid.bidder,
-                getPayAmount(bid.purchaseToken, repayAmount, bid.bidPrice, sellToken)
-            );
+            _purchaseToken.safeTransfer(bid.bidder, repayAmount);
         }
         if (trancheIndex == 0) {
             IERC20Upgradeable(sellToken).safeTransfer(bid.bidder, settledAmount);
@@ -471,18 +546,15 @@ contract AuctionUpgradeable is
             );
         }
 
-        _purchaseToken.safeTransfer(
-            seller,
-            getPayAmount(bid.purchaseToken, settledAmount, bid.bidPrice, sellToken)
-        );
+        _purchaseToken.safeTransfer(seller, payoutAmount);
     }
 
     /// @notice cancel a bid and transfer purchase token to the bidder back
     function _cancelBid(Bid memory bid, uint256 auctionId, uint256 bidId) internal {
-        if (bid.status != BidStatus.BID) revert NoCancelBid();
+        if (bid.status != BidStatus.Bid) revert NoCancelBid();
         IERC20Upgradeable _purchaseToken = IERC20Upgradeable(bid.purchaseToken);
         _purchaseToken.safeTransfer(bid.bidder, bid.paidAmount);
-        AuctionStorage.layout().bids[auctionId][bidId].status = BidStatus.CLEARED;
+        AuctionStorage.layout().bids[auctionId][bidId].status = BidStatus.Cleared;
     }
 
     // admin setters
