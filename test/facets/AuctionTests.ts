@@ -184,7 +184,19 @@ export function suite() {
     });
 
     it('Testing Auction close', async () => {
+      let auction = await auctionContract.getAuction(1);
+      // console.log(fromWei(auction.reserve), fromWei(auction.totalBidAmount), Number(auction.curBidId));
+      const reserveAmount = auction.reserve;
+      // console.log(await auctionContract.getBid(1,1));
+      let updatedContractTokenBalance = await token1.balanceOf(auctionContract.address);
+      // console.log('contract balance:', fromWei(await token1.balanceOf(auctionContract.address)));
       await auctionContract.connect(sender).closeAuction(1);
+      auction = await auctionContract.getAuction(1);
+      // console.log(auction.reserve, auction.totalBidAmount);
+      // console.log('contract balance', fromWei(await token1.balanceOf(auctionContract.address)));
+      // total reserve amount are settled.
+      updatedContractTokenBalance = updatedContractTokenBalance.sub(await token1.balanceOf(auctionContract.address));
+      expect(updatedContractTokenBalance).to.be.eq(reserveAmount);
       await expect(auctionContract.connect(sender).closeAuction(1)).to.be.rejectedWith(
         "auction can't be closed",
       );
@@ -339,10 +351,23 @@ export function suite() {
       expect(lowestBid.status).to.be.eq(0);
       expect(highestCancelBid.status).to.be.eq(3);
       await skipTime(86400 * 2);
+      // when closing auction, settles 29 top bids in the case of limit is 500_000
       tx = await auctionContract.closeAuction(3);
-      // let txReceipt = await tx.wait();
-      // const totalGas = txReceipt.gasUsed.mul(txReceipt.effectiveGasPrice);
-      // debuglog(`max gas for 255 winners: ${fromWei(totalGas)}`);
+      auction = await auctionContract.getAuction(3);
+
+      // console.log(auction.maxWinners, auction.reserve);
+      let bidId = 502;
+      let bid = await auctionContract.getBid(3, bidId);
+      while (bid.status != 0) {
+        bid = await auctionContract.getBid(3, --bidId);
+      }
+      expect((await auctionContract.getBid(3, 483)).status).to.be.eq(3);
+      expect((await auctionContract.getBid(3, 482)).status).to.be.eq(0);
+      expect(bidId).to.be.eq(482);
+    let txReceipt = await tx.wait();
+      const totalGas = txReceipt.gasUsed.mul(txReceipt.effectiveGasPrice);
+      debuglog(`max gas for 255 winners: ${fromWei(totalGas)}`);
     });
   });
 }
+
