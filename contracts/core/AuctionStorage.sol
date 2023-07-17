@@ -22,10 +22,10 @@ enum AuctionStatus {
 }
 
 enum BidStatus {
-    BID,
-    WIN,
-    CANCEL,
-    CLEARED
+    Bid,
+    Win,
+    Cancel,
+    Cleared
 }
 
 struct Bid {
