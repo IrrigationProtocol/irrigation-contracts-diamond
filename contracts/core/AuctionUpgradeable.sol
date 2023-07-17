@@ -17,6 +17,8 @@ import "../libraries/Constants.sol";
 import "../interfaces/IPriceOracleUpgradeable.sol";
 import "../interfaces/IWaterTowerUpgradeable.sol";
 
+// import "hardhat/console.sol";
+
 /// @title Auction Market for whitelisted erc20 tokens
 /// @dev  Auction contract allows users sell allowed tokens or buy listed tokens with allowed purchase tokens(stable coins)
 ///     1. owner allow sell tokens and purchase tokens, and set auction fee
@@ -106,7 +108,12 @@ contract AuctionUpgradeable is
     /// @notice Emitted by auction when bidder or auctioneer closes a auction
     /// @param unSoldAmount Amount of unsold auctioning token
     /// @param auctionId Auction id
-    event AuctionClosed(uint256 unSoldAmount, uint256 indexed auctionId);
+    event AuctionClosed(
+        uint256 unSoldAmount,
+        uint256 indexed auctionId,
+        uint256 curBidId,
+        uint256 lastWinnerBidId
+    );
 
     uint256 internal constant FEE_DENOMINATOR = 1000;
     uint256 internal constant GAS_LIMIT = 500000;
@@ -271,7 +278,7 @@ contract AuctionUpgradeable is
         address purchaseToken,
         uint128 bidPrice,
         bool bCheckEndPrice
-    ) external supportedPurchase(purchaseToken) returns (uint256) {
+    ) external supportedPurchase(purchaseToken) nonReentrant returns (uint256) {
         uint256 gasRemaining = gasleft();
         AuctionData memory auction = AuctionStorage.layout().auctions[auctionId];
         require(
@@ -322,7 +329,7 @@ contract AuctionUpgradeable is
                 // even though reserve sell amount is smaller than bidAmount, settle the bid and the bidder receives sell token as possible
                 if (
                     availableBidDepth <= uint256(auction.maxWinners) + 1 &&
-                    totalBidAmount < auction.sellAmount + cancelBid.bidAmount
+                    totalBidAmount < auction.reserve + cancelBid.bidAmount
                 ) break;
                 totalBidAmount -= cancelBid.bidAmount;
                 availableBidDepth--;
@@ -377,34 +384,41 @@ contract AuctionUpgradeable is
         uint128 availableAmount = auction.reserve;
         uint256 settledBidCount = 0;
         uint256 curBidId = auction.curBidId;
-        do {
+        while (
+            curBidId > 0 &&
+            settledBidCount <= auction.maxWinners &&
+            // gasLimit - gasleft() <= GAS_LIMIT &&
+            availableAmount > 0
+        ) {
             Bid memory bid = AuctionStorage.layout().bids[auctionId][curBidId];
-            // if (gasLimit - gasleft() <= GAS_LIMIT) {
-            uint128 settledAmount = _settleBid(
-                auction.sellToken,
-                auction.trancheIndex,
-                auction.seller,
-                bid,
-                availableAmount
-            );
-            availableAmount -= settledAmount;
-            AuctionStorage.layout().bids[auctionId][curBidId].status = BidStatus.CLEARED;
-            // } else {
-            // break;
-            // AuctionStorage.layout().bids[auctionId][curBidId].status = BidStatus.WIN;
-            // }
+            if (bid.status != BidStatus.BID) break;
+            if (gasLimit - gasleft() <= GAS_LIMIT) {
+                uint128 settledAmount = _settleBid(
+                    auction.sellToken,
+                    auction.trancheIndex,
+                    auction.seller,
+                    bid,
+                    availableAmount
+                );
+                // console.log("curBid: %s setteld: %s", curBidId, settledAmount);
+                availableAmount -= settledAmount;
+                AuctionStorage.layout().bids[auctionId][curBidId].status = BidStatus.CLEARED;
+            } else {
+                if (availableAmount <= bid.bidAmount) availableAmount = 0;
+                else availableAmount -= bid.bidAmount;
+            }
             --curBidId;
             ++settledBidCount;
-        } while (
-            curBidId > 0 &&
-                settledBidCount <= auction.maxWinners &&
-                gasLimit - gasleft() <= GAS_LIMIT
-        );
-        if (availableAmount > 0) {
+        }
+        if (auction.totalBidAmount < auction.reserve) {
+            uint128 refundAmount;
+            unchecked {
+                refundAmount = auction.reserve - auction.totalBidAmount;
+            }
             if (auction.trancheIndex == 0) {
                 IERC20Upgradeable(auction.sellToken).safeTransfer(
                     auction.seller,
-                    (availableAmount * (FEE_DENOMINATOR + AuctionStorage.layout().feeNumerator)) /
+                    (refundAmount * (FEE_DENOMINATOR + AuctionStorage.layout().feeNumerator)) /
                         FEE_DENOMINATOR
                 );
             } else {
@@ -412,15 +426,16 @@ contract AuctionUpgradeable is
                     address(this),
                     auction.seller,
                     trancheIndex,
-                    availableAmount,
+                    refundAmount,
                     Constants.EMPTY
                 );
             }
+            availableAmount -= refundAmount;
+            // AuctionStorage.layout().auctions[auctionId].reserve -= 0;
         }
-
-        AuctionStorage.layout().auctions[auctionId].reserve = 0;
+        AuctionStorage.layout().auctions[auctionId].reserve = availableAmount;
         AuctionStorage.layout().auctions[auctionId].status = AuctionStatus.Closed;
-        emit AuctionClosed(availableAmount, auctionId);
+        emit AuctionClosed(availableAmount, auctionId, auction.curBidId, curBidId);
     }
 
     /// @notice transfer autioning token to bidder and transfer puchase token to seller
@@ -432,10 +447,12 @@ contract AuctionUpgradeable is
         uint128 availableAmount
     ) internal returns (uint128 settledAmount) {
         settledAmount = bid.bidAmount;
-        uint128 repayAmount = 0;
         IERC20Upgradeable _purchaseToken = IERC20Upgradeable(bid.purchaseToken);
         if (availableAmount < settledAmount) {
-            repayAmount = settledAmount - availableAmount;
+            uint128 repayAmount;
+            unchecked {
+                repayAmount = settledAmount - availableAmount;
+            }
             settledAmount = availableAmount;
             _purchaseToken.safeTransfer(
                 bid.bidder,
