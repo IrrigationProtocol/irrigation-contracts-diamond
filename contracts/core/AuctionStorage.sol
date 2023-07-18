@@ -1,4 +1,3 @@
-
 // SPDX-License-Identifier: MIT
 
 pragma solidity ^0.8.17;
@@ -35,8 +34,15 @@ struct Bid {
     // purchase token amount paid out when bidding
     uint96 paidAmount;
     address purchaseToken;
+    uint16 bidTokenId;
     // bool bCleared;
     BidStatus status;
+}
+
+struct TokenData {
+    uint16 id;
+    uint8 decimals;
+    bool isEnabled;
 }
 
 /// @dev Contains all data for auction erc20 token and tranche
@@ -71,8 +77,10 @@ library AuctionStorage {
         uint256 currentAuctionId;
         mapping(uint256 => AuctionData) auctions;
         mapping(uint256 => mapping(uint256 => Bid)) bids;
-        mapping(address => bool) supportedPurchaseTokens;
+        mapping(address => TokenData) bidTokenData;
         mapping(address => bool) supportedSellTokens;
+        // all allowed bid token addresses
+        address[] bidTokens;
         uint256 feeNumerator;
         address feeReceiver;
         uint96 maxIncrementRate;

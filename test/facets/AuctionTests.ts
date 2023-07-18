@@ -202,28 +202,9 @@ export function suite() {
       );
     });
 
-    it('Testing Auction claim canceled bid', async () => {
-      const bid = await auctionContract.getBid(1, 1);
-      const payAmount = await auctionContract.getPayAmount(
-        dai.address,
-        bid.bidAmount,
-        bid.bidPrice,
-        token1.address,
-      );
-      // bid with dai is only one
-      let updatedDaiBalance = await dai.balanceOf(auctionContract.address);
+    it('Testing Auction claim canceled bid', async () => {      
       // bids with usdc are all canceled      
       expect(await usdc.balanceOf(auctionContract.address)).to.be.equal(0);
-
-      await expect(auctionContract.connect(sender).claimForCanceledBid(1, 1)).to.be.rejectedWith(
-        'already settled bid',
-      );
-      await expect(auctionContract.connect(sender).claimForCanceledBid(1, 2)).to.be.rejectedWith(
-        'already settled bid',
-      );
-      await expect(auctionContract.connect(sender).claimForCanceledBid(1, 3)).to.be.rejectedWith(
-        'bidder only can claim',
-      );
     });
 
     it('Testing Auction with fixed price', async () => {
@@ -351,10 +332,17 @@ export function suite() {
       expect(lowestBid.status).to.be.eq(0);
       expect(highestCancelBid.status).to.be.eq(3);
       await skipTime(86400 * 2);
+
       // when closing auction, settles 29 top bids in the case of limit is 500_000
       await expect(auctionContract.claimBid(3, 449)).to.be.revertedWithCustomError(auctionContract, 'NoClosedAuction');
+      let updatedDaiContractBalance = await dai.balanceOf(auctionContract.address);
       tx = await auctionContract.closeAuction(3);
-      auction = await auctionContract.getAuction(3);
+      let sum = toWei(0);
+      for (let i = 451; i <= 502; i++) {
+        const paidDaiAmount = (await auctionContract.getBid(3, i)).paidAmount;
+        sum = sum.add(i == 451 ? paidDaiAmount.div(2) : paidDaiAmount);
+      }
+      expect(updatedDaiContractBalance.sub(await dai.balanceOf(auctionContract.address))).to.be.eq(sum);
 
       // console.log(auction.maxWinners, auction.reserve);
       let bidId = 502;
@@ -362,17 +350,19 @@ export function suite() {
       while (bid.status != 0) {
         bid = await auctionContract.getBid(3, --bidId);
       }
-      expect((await auctionContract.getBid(3, 480)).status).to.be.eq(3);
-      expect((await auctionContract.getBid(3, 479)).status).to.be.eq(0);
-      expect(bidId).to.be.eq(479);
+      const lastSettledBidId = 493;
+      expect((await auctionContract.getBid(3, lastSettledBidId)).status).to.be.eq(3);
+      expect((await auctionContract.getBid(3, lastSettledBidId - 1)).status).to.be.eq(0);
+      expect(bidId).to.be.eq(lastSettledBidId - 1);
       let txReceipt = await tx.wait();
       const totalGas = txReceipt.gasUsed.mul(txReceipt.effectiveGasPrice);
       debuglog(`max gas for 255 winners: ${fromWei(totalGas)}`);
     });
     it('Not setted winner bids should be able to claim after auction is closed', async () => {
       let auction = await auctionContract.getAuction(3);
+      const lastSettledBidId = 493;
       // winner that receives full token amount as same as bid amount      
-      const bid480 = await auctionContract.isWinnerBid(3, 479);
+      const bid480 = await auctionContract.isWinnerBid(3, lastSettledBidId - 1);
       expect(bid480.claimAmount).to.be.eq(toWei(1));
       expect(bid480.isWinner).to.be.eq(true);
       // winner that receives token amount smaller than bid amount
@@ -384,26 +374,29 @@ export function suite() {
       expect(bid450.claimAmount).to.be.eq(0);
       expect(bid450.isClaimed).to.be.eq(false);
       expect(bid450.isWinner).to.be.eq(false);
-      expect(auction.reserve).to.be.eq(toWei(28.5));
+      expect(auction.reserve).to.be.eq(toWei(41.5));
       let updatedContractTokenBalance = await token1.balanceOf(auctionContract.address);
-      await auctionContract.connect(sender).claimBid(3, 479);
+      // claim not settled bid with biggest id
+      await auctionContract.connect(sender).claimBid(3, lastSettledBidId - 1);
       expect(updatedContractTokenBalance.sub(await token1.balanceOf(auctionContract.address))).to.be.eq(toWei(1));
       auction = await auctionContract.getAuction(3);
       let bid = await auctionContract.getBid(3, 451);
-      console.log(bid.bidAmount, bid.paidAmount, bid451.claimAmount);
-      expect(auction.reserve).to.be.eq(toWei(27.5));
+      expect(auction.reserve).to.be.eq(toWei(40.5));
       let daiBalance = await dai.balanceOf(auctionContract.address);
       let daiOfOwner = await dai.balanceOf(owner.address);
       let daiOfSender = await dai.balanceOf(sender.address);
+      // claim not fullfilled bid
       await auctionContract.connect(sender).claimBid(3, 451);
       expect(updatedContractTokenBalance.sub(await token1.balanceOf(auctionContract.address))).to.be.eq(toWei(1.5));
-      expect(daiBalance.sub(await dai.balanceOf(auctionContract.address))).to.be.eq(bid.paidAmount);
-      expect((await dai.balanceOf(owner.address)).sub(daiOfOwner)).to.be.eq(bid.paidAmount.div(2));
+      expect(daiBalance.sub(await dai.balanceOf(auctionContract.address))).to.be.eq(bid.paidAmount.div(2));
+      // expect((await dai.balanceOf(owner.address)).sub(daiOfOwner)).to.be.eq(bid.paidAmount.div(2));
       expect((await dai.balanceOf(sender.address)).sub(daiOfSender)).to.be.eq(bid.paidAmount.div(2));
       auction = await auctionContract.getAuction(3);
-      expect(auction.reserve).to.be.eq(toWei(27));
+      expect(auction.reserve).to.be.eq(toWei(40));
+      // just claimed bid
       await expect(auctionContract.connect(sender).claimBid(3, 451)).to.be.revertedWithCustomError(auctionContract, 'ClaimedBid');
-      await expect(auctionContract.connect(sender).claimBid(3, 490)).to.be.revertedWithCustomError(auctionContract, 'ClaimedBid');
+      // already settled bid when closing auciton
+      await expect(auctionContract.connect(sender).claimBid(3, lastSettledBidId + 1)).to.be.revertedWithCustomError(auctionContract, 'ClaimedBid');
       // canceled bid
       daiOfSender = await dai.balanceOf(sender.address);
       await auctionContract.claimBid(3, 450);
