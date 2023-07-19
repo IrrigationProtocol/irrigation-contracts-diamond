@@ -202,7 +202,7 @@ export function suite() {
       );
     });
 
-    it('Testing Auction claim canceled bid', async () => {      
+    it('Testing Auction claim canceled bid', async () => {
       // bids with usdc are all canceled      
       expect(await usdc.balanceOf(auctionContract.address)).to.be.equal(0);
     });
@@ -402,7 +402,20 @@ export function suite() {
       await auctionContract.claimBid(3, 450);
       bid = await auctionContract.getBid(3, 450);
       expect((await dai.balanceOf(sender.address)).sub(daiOfSender)).to.be.eq(bid.paidAmount);
+    });
 
+    it('update auction before bidding', async () => {
+      await expect(auctionContract.updateAuction(5, 0, 0, 0)).to.be.revertedWithCustomError(auctionContract, 'NoAuction');
+      await expect(auctionContract.updateAuction(3, 0, 0, 0)).to.be.revertedWithCustomError(auctionContract, 'NoIdleAuction');
+      let tx = await auctionContract.createAuction(
+        0, 86400 * 2, token1.address, 0, toWei(100), toWei(0.1), toWei(0.9574),
+        toWei(0.1), toWei(0.5), toWei(0.00001), 255, AuctionType.TimedAuction,);
+      await expect(auctionContract.connect(sender).updateAuction(4, 0, 0, 0)).to.be.revertedWithCustomError(auctionContract, 'NoAuctioneer');
+      await auctionContract.updateAuction(4, toWei(1.1), 0, 0);
+      let updatedAuction = await auctionContract.getAuction(4);
+      expect(updatedAuction.minBidAmount).to.be.eq(toWei(1.1));
+      await auctionContract.connect(secondBidder).placeBid(4, toWei(1.1), dai.address, 0, false);
+      await expect(auctionContract.updateAuction(4, 0, 0, 0)).to.be.revertedWithCustomError(auctionContract, 'NoIdleAuction');
     })
   });
 }
