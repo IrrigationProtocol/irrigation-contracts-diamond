@@ -49,6 +49,9 @@ contract AuctionUpgradeable is
     error InvalidEndPrice();
     error NoFixedAuction();
     error NoClosedAuction();
+    error NoAuction();
+    error NoAuctioneer();
+    error NoIdleAuction();
     error InvalidPurchaseAmount();
     error LowBid();
     error OverPriceBid();
@@ -118,6 +121,13 @@ contract AuctionUpgradeable is
         uint256 lastWinnerBidId
     );
 
+    event AuctionUpdate(
+        uint indexed auctionId,
+        uint minBidAmount,
+        uint priceRangeStart,
+        uint incrementPrice
+    );
+
     event ClaimBid(uint indexed auctionId, uint indexed bidId, uint claimAmount);
 
     uint256 internal constant FEE_DENOMINATOR = 1000;
@@ -170,7 +180,7 @@ contract AuctionUpgradeable is
         }
 
         require(startTime == 0 || startTime >= block.timestamp, "start time must be in the future");
-        require(minBidAmount > 0 && sellAmount >= minBidAmount, "invalid minBidAmount");
+        if (minBidAmount == 0 || minBidAmount > sellAmount) revert InvalidMinBidAmount();
         require(maxWinners > 0, "invalid maxWinners");
         if (priceRangeStart > priceRangeEnd) revert InvalidEndPrice();
 
@@ -227,6 +237,39 @@ contract AuctionUpgradeable is
         return AuctionStorage.layout().currentAuctionId;
     }
 
+    /// @notice update important options of auction before any bidding
+    /// @param auctionId auction id
+    /// @param minBidAmount min bid amount to update
+    /// @param priceRangeStart start price
+    /// @param incrementBidPrice increment bid price
+    function updateAuction(
+        uint256 auctionId,
+        uint128 minBidAmount,
+        uint128 priceRangeStart,
+        uint96 incrementBidPrice
+    ) external {
+        AuctionData memory auction = AuctionStorage.layout().auctions[auctionId];
+        if (auction.seller == address(0)) revert NoAuction();
+        if (
+            auction.status != AuctionStatus.Open ||
+            auction.startTime + auction.duration < block.timestamp ||
+            auction.curBidId != 0
+        ) revert NoIdleAuction();
+
+        if (auction.seller != msg.sender) revert NoAuctioneer();
+        if (minBidAmount > auction.sellAmount) revert InvalidMinBidAmount();
+        if (priceRangeStart > auction.priceRangeEnd) revert InvalidEndPrice();
+
+        if (minBidAmount != 0)
+            AuctionStorage.layout().auctions[auctionId].minBidAmount = minBidAmount;
+        if (priceRangeStart != 0)
+            AuctionStorage.layout().auctions[auctionId].priceRangeStart = priceRangeStart;
+        // once incrementBidPrice is set into no-zero value, it can't be updated into zero
+        if (incrementBidPrice != 0)
+            AuctionStorage.layout().auctions[auctionId].incrementBidPrice = incrementBidPrice;
+        emit AuctionUpdate(auctionId, minBidAmount, priceRangeStart, incrementBidPrice);
+    }
+
     function buyNow(
         uint256 auctionId,
         uint128 purchaseAmount,
@@ -236,6 +279,10 @@ contract AuctionUpgradeable is
         require(
             auction.auctionType != AuctionType.TimedAuction && auction.seller != address(0),
             "invalid auction for buyNow"
+        );
+        checkAuctionInProgress(
+            uint256(auction.startTime + auction.duration),
+            uint256(auction.startTime)
         );
         uint128 availableAmount = auction.reserve;
         uint256 trancheIndex = auction.trancheIndex;
