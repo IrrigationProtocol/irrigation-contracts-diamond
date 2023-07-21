@@ -32,8 +32,7 @@ struct Bid {
     uint128 bidPrice;
     address bidder;
     // purchase token amount paid out when bidding
-    uint96 paidAmount;
-    address purchaseToken;
+    uint128 paidAmount;
     uint16 bidTokenId;
     // bool bCleared;
     BidStatus status;
