@@ -39,25 +39,29 @@ contract AuctionUpgradeable is
     using SafeERC20Upgradeable for IERC20Upgradeable;
     /// @dev errors
     error InsufficientFee();
+    error InsufficientReserveAsset();
     error NotListTrancheZ();
     error NoTransferEther();
     error InvalidTrancheAuction();
-    error InvalidAuctionFee();
     error InvalidAuctionAmount();
     error InvalidStartTime();
     error InvalidMinBidAmount();
     error InvalidEndPrice();
-    error NoFixedAuction();
+    error InvalidMaxWinners();
     error NoClosedAuction();
     error NoAuction();
+    error InvalidAuction();
+    error InactiveAuction();
     error NoAuctioneer();
     error NoIdleAuction();
     error InvalidPurchaseAmount();
+    // bid
     error LowBid();
     error OverPriceBid();
     error NoCancelBid();
     error ClaimedBid();
     error NoBidder();
+    error SmallBidAmount();
 
     event AuctionCreated(
         address seller,
@@ -179,13 +183,15 @@ contract AuctionUpgradeable is
             IWaterTowerUpgradeable(address(this)).addETHReward{value: feeAmount}();
         }
 
-        require(startTime == 0 || startTime >= block.timestamp, "start time must be in the future");
         if (minBidAmount == 0 || minBidAmount > sellAmount) revert InvalidMinBidAmount();
-        require(maxWinners > 0, "invalid maxWinners");
+        if (maxWinners == 0) revert InvalidMaxWinners();
         if (priceRangeStart > priceRangeEnd) revert InvalidEndPrice();
 
         AuctionStorage.layout().currentAuctionId += 1;
-        uint96 _startTime = uint96(block.timestamp);
+        uint96 _startTime;
+        if (startTime == 0) _startTime = uint96(block.timestamp);
+        else if (startTime < block.timestamp) revert InvalidStartTime();
+        else _startTime = startTime;
         uint96 _duration = duration;
         uint128 _sellAmount = sellAmount;
         address _sellToken = address(sellToken);
@@ -197,7 +203,7 @@ contract AuctionUpgradeable is
         AuctionStorage.layout().auctions[AuctionStorage.layout().currentAuctionId] = AuctionData(
             msg.sender,
             _startTime,
-            _duration,
+            _startTime + _duration,
             _sellToken,
             _trancheIndex,
             _sellAmount,
@@ -249,14 +255,13 @@ contract AuctionUpgradeable is
         uint96 incrementBidPrice
     ) external {
         AuctionData memory auction = AuctionStorage.layout().auctions[auctionId];
-        if (auction.seller == address(0)) revert NoAuction();
+        if (auction.seller != msg.sender) revert NoAuctioneer();
         if (
             auction.status != AuctionStatus.Open ||
-            auction.startTime + auction.duration < block.timestamp ||
+            auction.endTime < block.timestamp ||
             auction.curBidId != 0
         ) revert NoIdleAuction();
 
-        if (auction.seller != msg.sender) revert NoAuctioneer();
         if (minBidAmount > auction.sellAmount) revert InvalidMinBidAmount();
         if (priceRangeStart > auction.priceRangeEnd) revert InvalidEndPrice();
 
@@ -276,17 +281,12 @@ contract AuctionUpgradeable is
         IERC20Upgradeable purchaseToken
     ) external supportedPurchase(address(purchaseToken)) nonReentrant {
         AuctionData memory auction = AuctionStorage.layout().auctions[auctionId];
-        require(
-            auction.auctionType != AuctionType.TimedAuction && auction.seller != address(0),
-            "invalid auction for buyNow"
-        );
-        checkAuctionInProgress(
-            uint256(auction.startTime + auction.duration),
-            uint256(auction.startTime)
-        );
+        if (auction.auctionType == AuctionType.TimedAuction || auction.seller == address(0))
+            revert InvalidAuction();
+        checkAuctionInProgress(auction.endTime, auction.startTime);
         uint128 availableAmount = auction.reserve;
         uint256 trancheIndex = auction.trancheIndex;
-        require(purchaseAmount <= availableAmount, "big amount");
+        if (purchaseAmount > availableAmount) revert InsufficientReserveAsset();
 
         address _purchaseToken = address(purchaseToken);
         // need auction conditions
@@ -332,18 +332,11 @@ contract AuctionUpgradeable is
         uint128 bidPrice,
         bool bCheckEndPrice
     ) external supportedPurchase(purchaseToken) nonReentrant returns (uint256) {
-        
         AuctionData memory auction = AuctionStorage.layout().auctions[auctionId];
-        require(
-            auction.seller != address(0) && auction.auctionType != AuctionType.FixedPrice,
-            "invalid auction"
-        );
-        checkAuctionInProgress(
-            uint256(auction.startTime + auction.duration),
-            uint256(auction.startTime)
-        );
-        require(auction.minBidAmount <= bidAmount, "too small bid amount");
-        require(bidAmount <= auction.reserve, "too big amount than reverse");
+        if (auction.auctionType == AuctionType.FixedPrice) revert InvalidAuction();
+        checkAuctionInProgress(auction.endTime, auction.startTime);
+        if (auction.minBidAmount > bidAmount) revert SmallBidAmount();
+        if (bidAmount > auction.reserve) revert InsufficientReserveAsset();
         // should add condition for timed
         // last bid price starts from priceRangeStart
         uint128 availableBidPrice = auction.curBidId == 0
@@ -377,7 +370,7 @@ contract AuctionUpgradeable is
             AuctionStorage.layout().bids[_auctionId][currentBidId] = bid;
             uint256 availableBidDepth = uint256(auction.availableBidDepth) + 1;
             uint128 totalBidAmount = auction.totalBidAmount + _bidAmount;
-            address[] memory bidTokens = AuctionStorage.layout().bidTokens;            
+            address[] memory bidTokens = AuctionStorage.layout().bidTokens;
             // cancel bids not eligible in a range of gas limit
             while (true) {
                 uint256 _cancelBidId = currentBidId - availableBidDepth + 1;
@@ -411,9 +404,7 @@ contract AuctionUpgradeable is
         AuctionData memory auction = AuctionStorage.layout().auctions[auctionId];
         uint96 currentTime = uint96(block.timestamp);
         require(
-            auction.seller != address(0) &&
-                currentTime >= auction.startTime + auction.duration &&
-                auction.status != AuctionStatus.Closed,
+            currentTime >= auction.endTime && auction.status != AuctionStatus.Closed,
             "auction can't be closed"
         );
         _settleAuction(auctionId);
@@ -488,20 +479,6 @@ contract AuctionUpgradeable is
             _purchaseToken.safeTransfer(bid.bidder, bid.paidAmount);
         }
     }
-
-    // function claimForCanceledBid(uint256 auctionId, uint256 bidId) external nonReentrant {
-    //     AuctionData memory auction = AuctionStorage.layout().auctions[auctionId];
-    //     Bid memory bid = AuctionStorage.layout().bids[auctionId][bidId];
-    //     require(auction.status == AuctionStatus.Closed, "no closed auction");
-    //     require(bid.bidder == msg.sender, "bidder only can claim");
-    //     require(bid.status != BidStatus.Cleared, "already settled bid");
-    //     AuctionStorage.layout().bids[auctionId][bidId].status = BidStatus.Cleared;
-
-    //     IERC20Upgradeable(bid.purchaseToken).safeTransfer(
-    //         bid.bidder,
-    //         getPayAmount(bid.purchaseToken, bid.bidAmount, bid.bidPrice, auction.sellToken)
-    //     );
-    // }
 
     function _settleAuction(uint256 auctionId) internal {
         uint256 gasLimit = gasleft();
@@ -671,11 +648,47 @@ contract AuctionUpgradeable is
         uint256 _newFeeNumerator,
         address _newfeeReceiver
     ) external onlySuperAdminRole {
-        require(_newFeeNumerator <= 25, "Fee higher than 2.5%");
+        if (_newFeeNumerator > 25) revert(); // "Fee higher than 2.5%");
         // caution: for currently running auctions, the feeReceiver is changing as well.
         AuctionStorage.layout().feeReceiver = _newfeeReceiver;
         AuctionStorage.layout().feeNumerator = _newFeeNumerator;
     }
+
+    // function AddBidTokenGroup(
+    //     bytes32 name,
+    //     address[] memory bidTokens,
+    //     address basePriceToken
+    // ) external onlySuperAdminRole {
+    //     uint256 count = AuctionStorage.layout().countOfTokenGroups + 1;
+    //     _updateTokenGroup(count, name, bidTokens, basePriceToken);
+    //     AuctionStorage.layout().countOfTokenGroups = count;
+    // }
+
+    // function updateTokenGroup(
+    //     uint256 tokenGroupId,
+    //     bytes32 name,
+    //     address[] memory bidTokens,
+    //     address basePriceToken
+    // ) external onlySuperAdminRole {
+    //     _updateTokenGroup(tokenGroupId, name, bidTokens, basePriceToken);
+    // }
+
+    // function _updateTokenGroup(
+    //     uint256 tokenGroupId,
+    //     bytes32 name,
+    //     address[] memory bidTokens,
+    //     address basePriceToken
+    // ) internal {
+    //     for (uint256 i; i < bidTokens.length; ) {
+    //         AuctionStorage.layout().bidTokenGroups[tokenGroupId].bidTokens[i] = bidTokens[i];
+    //         unchecked {
+    //             i++;
+    //         }
+    //     }
+    //     AuctionStorage.layout().bidTokenGroups[tokenGroupId].name = name;
+    //     AuctionStorage.layout().bidTokenGroups[tokenGroupId].count = uint8(bidTokens.length);
+    //     AuctionStorage.layout().bidTokenGroups[tokenGroupId].basePriceToken = basePriceToken;
+    // }
 
     // getters
     function getAuctionFee() public view returns (uint256 numerator, uint256 dominator) {
@@ -723,17 +736,7 @@ contract AuctionUpgradeable is
 
     /// @dev returns true if auction in progress, false otherwise
     function checkAuctionInProgress(uint endTime, uint startTime) internal view {
-        require(_checkAuctionRangeTime(endTime, startTime), "auction is inactive");
-    }
-
-    function _checkAuctionRangeTime(uint endTime, uint startTime) internal view returns (bool) {
-        uint currentTime = block.timestamp;
-        if (startTime > currentTime) {
-            return false;
-        }
-        if (endTime > 0 && endTime <= currentTime) {
-            return false;
-        }
-        return true;
+        if (startTime > block.timestamp || (endTime > 0 && endTime <= block.timestamp))
+            revert InactiveAuction();
     }
 }

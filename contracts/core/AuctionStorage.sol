@@ -44,11 +44,20 @@ struct TokenData {
     bool isEnabled;
 }
 
+// struct BidTokenGroup {
+//     mapping(uint256 => address) bidTokens;
+//     // calculated price by this address
+//     address basePriceToken;
+//     // max count of tokens in one group is 255
+//     uint8 count;
+//     bytes32 name;
+// }
+
 /// @dev Contains all data for auction erc20 token and tranche
 struct AuctionData {
     address seller;
     uint96 startTime;
-    uint96 duration;
+    uint96 endTime;
     address sellToken;
     uint256 trancheIndex;
     uint128 sellAmount;
@@ -78,6 +87,8 @@ library AuctionStorage {
         mapping(uint256 => mapping(uint256 => Bid)) bids;
         mapping(address => TokenData) bidTokenData;
         mapping(address => bool) supportedSellTokens;
+        // mapping(uint256 => BidTokenGroup) bidTokenGroups;
+        // uint256 countOfTokenGroups;
         // all allowed bid token addresses
         address[] bidTokens;
         uint256 feeNumerator;

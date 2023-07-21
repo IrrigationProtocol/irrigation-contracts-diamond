@@ -108,8 +108,8 @@ export function suite() {
         `expected duration ${0.9574}, but ${createdAuction.fixedPrice}`,
       );
       assert(
-        createdAuction.duration.toString() === (86400 * 2).toString(),
-        `expected duration ${86400 * 2}, but ${createdAuction.duration}`,
+        createdAuction.endTime.sub(createdAuction.startTime).toString() === (86400 * 2).toString(),
+        `expected duration ${86400 * 2}, but ${createdAuction.endTime.sub(createdAuction.startTime)}`,
       );
     });
 
@@ -173,14 +173,14 @@ export function suite() {
       ).to.be.revertedWithCustomError(auctionContract, 'LowBid');
       await expect(
         auctionContract.connect(secondBidder).placeBid(1, toWei(50), dai.address, toWei(0.21523), false),
-      ).to.be.revertedWith('too big amount than reverse');
+      ).to.be.revertedWithCustomError(auctionContract, 'InsufficientReserveAsset');
       await expect(
         auctionContract.connect(secondBidder).placeBid(1, toWei(9), dai.address, toWei(0.21524), false),
-      ).to.be.revertedWith('too small bid amount');
+      ).to.be.revertedWithCustomError(auctionContract, 'SmallBidAmount');
       await skipTime(86400 * 2 + 3601);
       await expect(
         auctionContract.connect(secondBidder).placeBid(1, toWei(20), dai.address, toWei(0.21523), false),
-      ).to.be.revertedWith('auction is inactive');
+      ).to.be.revertedWithCustomError(auctionContract, 'InactiveAuction');
     });
 
     it('Testing Auction close', async () => {
@@ -405,7 +405,7 @@ export function suite() {
     });
 
     it('update auction before bidding', async () => {
-      await expect(auctionContract.updateAuction(5, 0, 0, 0)).to.be.revertedWithCustomError(auctionContract, 'NoAuction');
+      await expect(auctionContract.updateAuction(5, 0, 0, 0)).to.be.revertedWithCustomError(auctionContract, 'NoAuctioneer');
       await expect(auctionContract.updateAuction(3, 0, 0, 0)).to.be.revertedWithCustomError(auctionContract, 'NoIdleAuction');
       let tx = await auctionContract.createAuction(
         0, 86400 * 2, token1.address, 0, toWei(100), toWei(0.1), toWei(0.9574),
