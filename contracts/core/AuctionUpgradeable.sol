@@ -131,7 +131,7 @@ contract AuctionUpgradeable is
     event ClaimBid(uint indexed auctionId, uint indexed bidId, uint claimAmount);
 
     uint256 internal constant FEE_DENOMINATOR = 1000;
-    uint256 internal constant BID_GAS_LIMIT = 500000;
+    uint256 internal constant BID_GAS_LIMIT = 460000;
     uint256 internal constant CLOSE_GAS_LIMIT = 200000;
 
     function createAuction(
@@ -332,7 +332,7 @@ contract AuctionUpgradeable is
         uint128 bidPrice,
         bool bCheckEndPrice
     ) external supportedPurchase(purchaseToken) nonReentrant returns (uint256) {
-        uint256 gasRemaining = gasleft();
+        
         AuctionData memory auction = AuctionStorage.layout().auctions[auctionId];
         require(
             auction.seller != address(0) && auction.auctionType != AuctionType.FixedPrice,
@@ -363,19 +363,21 @@ contract AuctionUpgradeable is
             bidder: msg.sender,
             bidAmount: bidAmount,
             bidPrice: _bidPrice,
-            purchaseToken: _purchaseToken,
-            paidAmount: uint96(payAmount),
+            // purchaseToken: _purchaseToken,
+            paidAmount: uint128(payAmount),
             bidTokenId: AuctionStorage.layout().bidTokenData[_purchaseToken].id,
             status: BidStatus.Bid
         });
         uint256 currentBidId = auction.curBidId + 1;
         auction.curBidId = currentBidId;
         {
+            uint256 gasRemaining = gasleft();
             uint256 _auctionId = auctionId;
             uint128 _bidAmount = bidAmount;
             AuctionStorage.layout().bids[_auctionId][currentBidId] = bid;
             uint256 availableBidDepth = uint256(auction.availableBidDepth) + 1;
             uint128 totalBidAmount = auction.totalBidAmount + _bidAmount;
+            address[] memory bidTokens = AuctionStorage.layout().bidTokens;            
             // cancel bids not eligible in a range of gas limit
             while (true) {
                 uint256 _cancelBidId = currentBidId - availableBidDepth + 1;
@@ -387,7 +389,7 @@ contract AuctionUpgradeable is
                 ) break;
                 totalBidAmount -= cancelBid.bidAmount;
                 availableBidDepth--;
-                _cancelBid(cancelBid, _auctionId, _cancelBidId);
+                _cancelBid(cancelBid, _auctionId, _cancelBidId, bidTokens[cancelBid.bidTokenId]);
                 if (gasRemaining - gasleft() > BID_GAS_LIMIT) break;
             }
             auction.availableBidDepth = uint8(availableBidDepth);
@@ -468,7 +470,9 @@ contract AuctionUpgradeable is
         // require(bid.bidder == msg.sender, "bidder only can claim");
         AuctionData memory auction = AuctionStorage.layout().auctions[auctionId];
         if (auction.status != AuctionStatus.Closed) revert NoClosedAuction();
-        IERC20Upgradeable _purchaseToken = IERC20Upgradeable(bid.purchaseToken);
+        IERC20Upgradeable _purchaseToken = IERC20Upgradeable(
+            AuctionStorage.layout().bidTokens[bid.bidTokenId]
+        );
         if (isWinner) {
             AuctionStorage.layout().auctions[auctionId].reserve =
                 auction.reserve -
@@ -518,7 +522,7 @@ contract AuctionUpgradeable is
                 (uint128 settledAmount, uint128 payoutAmount) = _settleBid(
                     auction.sellToken,
                     auction.trancheIndex,
-                    IERC20Upgradeable(bid.purchaseToken),
+                    IERC20Upgradeable(bidTokens[bid.bidTokenId]),
                     bid,
                     availableAmount
                 );
@@ -627,10 +631,14 @@ contract AuctionUpgradeable is
     }
 
     /// @notice cancel a bid and transfer purchase token to the bidder back
-    function _cancelBid(Bid memory bid, uint256 auctionId, uint256 bidId) internal {
+    function _cancelBid(
+        Bid memory bid,
+        uint256 auctionId,
+        uint256 bidId,
+        address bidToken
+    ) internal {
         if (bid.status != BidStatus.Bid) revert NoCancelBid();
-        IERC20Upgradeable _purchaseToken = IERC20Upgradeable(bid.purchaseToken);
-        _purchaseToken.safeTransfer(bid.bidder, bid.paidAmount);
+        IERC20Upgradeable(bidToken).safeTransfer(bid.bidder, bid.paidAmount);
         AuctionStorage.layout().bids[auctionId][bidId].status = BidStatus.Cleared;
     }
 
