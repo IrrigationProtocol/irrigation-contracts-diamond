@@ -39,45 +39,52 @@ struct Bid {
 }
 
 struct TokenData {
+    // uint16 groupId;
     uint16 id;
     uint8 decimals;
     bool isEnabled;
 }
 
-// struct BidTokenGroup {
-//     mapping(uint256 => address) bidTokens;
-//     // calculated price by this address
-//     address basePriceToken;
-//     // max count of tokens in one group is 255
-//     uint8 count;
-//     bytes32 name;
-// }
+struct BidTokenGroup {
+    address[] bidTokens;
+    // calculated price by this address
+    address basePriceToken;
+    // max count of tokens in one group is 255
+    // uint8 count;
+    bytes32 name;
+}
 
-/// @dev Contains all data for auction erc20 token and tranche
-struct AuctionData {
-    address seller;
+struct AuctionSetting {
     uint96 startTime;
-    uint96 endTime;
     address sellToken;
+    //
     uint256 trancheIndex;
-    uint128 sellAmount;
+    //
     uint128 minBidAmount;
     uint128 fixedPrice;
+    //
     uint128 priceRangeStart;
     uint128 priceRangeEnd;
+    //
+    uint128 sellAmount;
     uint128 reserve;
-    uint256 curBidId;
-    uint96 incrementBidPrice;
-    // sum of bidAmounts of bidders
-    uint128 totalBidAmount;
+    //
+    uint128 incrementBidPrice;
+    uint96 endTime;
+    uint16 bidTokenGroupId;
     uint8 maxWinners;
-    // bids in [id = curBidId + 1 - availableBidDepth, curBidId] are winners
-    // availableBidDepth <= maxWinners
+    AuctionType auctionType;
+    //
+}
+/// @dev Contains all data for auction erc20 token and tranche
+struct AuctionData {
+    AuctionSetting s;
+    uint128 curBidId;
+    uint128 totalBidAmount;
+    //
+    address seller;
     uint8 availableBidDepth;
     AuctionStatus status;
-    AuctionType auctionType;
-    // asset type is decided by whether trancheIndex is 0, or not
-    // AssetType assetType;
 }
 
 library AuctionStorage {
@@ -87,8 +94,8 @@ library AuctionStorage {
         mapping(uint256 => mapping(uint256 => Bid)) bids;
         mapping(address => TokenData) bidTokenData;
         mapping(address => bool) supportedSellTokens;
-        // mapping(uint256 => BidTokenGroup) bidTokenGroups;
-        // uint256 countOfTokenGroups;
+        mapping(uint256 => BidTokenGroup) bidTokenGroups;
+        uint256 countOfTokenGroups;
         // all allowed bid token addresses
         address[] bidTokens;
         uint256 feeNumerator;
