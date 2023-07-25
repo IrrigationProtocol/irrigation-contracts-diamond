@@ -143,9 +143,10 @@ export async function initWaterTower(waterTower: WaterTowerUpgradeable) {
 
 export async function initAuction(auction: AuctionUpgradeable) {
   const signers = await ethers.getSigners();
-  for (const token of purchaseTokens) {
-    await auction.setPurchaseToken(token, true);
-  }
+  // for (const token of purchaseTokens) {
+  //   await auction.setPurchaseToken(token, true);
+  // }
+  await auction.AddBidTokenGroup({ name: ethers.utils.formatBytes32String('Stables (USDC, USDT, DAI)'), bidTokens: purchaseTokens, basePriceToken: purchaseTokens[0] });
   // 1.5% auction fee
   await auction.setAuctionFee(15, signers[2]?.address || process.env.REWARD_ADDRESS);
 }

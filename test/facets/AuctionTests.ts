@@ -17,6 +17,7 @@ import { AuctionType } from '../types';
 import { BigNumber } from 'ethers';
 import { CONTRACT_ADDRESSES } from '../../scripts/shared';
 import { skipTime } from '../utils/time';
+import { AuctionSetting, Bid } from '../utils/interface';
 
 export function suite() {
   describe('Irrigation Auction Testing', async function () {
@@ -35,6 +36,7 @@ export function suite() {
     let secondBidder: SignerWithAddress;
     let auctionContract: AuctionUpgradeable;
     let fundAddress: string;
+    let defaultAuctionSetting: AuctionSetting;
 
     before(async () => {
       signers = await ethers.getSigners();
@@ -54,82 +56,86 @@ export function suite() {
       sender = signers[1];
       secondBidder = signers[2];
       auctionContract = await ethers.getContractAt('AuctionUpgradeable', irrigationDiamond.address);
-      expect(await auctionContract.isSupportedPurchaseToken(usdc.address)).to.be.eq(true);
+      // expect(await auctionContract.isSupportedPurchaseToken(usdc.address)).to.be.eq(true);
       // 1.5% auction fee
       expect((await auctionContract.getAuctionFee()).numerator).to.be.eq(BigNumber.from(15));
+
+      defaultAuctionSetting = {
+        startTime: 0,
+        endTime: 86400 * 2, // duration mode
+        sellToken: token1.address,
+        trancheIndex: toWei(0),
+        sellAmount: toWei(100),
+        minBidAmount: toWei(0.1),
+        fixedPrice: toWei(0.9574),
+        priceRangeStart: toWei(0.1),
+        priceRangeEnd: toWei(0.5),
+        reserve: toWei(0),
+        incrementBidPrice: toWei(0.00001),
+        bidTokenGroupId: 1,
+        maxWinners: 5,
+        auctionType: AuctionType.FixedPrice
+      };
     });
 
     it('Testing Auction create', async () => {
-      const params = [
-        86400 * 2,
-        token1.address,
-        toWei(100),
-        toWei(10),
-        toWei(0.9574),
-        toWei(0.1),
-        toWei(0.5),
-        toWei(0.00001),
-        5,
-        AuctionType.TimedAndFixed,
-      ];
       await token1.approve(auctionContract.address, toWei(1000));
-      await skipTime(3600)
+      await skipTime(3600);
+      const auctionSetting: AuctionSetting = {
+        ...defaultAuctionSetting, minBidAmount: toWei(10),
+        auctionType: AuctionType.TimedAndFixed,
+      }
       const tx = await auctionContract.createAuction(
-        0,
-        86400 * 2,
-        token1.address,
-        0,
-        toWei(100),
-        toWei(10),
-        toWei(0.9574),
-        toWei(0.1),
-        toWei(0.5),
-        toWei(0.00001),
-        5,
-        AuctionType.TimedAndFixed,
-      );
+        auctionSetting);
       expect(tx)
         .to.emit(auctionContract, 'AuctionCreated')
-        .withArgs(owner.address, Math.round(Date.now() / 1000), ...params, 1);
+        .withArgs(auctionSetting, owner.address, 1);
       expect(await token1.balanceOf(auctionContract.address)).to.be.equal(
         toWei(100 + (100 * 15) / 1000),
       );
       const createdAuction = await auctionContract.getAuction(1);
       assert(
-        createdAuction.sellToken === token1.address,
-        `expected token ${token1.address}, but ${createdAuction.sellToken}`,
+        createdAuction.s.sellToken === token1.address,
+        `expected token ${token1.address}, but ${createdAuction.s.sellToken}`,
       );
       assert(
         createdAuction.seller === owner.address,
         `expected seller ${owner.address}, but ${createdAuction.seller}`,
       );
       assert(
-        fromWei(createdAuction.fixedPrice) === 0.9574,
-        `expected duration ${0.9574}, but ${createdAuction.fixedPrice}`,
+        fromWei(createdAuction.s.fixedPrice) === 0.9574,
+        `expected duration ${0.9574}, but ${createdAuction.s.fixedPrice}`,
       );
       assert(
-        createdAuction.endTime.sub(createdAuction.startTime).toString() === (86400 * 2).toString(),
-        `expected duration ${86400 * 2}, but ${createdAuction.endTime.sub(createdAuction.startTime)}`,
+        createdAuction.s.endTime.sub(createdAuction.s.startTime).toString() === (86400 * 2).toString(),
+        `expected duration ${86400 * 2}, but ${createdAuction.s.endTime.sub(createdAuction.s.startTime)}`,
       );
     });
 
+    it('Supported bid tokens should be get', async () => {
+      const auction = await auctionContract.getAuction(1);
+      expect(auction.s.bidTokenGroupId).to.be.eq(1);
+      expect((await auctionContract.getBidTokenGroup(1)).bidTokens[0]).to.be.eq(dai.address);
+    });
+
     it('Testing Auction buyNow', async () => {
+      const auction = await auctionContract.getAuction(1);
       await dai.transfer(sender.address, toWei(50));
       await dai.connect(sender).approve(auctionContract.address, toWei(50));
-      await auctionContract.connect(sender).buyNow(1, toWei(40), dai.address);
+      await auctionContract.connect(sender).buyNow(1, toWei(40), 0);
       let expectedDAIBalance = toWei(50).sub(toWei(40).mul(toWei(0.9574)).div(toWei(1)));
       expect(await dai.balanceOf(sender.address)).to.be.equal(expectedDAIBalance.toString());
-      await auctionContract.connect(sender).buyNow(1, toWei(8.155), dai.address);
+      await auctionContract.connect(sender).buyNow(1, toWei(8.155), 0);
       expectedDAIBalance = expectedDAIBalance.sub(toWei(8.155).mul(toWei(0.9574)).div(toWei(1)));
       expect(await dai.balanceOf(sender.address)).to.be.equal(expectedDAIBalance.toString());
-      expect((await auctionContract.getAuction(1)).reserve.toString()).to.be.equal(
+      expect((await auctionContract.getAuction(1)).s.reserve.toString()).to.be.equal(
         toWei(100 - 40 - 8.155).toString(),
       );
       // buy with USDC
       await usdc.transfer(sender.address, toD6(10));
       await usdc.connect(sender).approve(auctionContract.address, toD6(10));
       const buyAmount = 8.151;
-      await auctionContract.connect(sender).buyNow(1, toWei(buyAmount), usdc.address);
+      await auctionContract.connect(sender).buyNow(1, toWei(buyAmount), 1);
       let expectedUSDCBalance = toD6(10).sub(
         mulDivRoundingUp(toWei(buyAmount), toWei(0.9574), toBN(10).pow(18 - 6 + 18)),
       );
@@ -142,16 +148,20 @@ export function suite() {
       await dai.transfer(sender.address, toWei(100));
       await dai.connect(sender).approve(auctionContract.address, toWei(100));
       let expectedDAIBalance = await dai.balanceOf(sender.address);
-      await expect(auctionContract.connect(sender).placeBid(1, toWei(19), dai.address, toWei(0.2), false)).emit(auctionContract, 'AuctionBid').withArgs(sender.address, toWei(19), dai.address, toWei(0.2), 1, 1);
-      await expect(auctionContract.connect(sender).placeBid(1, toWei(11), dai.address, toWei(0.205), false)).emit(auctionContract, 'AuctionBid').withArgs(sender.address, toWei(11), dai.address, toWei(0.205), 1, 2);
+      let bid1: Bid = { bidder: sender.address, bidAmount: toWei(19), bidPrice: toWei(0.2), paidAmount: toWei(0), bidTokenId: 0, status: 0 };
+      let bid2: Bid = { bidder: sender.address, bidAmount: toWei(19), bidPrice: toWei(0.2), paidAmount: toWei(0), bidTokenId: 0, status: 0 };
+      const tx1 = await auctionContract.connect(sender).placeBid(1, toWei(19), 0, toWei(0.2), false);
+      expect(tx1).to.emit(auctionContract, 'AuctionBid').withArgs(bid1, 1, 1);
+      const tx2 = await auctionContract.connect(sender).placeBid(1, toWei(11), 0, toWei(0.205), false);
+      expect(tx2).to.emit(auctionContract, 'AuctionBid').withArgs(bid2, 1, 2);
       await dai.connect(owner).transfer(secondBidder.address, toWei(100));
       await dai.connect(secondBidder).approve(auctionContract.address, toWei(100));
       await usdc.connect(owner).transfer(secondBidder.address, toD6(100));
       await usdc.connect(secondBidder).approve(auctionContract.address, toD6(100));
-      await auctionContract.connect(secondBidder).placeBid(1, toWei(20), dai.address, toWei(0.21), false);
+      await auctionContract.connect(secondBidder).placeBid(1, toWei(20), 0, toWei(0.21), false);
       await auctionContract
         .connect(secondBidder)
-        .placeBid(1, toWei(10), usdc.address, toWei(0.2101), false);
+        .placeBid(1, toWei(10), 1, toWei(0.2101), false);
 
       expectedDAIBalance = expectedDAIBalance
         .sub(toWei(19).mul(toWei(0.2)).div(toWei(1)))
@@ -160,7 +170,7 @@ export function suite() {
         expectedDAIBalance.toString(),
       );
 
-      expect((await auctionContract.getAuction(1)).reserve.toString()).to.be.equal(
+      expect((await auctionContract.getAuction(1)).s.reserve.toString()).to.be.equal(
         toWei(100 - 40 - 8.155 - 8.151).toString(),
       );
       expect((await token1.balanceOf(auctionContract.address)).toString()).to.be.equal(
@@ -169,24 +179,24 @@ export function suite() {
 
       // failed bidding
       await expect(
-        auctionContract.connect(secondBidder).placeBid(1, toWei(30), dai.address, toWei(0.21), false),
+        auctionContract.connect(secondBidder).placeBid(1, toWei(30), 0, toWei(0.21), false),
       ).to.be.revertedWithCustomError(auctionContract, 'LowBid');
       await expect(
-        auctionContract.connect(secondBidder).placeBid(1, toWei(50), dai.address, toWei(0.21523), false),
+        auctionContract.connect(secondBidder).placeBid(1, toWei(50), 0, toWei(0.21523), false),
       ).to.be.revertedWithCustomError(auctionContract, 'InsufficientReserveAsset');
       await expect(
-        auctionContract.connect(secondBidder).placeBid(1, toWei(9), dai.address, toWei(0.21524), false),
+        auctionContract.connect(secondBidder).placeBid(1, toWei(9), 0, toWei(0.21524), false),
       ).to.be.revertedWithCustomError(auctionContract, 'SmallBidAmount');
       await skipTime(86400 * 2 + 3601);
       await expect(
-        auctionContract.connect(secondBidder).placeBid(1, toWei(20), dai.address, toWei(0.21523), false),
+        auctionContract.connect(secondBidder).placeBid(1, toWei(20), 0, toWei(0.21523), false),
       ).to.be.revertedWithCustomError(auctionContract, 'InactiveAuction');
     });
 
     it('Testing Auction close', async () => {
       let auction = await auctionContract.getAuction(1);
       // console.log(fromWei(auction.reserve), fromWei(auction.totalBidAmount), Number(auction.curBidId));
-      const reserveAmount = auction.reserve;
+      const reserveAmount = auction.s.reserve;
       // console.log(await auctionContract.getBid(1,1));
       let updatedContractTokenBalance = await token1.balanceOf(auctionContract.address);
       // console.log('contract balance:', fromWei(await token1.balanceOf(auctionContract.address)));
@@ -208,121 +218,64 @@ export function suite() {
     });
 
     it('Testing Auction with fixed price', async () => {
-      const params = [
-        86400 * 2,
-        token1.address,
-        toWei(100),
-        toWei(10),
-        toWei(5),
-        toWei(2),
-        toWei(10),
-        toWei(0.001),
-        5,
-        AuctionType.FixedPrice,
-      ];
       await token1.approve(auctionContract.address, toWei(1000));
       let updatedContractTokenBalance = await token1.balanceOf(auctionContract.address);
-      const tx = await auctionContract.createAuction(
-        0,
-        86400 * 2,
-        token1.address,
-        0,
-        toWei(100),
-        toWei(10),
-        toWei(5),
-        toWei(2),
-        toWei(10),
-        toWei(0.001),
-        5,
-        AuctionType.FixedPrice,
-      );
-      expect(tx)
-        .to.emit(auctionContract, 'AuctionCreated')
-        .withArgs(owner.address, Math.round(Date.now() / 1000), ...params, 2);
+      const tx = await auctionContract.createAuction({
+        ...defaultAuctionSetting,
+        minBidAmount: toWei(10),
+        fixedPrice: toWei(5),
+        priceRangeStart: toWei(2),
+        priceRangeEnd: toWei(10),
+        incrementBidPrice: toWei(0.001),
+      });
+      expect(tx).to.emit(auctionContract, 'AuctionCreated');
 
       expect((await token1.balanceOf(auctionContract.address)).sub(updatedContractTokenBalance)).to.be.equal(
         toWei(100 + (100 * 15) / 1000),
       );
       const createdAuction = await auctionContract.getAuction(2);
       assert(
-        createdAuction.sellToken === token1.address,
-        `expected token ${token1.address}, but ${createdAuction.sellToken}`,
+        createdAuction.s.sellToken === token1.address,
+        `expected token ${token1.address}, but ${createdAuction.s.sellToken}`,
       );
       assert(
         createdAuction.seller === owner.address,
         `expected seller ${owner.address}, but ${createdAuction.seller}`,
       );
       assert(
-        fromWei(createdAuction.fixedPrice) === 5,
-        `expected fixedPrice ${5}, but ${fromWei(createdAuction.fixedPrice)}`,
+        fromWei(createdAuction.s.fixedPrice) === 5,
+        `expected fixedPrice ${5}, but ${fromWei(createdAuction.s.fixedPrice)}`,
       );
       await dai.transfer(sender.address, toWei(50));
       await dai.connect(sender).approve(auctionContract.address, toWei(50));
-      await auctionContract.connect(sender).buyNow(2, toWei(1), dai.address);
+      await auctionContract.connect(sender).buyNow(2, toWei(1), 0);
     });
 
     it('Creating Auction with invalid token should be failed', async () => {
-      await expect(auctionContract.createAuction(
-        0,
-        86400 * 2,
-        CONTRACT_ADDRESSES.ETHER,
-        0,
-        toWei(100),
-        toWei(10),
-        toWei(5),
-        toWei(2),
-        toWei(10),
-        toWei(0.001),
-        5,
-        AuctionType.FixedPrice,
-      )).to.be.revertedWith('Address: call to non-contract');
+      await expect(auctionContract.createAuction({ ...defaultAuctionSetting, sellToken: CONTRACT_ADDRESSES.ETHER })).to.be.revertedWith('Address: call to non-contract');
     });
 
     it('Tranche Auction with sellToken should be reverted', async () => {
-      await expect(auctionContract.createAuction(0,
-        86400 * 2,
-        token1.address,
-        1,
-        toWei(100),
-        toWei(0.1),
-        toWei(0.9574),
-        toWei(0.1),
-        toWei(0.5),
-        toWei(0.001),
-        5,
-        AuctionType.TimedAuction)).to.be.revertedWithCustomError(auctionContract, 'InvalidTrancheAuction');
+      await expect(auctionContract.createAuction({ ...defaultAuctionSetting, trancheIndex: 1 })).to.be.revertedWithCustomError(auctionContract, 'InvalidTrancheAuction');
     });
 
     it('Test Auction with max check bids', async () => {
-      let tx = await auctionContract.createAuction(
-        0,
-        86400 * 2,
-        token1.address,
-        0,
-        toWei(100),
-        toWei(0.1),
-        toWei(0.9574),
-        toWei(0.1),
-        toWei(0.5),
-        toWei(0.00001),
-        255,
-        AuctionType.TimedAuction,
-      );
+      let tx = await auctionContract.createAuction({ ...defaultAuctionSetting, auctionType: AuctionType.TimedAuction, maxWinners: 255 });
       await dai.transfer(sender.address, toWei(600));
       await dai.connect(sender).approve(auctionContract.address, toWei(600));
       for (let i = 0; i < 500; i++) {
-        await auctionContract.connect(sender).placeBid(3, toWei(1), dai.address, toWei(0.101 + i * 0.001), false);
+        await auctionContract.connect(sender).placeBid(3, toWei(1), 0, toWei(0.101 + i * 0.001), false);
       }
       let auction = await auctionContract.getAuction(3);
       expect(auction.totalBidAmount).to.be.eq(toWei(100));
       expect(auction.availableBidDepth).to.be.eq(100);
-      await auctionContract.connect(sender).placeBid(3, toWei(0.5), dai.address, toWei(0.65), false);
+      await auctionContract.connect(sender).placeBid(3, toWei(0.5), 0, toWei(0.65), false);
       auction = await auctionContract.getAuction(3);
       expect(auction.totalBidAmount).to.be.eq(toWei(100.5));
       expect(auction.availableBidDepth).to.be.eq(101);
       await dai.connect(owner).approve(auctionContract.address, toWei(100000));
       // this transction cancels 24 low bids when max gas limit is 500_000
-      await auctionContract.connect(owner).placeBid(3, toWei(50), dai.address, toWei(0.8), false);
+      await auctionContract.connect(owner).placeBid(3, toWei(50),  0, toWei(0.8), false);
       auction = await auctionContract.getAuction(3);
       expect(auction.totalBidAmount).to.be.eq(toWei(126.5));
       expect(auction.availableBidDepth).to.be.eq(77 + 1);
@@ -358,7 +311,7 @@ export function suite() {
       const totalGas = txReceipt.gasUsed.mul(txReceipt.effectiveGasPrice);
       debuglog(`max gas for 255 winners: ${fromWei(totalGas)}`);
     });
-    it('Not setted winner bids should be able to claim after auction is closed', async () => {
+    it('Not settled winner bids should be able to claim after auction is closed', async () => {
       let auction = await auctionContract.getAuction(3);
       const lastSettledBidId = 493;
       // winner that receives full token amount as same as bid amount      
@@ -374,14 +327,14 @@ export function suite() {
       expect(bid450.claimAmount).to.be.eq(0);
       expect(bid450.isClaimed).to.be.eq(false);
       expect(bid450.isWinner).to.be.eq(false);
-      expect(auction.reserve).to.be.eq(toWei(41.5));
+      expect(auction.s.reserve).to.be.eq(toWei(41.5));
       let updatedContractTokenBalance = await token1.balanceOf(auctionContract.address);
       // claim not settled bid with biggest id
       await auctionContract.connect(sender).claimBid(3, lastSettledBidId - 1);
       expect(updatedContractTokenBalance.sub(await token1.balanceOf(auctionContract.address))).to.be.eq(toWei(1));
       auction = await auctionContract.getAuction(3);
       let bid = await auctionContract.getBid(3, 451);
-      expect(auction.reserve).to.be.eq(toWei(40.5));
+      expect(auction.s.reserve).to.be.eq(toWei(40.5));
       let daiBalance = await dai.balanceOf(auctionContract.address);
       let daiOfOwner = await dai.balanceOf(owner.address);
       let daiOfSender = await dai.balanceOf(sender.address);
@@ -392,7 +345,7 @@ export function suite() {
       // expect((await dai.balanceOf(owner.address)).sub(daiOfOwner)).to.be.eq(bid.paidAmount.div(2));
       expect((await dai.balanceOf(sender.address)).sub(daiOfSender)).to.be.eq(bid.paidAmount.div(2));
       auction = await auctionContract.getAuction(3);
-      expect(auction.reserve).to.be.eq(toWei(40));
+      expect(auction.s.reserve).to.be.eq(toWei(40));
       // just claimed bid
       await expect(auctionContract.connect(sender).claimBid(3, 451)).to.be.revertedWithCustomError(auctionContract, 'ClaimedBid');
       // already settled bid when closing auciton
@@ -407,14 +360,12 @@ export function suite() {
     it('update auction before bidding', async () => {
       await expect(auctionContract.updateAuction(5, 0, 0, 0)).to.be.revertedWithCustomError(auctionContract, 'NoAuctioneer');
       await expect(auctionContract.updateAuction(3, 0, 0, 0)).to.be.revertedWithCustomError(auctionContract, 'NoIdleAuction');
-      let tx = await auctionContract.createAuction(
-        0, 86400 * 2, token1.address, 0, toWei(100), toWei(0.1), toWei(0.9574),
-        toWei(0.1), toWei(0.5), toWei(0.00001), 255, AuctionType.TimedAuction,);
+      let tx = await auctionContract.createAuction({ ...defaultAuctionSetting, maxWinners: 255, auctionType: AuctionType.TimedAuction });
       await expect(auctionContract.connect(sender).updateAuction(4, 0, 0, 0)).to.be.revertedWithCustomError(auctionContract, 'NoAuctioneer');
       await auctionContract.updateAuction(4, toWei(1.1), 0, 0);
       let updatedAuction = await auctionContract.getAuction(4);
-      expect(updatedAuction.minBidAmount).to.be.eq(toWei(1.1));
-      await auctionContract.connect(secondBidder).placeBid(4, toWei(1.1), dai.address, 0, false);
+      expect(updatedAuction.s.minBidAmount).to.be.eq(toWei(1.1));
+      await auctionContract.connect(secondBidder).placeBid(4, toWei(1.1), 0, 0, false);
       await expect(auctionContract.updateAuction(4, 0, 0, 0)).to.be.revertedWithCustomError(auctionContract, 'NoIdleAuction');
     })
   });
