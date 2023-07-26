@@ -131,7 +131,7 @@ contract AuctionUpgradeable is
     function createAuction(
         AuctionSetting memory auctionSetting
     ) external payable returns (uint256) {
-        if (auctionSetting.bidTokenGroupId > AuctionStorage.layout().countOfTokenGroups)
+        if (auctionSetting.bidTokenGroupId >= AuctionStorage.layout().countOfTokenGroups)
             revert InvalidBidToken();
         if (
             auctionSetting.minBidAmount == 0 ||
@@ -613,9 +613,9 @@ contract AuctionUpgradeable is
     }
 
     function AddBidTokenGroup(BidTokenGroup memory bidTokenGroup) external onlySuperAdminRole {
-        uint256 count = AuctionStorage.layout().countOfTokenGroups + 1;
+        uint256 count = AuctionStorage.layout().countOfTokenGroups;
         _updateTokenGroup(count, bidTokenGroup);
-        AuctionStorage.layout().countOfTokenGroups = count;
+        AuctionStorage.layout().countOfTokenGroups = count + 1;
     }
 
     function updateTokenGroup(
@@ -674,31 +674,12 @@ contract AuctionUpgradeable is
 
     function getBidTokenGroupCount() external view returns (uint256 countOfTokenGroup) {
         return AuctionStorage.layout().countOfTokenGroups;
-    }
-    // function isSupportedPurchaseToken(address tokenAddress) external view returns (bool) {
-    //     return AuctionStorage.layout().bidTokenData[tokenAddress].isEnabled;
-    // }
-
-    // modifiers
-    // modifier supportedPurchase(address tokenAddress) {
-    //     require(
-    //         AuctionStorage.layout().bidTokenData[tokenAddress].isEnabled,
-    //         "no supported purchase"
-    //     );
-    //     _;
-    // }
+    }    
 
     /// @dev returns true if auction in progress, false otherwise
     function checkAuctionInProgress(uint endTime, uint startTime) internal view {
         if (startTime > block.timestamp || (endTime > 0 && endTime <= block.timestamp))
             revert InactiveAuction();
     }
-
     
-    // function supportedBidToken(uint256 bidTokenGroupId, uint256 bidTokenId) internal view {
-    //     if (
-    //         AuctionStorage.layout().bidTokenGroups[bidTokenGroupId].bidTokens[bidTokenId] ==
-    //         address(0)
-    //     ) revert();
-    // }
 }
