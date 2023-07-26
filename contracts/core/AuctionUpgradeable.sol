@@ -97,11 +97,7 @@ contract AuctionUpgradeable is
     /// @param auctionId The id of auction list
     /// @param bidId The id of bid list
 
-    event AuctionBid(
-        Bid bid,
-        uint256 indexed auctionId,
-        uint256 indexed bidId
-    );
+    event AuctionBid(Bid bid, uint256 indexed auctionId, uint256 indexed bidId);
 
     /// @notice Emitted by auction when bidder or auctioneer closes a auction
     /// @param unSoldAmount Amount of unsold auctioning token
@@ -236,16 +232,17 @@ contract AuctionUpgradeable is
         uint16 buyTokenId
     ) external nonReentrant {
         AuctionData memory auction = AuctionStorage.layout().auctions[auctionId];
-        address _purchaseToken = AuctionStorage.layout().bidTokenGroups[auction.s.bidTokenGroupId].bidTokens[buyTokenId];
-        if (_purchaseToken == address(0)) revert InvalidBidToken();
         if (auction.s.auctionType == AuctionType.TimedAuction || auction.seller == address(0))
             revert InvalidAuction();
+        address _purchaseToken = AuctionStorage
+            .layout()
+            .bidTokenGroups[auction.s.bidTokenGroupId]
+            .bidTokens[buyTokenId];
         checkAuctionInProgress(auction.s.endTime, auction.s.startTime);
         uint128 availableAmount = auction.s.reserve;
         uint256 trancheIndex = auction.s.trancheIndex;
         if (purchaseAmount > availableAmount) revert InsufficientReserveAsset();
 
-        
         // need auction conditions
         // consider decimals of purchase token and sell token
         uint256 payAmount = getPayAmount(
@@ -293,9 +290,12 @@ contract AuctionUpgradeable is
         bool bCheckEndPrice
     ) external /* supportedPurchase(purchaseToken) */ nonReentrant returns (uint256) {
         AuctionData memory auction = AuctionStorage.layout().auctions[auctionId];
-        address _purchaseToken = AuctionStorage.layout().bidTokenGroups[auction.s.bidTokenGroupId].bidTokens[bidTokenId];
-        if (_purchaseToken == address(0)) revert InvalidBidToken();        
-        if (auction.s.auctionType == AuctionType.FixedPrice) revert InvalidAuction();
+        if (auction.s.auctionType == AuctionType.FixedPrice || auction.seller == address(0))
+            revert InvalidAuction();
+        address _purchaseToken = AuctionStorage
+            .layout()
+            .bidTokenGroups[auction.s.bidTokenGroupId]
+            .bidTokens[bidTokenId];
         checkAuctionInProgress(auction.s.endTime, auction.s.startTime);
         if (auction.s.minBidAmount > bidAmount) revert SmallBidAmount();
         if (bidAmount > auction.s.reserve) revert InsufficientReserveAsset();
@@ -332,7 +332,10 @@ contract AuctionUpgradeable is
             AuctionStorage.layout().bids[_auctionId][currentBidId] = bid;
             uint256 availableBidDepth = uint256(auction.availableBidDepth) + 1;
             uint128 totalBidAmount = auction.totalBidAmount + _bidAmount;
-            address[] memory bidTokens = AuctionStorage.layout().bidTokenGroups[auction.s.bidTokenGroupId].bidTokens;
+            address[] memory bidTokens = AuctionStorage
+                .layout()
+                .bidTokenGroups[auction.s.bidTokenGroupId]
+                .bidTokens;
             // cancel bids not eligible in a range of gas limit
             while (true) {
                 uint256 _cancelBidId = currentBidId - availableBidDepth + 1;
@@ -350,11 +353,7 @@ contract AuctionUpgradeable is
             auction.availableBidDepth = uint8(availableBidDepth);
             auction.totalBidAmount = totalBidAmount;
             AuctionStorage.layout().auctions[_auctionId] = auction;
-            emit AuctionBid(
-                bid,
-                _auctionId,
-                currentBidId
-            );
+            emit AuctionBid(bid, _auctionId, currentBidId);
         }
         return currentBidId;
     }
@@ -365,7 +364,7 @@ contract AuctionUpgradeable is
             block.timestamp >= auction.s.endTime && auction.status != AuctionStatus.Closed,
             "auction can't be closed"
         );
-        _settleAuction(auctionId);
+        _settleAuction(auctionId, auction);
     }
 
     /// @notice function to get status of bid
@@ -420,7 +419,9 @@ contract AuctionUpgradeable is
         AuctionData memory auction = AuctionStorage.layout().auctions[auctionId];
         if (auction.status != AuctionStatus.Closed) revert NoClosedAuction();
         IERC20Upgradeable _purchaseToken = IERC20Upgradeable(
-            AuctionStorage.layout().bidTokenGroups[auction.s.bidTokenGroupId].bidTokens[bid.bidTokenId]
+            AuctionStorage.layout().bidTokenGroups[auction.s.bidTokenGroupId].bidTokens[
+                bid.bidTokenId
+            ]
         );
         if (isWinner) {
             AuctionStorage.layout().auctions[auctionId].s.reserve =
@@ -438,14 +439,16 @@ contract AuctionUpgradeable is
         }
     }
 
-    function _settleAuction(uint256 auctionId) internal {
+    function _settleAuction(uint256 auctionId, AuctionData memory auction) internal {
         uint256 gasLimit = gasleft();
-        AuctionData memory auction = AuctionStorage.layout().auctions[auctionId];
-        uint256 trancheIndex = auction.s.trancheIndex;
+        // uint256 trancheIndex = auction.s.trancheIndex;
         uint128 availableAmount = auction.s.reserve;
         uint256 settledBidCount;
         uint256 curBidId = auction.curBidId;
-        address[] memory bidTokens = AuctionStorage.layout().bidTokenGroups[auction.s.bidTokenGroupId].bidTokens;
+        address[] memory bidTokens = AuctionStorage
+            .layout()
+            .bidTokenGroups[auction.s.bidTokenGroupId]
+            .bidTokens;
         uint256[] memory payoutAmounts = new uint256[](bidTokens.length);
         bool bOverGasLimit = false;
         uint128 reserve = availableAmount;
@@ -506,7 +509,7 @@ contract AuctionUpgradeable is
                 IERC1155Upgradeable(address(this)).safeTransferFrom(
                     address(this),
                     auction.seller,
-                    trancheIndex,
+                    auction.s.trancheIndex,
                     refundAmount,
                     Constants.EMPTY
                 );
@@ -578,24 +581,6 @@ contract AuctionUpgradeable is
     }
 
     // admin setters
-    // enable or disable purchase tokens
-    // function setPurchaseToken(address _token, bool _bEnable) external onlySuperAdminRole {
-    //     AuctionStorage.layout().bidTokenData[_token].isEnabled = _bEnable;
-    //     address[] memory bidTokens = AuctionStorage.layout().bidTokens;
-    //     uint256 i;
-    //     for (i = 0; i < bidTokens.length; ) {
-    //         if (bidTokens[i] == _token) {
-    //             break;
-    //         }
-    //         unchecked {
-    //             ++i;
-    //         }
-    //     }
-    //     if (i == bidTokens.length) {
-    //         AuctionStorage.layout().bidTokens.push(_token);
-    //         AuctionStorage.layout().bidTokenData[_token].id = uint16(i);
-    //     }
-    // }
 
     // enable or diable sell tokens
     function setSellToken(address _token, bool _bEnable) external onlySuperAdminRole {
@@ -674,12 +659,11 @@ contract AuctionUpgradeable is
 
     function getBidTokenGroupCount() external view returns (uint256 countOfTokenGroup) {
         return AuctionStorage.layout().countOfTokenGroups;
-    }    
+    }
 
     /// @dev returns true if auction in progress, false otherwise
     function checkAuctionInProgress(uint endTime, uint startTime) internal view {
         if (startTime > block.timestamp || (endTime > 0 && endTime <= block.timestamp))
             revert InactiveAuction();
     }
-    
 }
