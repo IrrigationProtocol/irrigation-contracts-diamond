@@ -88,7 +88,7 @@ export function suite() {
         priceRangeEnd: toWei(0.5),
         reserve: toWei(0),
         incrementBidPrice: toWei(0.0001),
-        bidTokenGroupId: 1,
+        bidTokenGroupId: 0,
         maxWinners: 5,
         auctionType: AuctionType.TimedAndFixed
       };

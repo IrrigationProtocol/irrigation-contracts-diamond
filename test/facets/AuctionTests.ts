@@ -72,7 +72,7 @@ export function suite() {
         priceRangeEnd: toWei(0.5),
         reserve: toWei(0),
         incrementBidPrice: toWei(0.00001),
-        bidTokenGroupId: 1,
+        bidTokenGroupId: 0,
         maxWinners: 5,
         auctionType: AuctionType.FixedPrice
       };
@@ -109,13 +109,13 @@ export function suite() {
       assert(
         createdAuction.s.endTime.sub(createdAuction.s.startTime).toString() === (86400 * 2).toString(),
         `expected duration ${86400 * 2}, but ${createdAuction.s.endTime.sub(createdAuction.s.startTime)}`,
-      );
+      );      
     });
 
     it('Supported bid tokens should be get', async () => {
       const auction = await auctionContract.getAuction(1);
-      expect(auction.s.bidTokenGroupId).to.be.eq(1);
-      expect((await auctionContract.getBidTokenGroup(1)).bidTokens[0]).to.be.eq(dai.address);
+      expect(auction.s.bidTokenGroupId).to.be.eq(0);
+      expect((await auctionContract.getBidTokenGroup(0)).bidTokens[0]).to.be.eq(dai.address);
     });
 
     it('Testing Auction buyNow', async () => {
@@ -162,7 +162,8 @@ export function suite() {
       await auctionContract
         .connect(secondBidder)
         .placeBid(1, toWei(10), 1, toWei(0.2101), false);
-
+      await expect(auctionContract.connect(secondBidder).placeBid(1, toWei(20), 3, toWei(0.21), false),)
+        .to.be.revertedWith('panic code 0x32 (Array accessed at an out-of-bounds or negative index)');
       expectedDAIBalance = expectedDAIBalance
         .sub(toWei(19).mul(toWei(0.2)).div(toWei(1)))
         .sub(toWei(11).mul(toWei(0.205)).div(toWei(1)));
@@ -275,7 +276,7 @@ export function suite() {
       expect(auction.availableBidDepth).to.be.eq(101);
       await dai.connect(owner).approve(auctionContract.address, toWei(100000));
       // this transction cancels 24 low bids when max gas limit is 500_000
-      await auctionContract.connect(owner).placeBid(3, toWei(50),  0, toWei(0.8), false);
+      await auctionContract.connect(owner).placeBid(3, toWei(50), 0, toWei(0.8), false);
       auction = await auctionContract.getAuction(3);
       expect(auction.totalBidAmount).to.be.eq(toWei(126.5));
       expect(auction.availableBidDepth).to.be.eq(77 + 1);
