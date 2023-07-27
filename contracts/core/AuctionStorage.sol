@@ -39,8 +39,9 @@ struct Bid {
 }
 
 struct TokenData {
-    // uint16 groupId;
+    // uint16 groupId;    
     uint16 id;
+    // address token;
     uint8 decimals;
     bool isEnabled;
 }
@@ -92,7 +93,7 @@ library AuctionStorage {
         uint256 currentAuctionId;
         mapping(uint256 => AuctionData) auctions;
         mapping(uint256 => mapping(uint256 => Bid)) bids;
-        mapping(address => TokenData) bidTokenData;
+        // mapping(address => TokenData) bidTokenData;
         mapping(address => bool) supportedSellTokens;
         mapping(uint256 => BidTokenGroup) bidTokenGroups;
         uint256 countOfTokenGroups;

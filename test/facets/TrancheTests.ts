@@ -79,7 +79,7 @@ export function suite() {
       defaultAuctionSetting = {
         startTime: 0,
         endTime: 86400 * 2, // duration mode
-        sellToken: ethers.constants.AddressZero,
+        sellToken: rootAddress,
         trancheIndex: toWei(0),
         sellAmount: toWei(100),
         minBidAmount: toWei(0.0001),

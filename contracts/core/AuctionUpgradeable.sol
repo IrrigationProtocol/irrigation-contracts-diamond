@@ -9,6 +9,7 @@ import "@gnus.ai/contracts-upgradeable-diamond/contracts/security/ReentrancyGuar
 
 import "./AuctionStorage.sol";
 import "./TrancheBondStorage.sol";
+
 import "../utils/EIP2535Initializable.sol";
 import "../utils/IrrigationAccessControl.sol";
 import "../libraries/FullMath.sol";
@@ -16,8 +17,6 @@ import "../libraries/Constants.sol";
 
 import "../interfaces/IPriceOracleUpgradeable.sol";
 import "../interfaces/IWaterTowerUpgradeable.sol";
-
-// import "hardhat/console.sol";
 
 /// @title Auction Market for whitelisted erc20 tokens
 /// @dev  Auction contract allows users sell allowed tokens or buy listed tokens with allowed purchase tokens(stable coins)
@@ -47,6 +46,7 @@ contract AuctionUpgradeable is
     error InvalidStartTime();
     error InvalidMinBidAmount();
     error InvalidEndPrice();
+    error InvalidSellToken();
     error InvalidMaxWinners();
     error NoClosedAuction();
     error NoAuction();
@@ -127,6 +127,8 @@ contract AuctionUpgradeable is
     function createAuction(
         AuctionSetting memory auctionSetting
     ) external payable returns (uint256) {
+        if (!AuctionStorage.layout().supportedSellTokens[auctionSetting.sellToken])
+            revert InvalidSellToken();
         if (auctionSetting.bidTokenGroupId >= AuctionStorage.layout().countOfTokenGroups)
             revert InvalidBidToken();
         if (
@@ -172,7 +174,7 @@ contract AuctionUpgradeable is
             );
         } else {
             if (trancheIndex & 3 == 3) revert NotListTrancheZ();
-            if (address(sellToken) != Constants.ZERO) revert InvalidTrancheAuction();
+            if (sellToken != address(this)) revert InvalidTrancheAuction();
             IERC1155Upgradeable(address(this)).safeTransferFrom(
                 msg.sender,
                 address(this),
@@ -245,22 +247,23 @@ contract AuctionUpgradeable is
 
         // need auction conditions
         // consider decimals of purchase token and sell token
-        uint256 payAmount = getPayAmount(
-            _purchaseToken,
-            purchaseAmount,
-            auction.s.fixedPrice,
-            auction.s.sellToken
-        );
         unchecked {
             AuctionStorage.layout().auctions[auctionId].s.reserve =
                 availableAmount -
                 purchaseAmount;
         }
-        IERC20Upgradeable(_purchaseToken).safeTransferFrom(msg.sender, auction.seller, payAmount);
 
+        uint256 payAmount;
         if (auction.s.trancheIndex == 0) {
+            payAmount = getPayAmount(
+                _purchaseToken,
+                purchaseAmount,
+                auction.s.fixedPrice,
+                IERC20MetadataUpgradeable(auction.s.sellToken).decimals()
+            );
             IERC20Upgradeable(auction.s.sellToken).safeTransfer(msg.sender, purchaseAmount);
         } else {
+            payAmount = getPayAmount(_purchaseToken, purchaseAmount, auction.s.fixedPrice, 6);
             IERC1155Upgradeable(address(this)).safeTransferFrom(
                 address(this),
                 msg.sender,
@@ -269,6 +272,7 @@ contract AuctionUpgradeable is
                 Constants.EMPTY
             );
         }
+        IERC20Upgradeable(_purchaseToken).safeTransferFrom(msg.sender, auction.seller, payAmount);
 
         emit AuctionBuy(
             msg.sender,
@@ -312,7 +316,14 @@ contract AuctionUpgradeable is
         if (bCheckEndPrice && auction.s.priceRangeEnd < bidPrice) revert OverPriceBid();
         // address _purchaseToken = purchaseToken;
         uint128 _bidPrice = bidPrice;
-        uint256 payAmount = getPayAmount(_purchaseToken, bidAmount, _bidPrice, auction.s.sellToken);
+        uint256 payAmount = getPayAmount(
+            _purchaseToken,
+            bidAmount,
+            _bidPrice,
+            auction.s.trancheIndex > 0
+                ? 6
+                : IERC20MetadataUpgradeable(auction.s.sellToken).decimals()
+        );
         IERC20Upgradeable(_purchaseToken).safeTransferFrom(msg.sender, address(this), payAmount);
         Bid memory bid = Bid({
             bidder: msg.sender,
@@ -320,7 +331,7 @@ contract AuctionUpgradeable is
             bidPrice: _bidPrice,
             // purchaseToken: _purchaseToken,
             paidAmount: uint128(payAmount),
-            bidTokenId: AuctionStorage.layout().bidTokenData[_purchaseToken].id,
+            bidTokenId: bidTokenId,
             status: BidStatus.Bid
         });
         uint256 currentBidId = auction.curBidId + 1;
@@ -493,11 +504,11 @@ contract AuctionUpgradeable is
                 ++i;
             }
         }
-        // console.log("--setteled count: %s, %s %s", settledBidCount, curBidId, availableAmount);
         if (auction.totalBidAmount < auction.s.reserve) {
             uint128 refundAmount;
             unchecked {
                 refundAmount = auction.s.reserve - auction.totalBidAmount;
+                availableAmount = 0;
             }
             if (auction.s.trancheIndex == 0) {
                 IERC20Upgradeable(auction.s.sellToken).safeTransfer(
@@ -514,9 +525,7 @@ contract AuctionUpgradeable is
                     Constants.EMPTY
                 );
             }
-            availableAmount -= refundAmount;
-            // AuctionStorage.layout().auctions[auctionId].reserve -= 0;
-        } else {}
+        }
         AuctionStorage.layout().auctions[auctionId].s.reserve = availableAmount;
         AuctionStorage.layout().auctions[auctionId].status = AuctionStatus.Closed;
 
@@ -527,11 +536,11 @@ contract AuctionUpgradeable is
             AuctionStorage.layout().auctions[auctionId].totalBidAmount =
                 auction.totalBidAmount -
                 availableAmount;
-            emit AuctionClosed(availableAmount, auctionId, auction.curBidId, curBidId);
             AuctionStorage.layout().auctions[auctionId].curBidId =
                 auction.curBidId -
                 uint128(settledBidCount);
         }
+        emit AuctionClosed(availableAmount, auctionId, auction.curBidId, curBidId);
     }
 
     /// @notice transfer auctioning token to bidder
@@ -583,8 +592,17 @@ contract AuctionUpgradeable is
     // admin setters
 
     // enable or diable sell tokens
-    function setSellToken(address _token, bool _bEnable) external onlySuperAdminRole {
-        AuctionStorage.layout().supportedSellTokens[_token] = _bEnable;
+    function setSellTokens(
+        address[] memory tokens,
+        bool[] memory bEnables
+    ) external onlySuperAdminRole {
+        uint256 i;
+        for (i; i < tokens.length; ) {
+            AuctionStorage.layout().supportedSellTokens[tokens[i]] = bEnables[i];
+            unchecked {
+                ++i;
+            }
+        }
     }
 
     function setAuctionFee(
@@ -612,12 +630,6 @@ contract AuctionUpgradeable is
 
     function _updateTokenGroup(uint256 tokenGroupId, BidTokenGroup memory bidTokenGroup) internal {
         AuctionStorage.layout().bidTokenGroups[tokenGroupId] = bidTokenGroup;
-        for (uint256 i; i < bidTokenGroup.bidTokens.length; ) {
-            AuctionStorage.layout().bidTokenData[bidTokenGroup.bidTokens[i]].id = uint16(i);
-            unchecked {
-                ++i;
-            }
-        }
     }
 
     // getters
@@ -630,12 +642,10 @@ contract AuctionUpgradeable is
         address purchaseToken,
         uint128 purchaseAmount,
         uint128 price,
-        address sellToken
+        uint8 sellTokenDecimals
     ) public view returns (uint256) {
         uint256 denominator = (10 **
-            (18 -
-                IERC20MetadataUpgradeable(purchaseToken).decimals() +
-                (sellToken != address(0) ? IERC20MetadataUpgradeable(sellToken).decimals() : 6)));
+            (18 - IERC20MetadataUpgradeable(purchaseToken).decimals() + sellTokenDecimals));
         return FullMath.mulDivRoundingUp128(purchaseAmount, price, denominator);
     }
 
