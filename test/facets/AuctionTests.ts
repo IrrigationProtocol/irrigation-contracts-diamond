@@ -12,7 +12,7 @@ import {
   mulDivRoundingUp,
 } from '../../scripts/common';
 import { IrrigationDiamond } from '../../typechain-types/hardhat-diamond-abi/HardhatDiamondABI.sol';
-import { AuctionUpgradeable, IERC20Upgradeable } from '../../typechain-types';
+import { AuctionUpgradeable, IERC20Upgradeable, OwnershipFacet__factory } from '../../typechain-types';
 import { AuctionType } from '../types';
 import { BigNumber } from 'ethers';
 import { CONTRACT_ADDRESSES } from '../../scripts/shared';
@@ -115,7 +115,7 @@ export function suite() {
       });
 
       it('Creating Auction with invalid token should be failed', async () => {
-        await expect(auctionContract.createAuction({ ...defaultAuctionSetting, sellToken: CONTRACT_ADDRESSES.ETHER })).to.be.revertedWith('Address: call to non-contract');
+        await expect(auctionContract.createAuction({ ...defaultAuctionSetting, sellToken: CONTRACT_ADDRESSES.ETHER })).to.be.revertedWithCustomError(auctionContract, 'InvalidSellToken');
       });
 
       it('Tranche Auction with sellToken should be reverted', async () => {
@@ -287,7 +287,7 @@ export function suite() {
     });
 
     describe('#max bidders', async function () {
-      it('Test Auction with max check bids', async () => {
+      it('Test Auction with 500 bids', async () => {
         let tx = await auctionContract.createAuction({ ...defaultAuctionSetting, auctionType: AuctionType.TimedAuction, maxWinners: 255 });
         await dai.transfer(sender.address, toWei(600));
         await dai.connect(sender).approve(auctionContract.address, toWei(600));
@@ -398,6 +398,15 @@ export function suite() {
         expect(updatedAuction.s.minBidAmount).to.be.eq(toWei(1.1));
         await auctionContract.connect(secondBidder).placeBid(4, toWei(1.1), 0, 0, false);
         await expect(auctionContract.updateAuction(4, 0, 0, 0)).to.be.revertedWithCustomError(auctionContract, 'NoIdleAuction');
+      });
+    });
+
+    describe('auction for water token', async function () {
+      it('create auction with water as sell token', async function () {
+        await water.approve(water.address, toWei(110));
+        const waterBalance = await water.balanceOf(owner.address);
+        await auctionContract.createAuction({ ...defaultAuctionSetting, sellToken: water.address });
+        expect(waterBalance.sub(await water.balanceOf(owner.address))).to.be.eq(toWei(101.5));
       });
     });
   });
