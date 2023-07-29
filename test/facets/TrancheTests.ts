@@ -114,7 +114,7 @@ export function suite() {
           ['747381568584998', 200],
           [0, 0],
           [20, 20],
-          180 * 86400)).revertedWithCustomError(trancheBond, 'NotSortedPlots');
+          0)).revertedWithCustomError(trancheBond, 'NotSortedPlots');
       });
 
       it('should mint tranche nft when creating tranche', async () => {
@@ -143,7 +143,7 @@ export function suite() {
           podsGroup.indexes,
           podsGroup.indexes.map(e => 0),
           podsGroup.amounts,
-          180 * 86400);
+          0);
 
         const trancheId = 5;
         let tokenBalance = await trancheCollection.balanceOf(owner.address, trancheId);
