@@ -32,9 +32,9 @@ contract TrancheBondUpgradeable is
     using TrancheBondStorage for TrancheBondStorage.Layout;
     using WaterTowerStorage for WaterTowerStorage.Layout;
 
-    uint256 public constant FMV_DENOMINATOR = 100;
-    uint256 public constant MINIMUM_FMV = 1000;
-    uint256 public constant MINIMUM_WATER = 32;
+    uint256 internal constant FMV_DENOMINATOR = 100;
+    uint256 internal constant MINIMUM_FMV = 1000;
+    uint256 internal constant MINIMUM_WATER = 32;
     // default maturity period
     uint256 public constant MATURITY_PERIOD = 180 days;
 
@@ -67,13 +67,13 @@ contract TrancheBondUpgradeable is
     /// @param indexes Index array of deposited pods
     /// @param starts Array of start number for deposited pods
     /// @param ends Array of end number for deposited pods
-    /// @param maturityPeriod Maturity Period, if this is 0, default is 180 days
+    /// @param periodId Maturity Period id
 
     function createTranchesWithPods(
         uint256[] calldata indexes,
         uint256[] calldata starts,
         uint256[] calldata ends,
-        uint256 maturityPeriod
+        uint8 periodId
     ) external onlyWaterHolder nonReentrant {
         if (indexes.length != starts.length || indexes.length != ends.length) revert InvalidPods();
         uint256[] memory podIndexes = new uint256[](indexes.length);
@@ -131,9 +131,7 @@ contract TrancheBondUpgradeable is
         TrancheBondStorage.layout().underlyingAssets[curDepositCount] = UnderlyingAssetMetadata({
             contractAddress: Constants.ZERO,
             assetType: UnderlyingAssetType.PODS,
-            maturityDate: uint64(
-                block.timestamp + (maturityPeriod == 0 ? MATURITY_PERIOD : maturityPeriod)
-            ),
+            maturityDate: uint64(block.timestamp) + TrancheBondStorage.layout().periods[periodId],
             totalDeposited: totalPods,
             totalFMV: totalFMV
         });
@@ -193,7 +191,7 @@ contract TrancheBondUpgradeable is
                         _fmv,
                         _level,
                         _startIndexAndOffsets
-                    );                
+                    );
                 unchecked {
                     WaterCommonStorage.layout().beanstalk.transferPlot(
                         address(this),
@@ -361,6 +359,10 @@ contract TrancheBondUpgradeable is
         uint256 trancheId
     ) internal pure returns (uint256 depositId, uint8 trancheLevel) {
         return (trancheId >> 2, uint8(trancheId & 3) - 1);
+    }
+
+    function setMaturityPeriods(uint64[] calldata periods) external onlySuperAdminRole {
+        TrancheBondStorage.layout().periods = periods;
     }
 
     /// @dev modifiers

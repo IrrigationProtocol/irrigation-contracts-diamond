@@ -175,6 +175,8 @@ export async function initTrancheBond(contractAddress: string) {
   const erc1155whitelist = await ethers.getContractAt('ERC1155WhitelistUpgradeable', contractAddress);
   await erc1155whitelist.addProxySpender(contractAddress, ethers.utils.formatBytes32String('Irrigation'));
   await erc1155whitelist.setTokenBaseURI(process.env.TRANCHE_NFT_METADATA_BASE_URL || 'http://localhost/');
+  const trancheBond = await ethers.getContractAt('TrancheBondUpgradeable', contractAddress);
+  await trancheBond.setMaturityPeriods([180 * 86400]);
 }
 
 export async function initAll(contractAddress: string) {

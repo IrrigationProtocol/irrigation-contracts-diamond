@@ -59,6 +59,7 @@ library TrancheBondStorage {
         mapping(uint256 => TrancheMetadata) tranches;
         // total number of deposits, also it is used as a latest id for storage to store deposited assets
         uint256 curDepositCount;
+        uint64[] periods;
     }
 
     bytes32 internal constant STORAGE_SLOT = keccak256("irrigation.contracts.storage.TrancheBond");
