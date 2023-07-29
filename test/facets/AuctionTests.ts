@@ -43,7 +43,7 @@ export function suite() {
       signers = await ethers.getSigners();
       owner = signers[0];
       sender = signers[1];
-      token1 = await ethers.getContractAt('IERC20Upgradeable', CONTRACT_ADDRESSES.ROOT);
+      token1 = await ethers.getContractAt('IERC20Upgradeable', CONTRACT_ADDRESSES.frxETH);
       token2 = await ethers.getContractAt('IERC20Upgradeable', CONTRACT_ADDRESSES.SPOT);
       water = await ethers.getContractAt('IERC20Upgradeable', irrigationDiamond.address);
       root = await ethers.getContractAt('IERC20Upgradeable', CONTRACT_ADDRESSES.ROOT);
@@ -63,7 +63,7 @@ export function suite() {
 
       defaultAuctionSetting = {
         startTime: 0,
-        endTime: 86400 * 2, // duration mode
+        endTime: 0, // duration mode
         sellToken: token1.address,
         trancheIndex: toWei(0),
         sellAmount: toWei(100),
@@ -75,7 +75,8 @@ export function suite() {
         incrementBidPrice: toWei(0.00001),
         bidTokenGroupId: 0,
         maxWinners: 5,
-        auctionType: AuctionType.FixedPrice
+        auctionType: AuctionType.FixedPrice,
+        periodId: 1
       };
     });
 
@@ -88,7 +89,7 @@ export function suite() {
           auctionType: AuctionType.TimedAndFixed,
         }
         const tx = await auctionContract.createAuction(
-          auctionSetting);
+          auctionSetting, 1);
         expect(tx)
           .to.emit(auctionContract, 'AuctionCreated')
           .withArgs(auctionSetting, owner.address, 1);
@@ -109,17 +110,17 @@ export function suite() {
           `expected duration ${0.9574}, but ${createdAuction.s.fixedPrice}`,
         );
         assert(
-          createdAuction.s.endTime.sub(createdAuction.s.startTime).toString() === (86400 * 2).toString(),
-          `expected duration ${86400 * 2}, but ${createdAuction.s.endTime.sub(createdAuction.s.startTime)}`,
+          createdAuction.s.endTime.sub(createdAuction.s.startTime).toString() === (86400 * 3).toString(),
+          `expected duration ${86400 * 3}, but ${createdAuction.s.endTime.sub(createdAuction.s.startTime)}`,
         );
       });
 
       it('Creating Auction with invalid token should be failed', async () => {
-        await expect(auctionContract.createAuction({ ...defaultAuctionSetting, sellToken: CONTRACT_ADDRESSES.ETHER })).to.be.revertedWithCustomError(auctionContract, 'InvalidSellToken');
+        await expect(auctionContract.createAuction({ ...defaultAuctionSetting, sellToken: CONTRACT_ADDRESSES.ETHER }, 1)).to.be.revertedWithCustomError(auctionContract, 'InvalidSellToken');
       });
 
       it('Tranche Auction with sellToken should be reverted', async () => {
-        await expect(auctionContract.createAuction({ ...defaultAuctionSetting, trancheIndex: 1 })).to.be.revertedWithCustomError(auctionContract, 'InvalidTrancheAuction');
+        await expect(auctionContract.createAuction({ ...defaultAuctionSetting, trancheIndex: 1 }, 1)).to.be.revertedWithCustomError(auctionContract, 'InvalidTrancheAuction');
       });
 
       it('Supported bid tokens should be get', async () => {
@@ -129,14 +130,14 @@ export function suite() {
       });
 
       it('Invalid Auctions', async () => {
-        await expect(auctionContract.createAuction({ ...defaultAuctionSetting, bidTokenGroupId: 5 })).to.be.revertedWithCustomError(auctionContract, 'InvalidBidToken');
-        await expect(auctionContract.createAuction({ ...defaultAuctionSetting, minBidAmount: 0 })).to.be.revertedWithCustomError(auctionContract, 'InvalidMinBidAmount');
-        await expect(auctionContract.createAuction({ ...defaultAuctionSetting, minBidAmount: toWei(1000) })).to.be.revertedWithCustomError(auctionContract, 'InvalidMinBidAmount');
-        await expect(auctionContract.createAuction({ ...defaultAuctionSetting, startTime: 10000 })).to.be.revertedWithCustomError(auctionContract, 'InvalidStartTime');
-        await expect(auctionContract.createAuction({ ...defaultAuctionSetting, endTime: 1 })).to.be.revertedWithCustomError(auctionContract, 'InvalidAuction');
-        const startTime = await time.latest() + 10;
-        await expect(auctionContract.createAuction({ ...defaultAuctionSetting, startTime, endTime: startTime + 10 })).to.be.revertedWithCustomError(auctionContract, 'InvalidAuction');
-        await expect(auctionContract.createAuction({ ...defaultAuctionSetting, startTime, endTime: startTime + 181 * 31 * 86400 })).to.be.revertedWithCustomError(auctionContract, 'InvalidAuction');
+        await expect(auctionContract.createAuction({ ...defaultAuctionSetting, bidTokenGroupId: 5 }, 1)).to.be.revertedWithCustomError(auctionContract, 'InvalidBidToken');
+        await expect(auctionContract.createAuction({ ...defaultAuctionSetting, minBidAmount: 0 }, 1)).to.be.revertedWithCustomError(auctionContract, 'InvalidMinBidAmount');
+        await expect(auctionContract.createAuction({ ...defaultAuctionSetting, minBidAmount: toWei(1000) }, 1 )).to.be.revertedWithCustomError(auctionContract, 'InvalidMinBidAmount');
+        await expect(auctionContract.createAuction({ ...defaultAuctionSetting, startTime: 10000 }, 1)).to.be.revertedWithCustomError(auctionContract, 'InvalidStartTime');
+        // await expect(auctionContract.createAuction({ ...defaultAuctionSetting, endTime: 1 })).to.be.revertedWithCustomError(auctionContract, 'InvalidAuction');
+        // const startTime = await time.latest() + 10;
+        // await expect(auctionContract.createAuction({ ...defaultAuctionSetting, startTime, endTime: startTime + 10 })).to.be.revertedWithCustomError(auctionContract, 'InvalidAuction');
+        // await expect(auctionContract.createAuction({ ...defaultAuctionSetting, startTime, endTime: startTime + 181 * 31 * 86400 })).to.be.revertedWithCustomError(auctionContract, 'InvalidAuction');
       });
     });
 
@@ -215,7 +216,7 @@ export function suite() {
         await expect(
           auctionContract.connect(secondBidder).placeBid(1, toWei(9), 0, toWei(0.21524), false),
         ).to.be.revertedWithCustomError(auctionContract, 'SmallBidAmount');
-        await skipTime(86400 * 2 + 3601);
+        await skipTime(86400 * 3 + 3601);
         await expect(
           auctionContract.connect(secondBidder).placeBid(1, toWei(20), 0, toWei(0.21523), false),
         ).to.be.revertedWithCustomError(auctionContract, 'InactiveAuction');
@@ -261,7 +262,7 @@ export function suite() {
           priceRangeStart: toWei(2),
           priceRangeEnd: toWei(10),
           incrementBidPrice: toWei(0.001),
-        });
+        }, 1);
         expect(tx).to.emit(auctionContract, 'AuctionCreated');
 
         expect((await token1.balanceOf(auctionContract.address)).sub(updatedContractTokenBalance)).to.be.equal(
@@ -288,7 +289,7 @@ export function suite() {
 
     describe('#max bidders', async function () {
       it('Test Auction with 500 bids', async () => {
-        let tx = await auctionContract.createAuction({ ...defaultAuctionSetting, auctionType: AuctionType.TimedAuction, maxWinners: 255 });
+        let tx = await auctionContract.createAuction({ ...defaultAuctionSetting, auctionType: AuctionType.TimedAuction, maxWinners: 255 }, 1);
         await dai.transfer(sender.address, toWei(600));
         await dai.connect(sender).approve(auctionContract.address, toWei(600));
         for (let i = 0; i < 500; i++) {
@@ -312,7 +313,7 @@ export function suite() {
         const highestCancelBid = await auctionContract.getBid(3, 502 - 78);
         expect(lowestBid.status).to.be.eq(0);
         expect(highestCancelBid.status).to.be.eq(3);
-        await skipTime(86400 * 2);
+        await skipTime(86400 * 3);
 
         // when closing auction, settles 29 top bids in the case of limit is 500_000
         await expect(auctionContract.claimBid(3, 449)).to.be.revertedWithCustomError(auctionContract, 'NoClosedAuction');
@@ -391,7 +392,7 @@ export function suite() {
       it('update auction before bidding', async () => {
         await expect(auctionContract.updateAuction(5, 0, 0, 0)).to.be.revertedWithCustomError(auctionContract, 'NoAuctioneer');
         await expect(auctionContract.updateAuction(3, 0, 0, 0)).to.be.revertedWithCustomError(auctionContract, 'NoIdleAuction');
-        let tx = await auctionContract.createAuction({ ...defaultAuctionSetting, maxWinners: 255, auctionType: AuctionType.TimedAuction });
+        let tx = await auctionContract.createAuction({ ...defaultAuctionSetting, maxWinners: 255, auctionType: AuctionType.TimedAuction}, 1);
         await expect(auctionContract.connect(sender).updateAuction(4, 0, 0, 0)).to.be.revertedWithCustomError(auctionContract, 'NoAuctioneer');
         await auctionContract.updateAuction(4, toWei(1.1), 0, 0);
         let updatedAuction = await auctionContract.getAuction(4);
@@ -405,7 +406,7 @@ export function suite() {
       it('create auction with water as sell token', async function () {
         await water.approve(water.address, toWei(110));
         const waterBalance = await water.balanceOf(owner.address);
-        await auctionContract.createAuction({ ...defaultAuctionSetting, sellToken: water.address });
+        await auctionContract.createAuction({ ...defaultAuctionSetting, sellToken: water.address }, 1);
         expect(waterBalance.sub(await water.balanceOf(owner.address))).to.be.eq(toWei(101.5));
       });
     });

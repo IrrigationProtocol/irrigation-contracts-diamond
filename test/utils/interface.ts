@@ -26,7 +26,7 @@ export interface AuctionData {
     // availableBidDepth <= maxWinners
     availableBidDepth: number;
     status: number;
-    auctionType: number;
+    auctionType: number;    
 }
 
 export interface AuctionSetting {
@@ -49,6 +49,7 @@ export interface AuctionSetting {
     bidTokenGroupId: number;
     maxWinners: number;
     auctionType: number;
+    periodId: number;
 }
 
 export interface Bid {

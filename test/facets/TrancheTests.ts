@@ -78,7 +78,7 @@ export function suite() {
 
       defaultAuctionSetting = {
         startTime: 0,
-        endTime: 86400 * 2, // duration mode
+        endTime: 0, // duration mode
         sellToken: rootAddress,
         trancheIndex: toWei(0),
         sellAmount: toWei(100),
@@ -90,7 +90,8 @@ export function suite() {
         incrementBidPrice: toWei(0.0001),
         bidTokenGroupId: 0,
         maxWinners: 5,
-        auctionType: AuctionType.TimedAndFixed
+        auctionType: AuctionType.TimedAndFixed,
+        periodId: 1,
       };
     });
 
@@ -242,7 +243,7 @@ export function suite() {
             sellAmount: trNftBalance,
             minBidAmount: trNftBalance.div(10),
             trancheIndex: trancheId
-          },
+          }, 1,
             { value: toWei(0.01) }
           ),
         ).to.be.revertedWithCustomError(auctionContract, 'NotListTrancheZ');
@@ -260,6 +261,7 @@ export function suite() {
           minBidAmount: trNftBalance.div(10),
           trancheIndex: trancheId,
         },
+          1,
           { value: toWei(0.02) }
         );
         let txReceipt = await tx.wait();
@@ -316,7 +318,7 @@ export function suite() {
             sellAmount: trNftBalance,
             minBidAmount: trNftBalance.div(10),
             trancheIndex: trancheId
-          },
+          }, 1,
           )).to.be.revertedWithCustomError(auctionContract, 'InsufficientFee');
         const auctionFee = trNftBalance.mul(toWei(10 ** 12)).div(await priceOracle.getUnderlyingPriceETH()).mul(15).div(1000);
         await auctionContract
@@ -327,6 +329,7 @@ export function suite() {
             minBidAmount: trNftBalance.div(10),
             trancheIndex: trancheId,
           },
+            1,
             { value: auctionFee }
           );
         updateTotalRewards = (await waterTower.getTotalRewards()).sub(updateTotalRewards);
@@ -338,7 +341,7 @@ export function suite() {
           auction.s.trancheIndex.eq(trancheId),
           `expected trancheIndex ${trancheId} but ${auction.s.trancheIndex}`,
         );
-        
+
         await dai.connect(bidder).approve(auctionContract.address, toWei(50));
         let daiBalance = await dai.balanceOf(owner.address);
         trNftBalance = await trancheCollection.balanceOf(rootAddress, trancheId);

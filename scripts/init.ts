@@ -31,10 +31,18 @@ export const auctionSellTokens = [
   CONTRACT_ADDRESSES.BEAN,
   CONTRACT_ADDRESSES.BEAN_3_CURVE,
   CONTRACT_ADDRESSES.UNRIPE_BEAN,
+  CONTRACT_ADDRESSES.UNRIPE_LP,
+  CONTRACT_ADDRESSES.FXS,
+  CONTRACT_ADDRESSES.frxETH,
   CONTRACT_ADDRESSES.OHM,
+  CONTRACT_ADDRESSES.CRV,
+  CONTRACT_ADDRESSES.AURA,
+  CONTRACT_ADDRESSES.BAL,
+  CONTRACT_ADDRESSES.SNX,
   CONTRACT_ADDRESSES.SPOT,
+  CONTRACT_ADDRESSES.stETH,
   // CONTRACT_ADDRESSES.FERTILIZER,
-  CONTRACT_ADDRESSES.ROOT,  
+  // CONTRACT_ADDRESSES.ROOT,
 ];
 const purchaseTokens = [CONTRACT_ADDRESSES.DAI, CONTRACT_ADDRESSES.USDC, CONTRACT_ADDRESSES.USDT];
 export async function initPriceOracles(priceOracle: PriceOracleUpgradeable) {
@@ -160,6 +168,7 @@ export async function initAuction(auction: AuctionUpgradeable) {
   await auction.setAuctionFee(15, signers[2]?.address || process.env.REWARD_ADDRESS);
   const tokens = [...auctionSellTokens, auction.address];
   await auction.setSellTokens(tokens, tokens.map(e => true));
+  await auction.updatePeriods([86400, 86400 * 3, 86400 * 7, 86400 * 30]);
 }
 
 export async function initTrancheBond(contractAddress: string) {

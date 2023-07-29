@@ -102,6 +102,7 @@ library AuctionStorage {
         uint256 feeNumerator;
         address feeReceiver;
         uint96 maxIncrementRate;
+        uint96[] periods;
     }
 
     bytes32 internal constant STORAGE_SLOT = keccak256("irrigation.contracts.storage.Auction");
