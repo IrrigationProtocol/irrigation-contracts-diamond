@@ -16,7 +16,7 @@ contract IrrigationControlUpgradeable is
     /// @dev auctions
     event UpdateBidTokenGroup(uint indexed id, BidTokenGroup bidTokenGroup);
     event UpdateSellTokens(address[] sellTokens, bool[] bEnables);
-    event UpdateAuctionPeriods(uint96[] periods);
+    event UpdateAuctionPeriods(uint48[] periods);
 
     // admin setters
     // enable or disable sell tokens
@@ -66,7 +66,7 @@ contract IrrigationControlUpgradeable is
         emit UpdateBidTokenGroup(tokenGroupId, bidTokenGroup);
     }
 
-    function updatePeriods(uint96[] memory periods) external onlySuperAdminRole {
+    function updatePeriods(uint48[] memory periods) external onlySuperAdminRole {
         AuctionStorage.layout().periods = periods;
         emit UpdateAuctionPeriods(periods);
     }

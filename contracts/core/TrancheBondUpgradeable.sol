@@ -131,7 +131,7 @@ contract TrancheBondUpgradeable is
         TrancheBondStorage.layout().underlyingAssets[curDepositCount] = UnderlyingAssetMetadata({
             contractAddress: Constants.ZERO,
             assetType: UnderlyingAssetType.PODS,
-            maturityDate: uint64(block.timestamp) + TrancheBondStorage.layout().periods[periodId],
+            maturityDate: uint48(block.timestamp) + TrancheBondStorage.layout().periods[periodId],
             totalDeposited: totalPods,
             totalFMV: totalFMV
         });
@@ -361,7 +361,7 @@ contract TrancheBondUpgradeable is
         return (trancheId >> 2, uint8(trancheId & 3) - 1);
     }
 
-    function setMaturityPeriods(uint64[] calldata periods) external onlySuperAdminRole {
+    function setMaturityPeriods(uint48[] calldata periods) external onlySuperAdminRole {
         TrancheBondStorage.layout().periods = periods;
     }
 

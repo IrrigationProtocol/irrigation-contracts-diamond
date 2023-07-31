@@ -24,7 +24,7 @@ struct UnderlyingAssetMetadata {
     // zero address if underlying asset is pods
     address contractAddress;
     UnderlyingAssetType assetType;
-    uint64 maturityDate;
+    uint48 maturityDate;
     // total amount of deposited underlying asset
     // sum of pods for all deposited podlines if underlying asset is pods
     uint256 totalDeposited;
@@ -59,7 +59,7 @@ library TrancheBondStorage {
         mapping(uint256 => TrancheMetadata) tranches;
         // total number of deposits, also it is used as a latest id for storage to store deposited assets
         uint256 curDepositCount;
-        uint64[] periods;
+        uint48[] periods;
     }
 
     bytes32 internal constant STORAGE_SLOT = keccak256("irrigation.contracts.storage.TrancheBond");

@@ -85,7 +85,7 @@ export function suite() {
         await token1.approve(auctionContract.address, toWei(1000));
         await skipTime(3600);
         const auctionSetting: AuctionSetting = {
-          ...defaultAuctionSetting, minBidAmount: toWei(10),
+          ...defaultAuctionSetting, minBidAmount: toWei(8),
           auctionType: AuctionType.TimedAndFixed,
         }
         const tx = await auctionContract.createAuction(
@@ -110,8 +110,8 @@ export function suite() {
           `expected duration ${0.9574}, but ${createdAuction.s.fixedPrice}`,
         );
         assert(
-          createdAuction.s.endTime.sub(createdAuction.s.startTime).toString() === (86400 * 3).toString(),
-          `expected duration ${86400 * 3}, but ${createdAuction.s.endTime.sub(createdAuction.s.startTime)}`,
+          createdAuction.s.endTime - createdAuction.s.startTime === 86400 * 3,
+          `expected duration ${86400 * 3}, but ${createdAuction.s.endTime - createdAuction.s.startTime}`,
         );
       });
 
@@ -132,7 +132,7 @@ export function suite() {
       it('Invalid Auctions', async () => {
         await expect(auctionContract.createAuction({ ...defaultAuctionSetting, bidTokenGroupId: 5 }, 1)).to.be.revertedWithCustomError(auctionContract, 'InvalidBidToken');
         await expect(auctionContract.createAuction({ ...defaultAuctionSetting, minBidAmount: 0 }, 1)).to.be.revertedWithCustomError(auctionContract, 'InvalidMinBidAmount');
-        await expect(auctionContract.createAuction({ ...defaultAuctionSetting, minBidAmount: toWei(1000) }, 1 )).to.be.revertedWithCustomError(auctionContract, 'InvalidMinBidAmount');
+        await expect(auctionContract.createAuction({ ...defaultAuctionSetting, minBidAmount: toWei(1000) }, 1)).to.be.revertedWithCustomError(auctionContract, 'InvalidMinBidAmount');
         await expect(auctionContract.createAuction({ ...defaultAuctionSetting, startTime: 10000 }, 1)).to.be.revertedWithCustomError(auctionContract, 'InvalidStartTime');
         // await expect(auctionContract.createAuction({ ...defaultAuctionSetting, endTime: 1 })).to.be.revertedWithCustomError(auctionContract, 'InvalidAuction');
         // const startTime = await time.latest() + 10;
@@ -214,7 +214,7 @@ export function suite() {
           auctionContract.connect(secondBidder).placeBid(1, toWei(50), 0, toWei(0.21523), false),
         ).to.be.revertedWithCustomError(auctionContract, 'InsufficientReserveAsset');
         await expect(
-          auctionContract.connect(secondBidder).placeBid(1, toWei(9), 0, toWei(0.21524), false),
+          auctionContract.connect(secondBidder).placeBid(1, toWei(3), 0, toWei(0.21524), false),
         ).to.be.revertedWithCustomError(auctionContract, 'SmallBidAmount');
         await skipTime(86400 * 3 + 3601);
         await expect(
@@ -258,7 +258,7 @@ export function suite() {
         let updatedContractTokenBalance = await token1.balanceOf(auctionContract.address);
         const tx = await auctionContract.createAuction({
           ...defaultAuctionSetting,
-          minBidAmount: toWei(10),
+          minBidAmount: toWei(1),
           fixedPrice: toWei(5),
           priceRangeStart: toWei(2),
           priceRangeEnd: toWei(10),
@@ -312,8 +312,8 @@ export function suite() {
         expect(auction.curBidId).to.be.eq(502);
         const lowestBid = await auctionContract.getBid(3, 502 - 77);
         const highestCancelBid = await auctionContract.getBid(3, 502 - 78);
-        expect(lowestBid.status).to.be.eq(0);
-        expect(highestCancelBid.status).to.be.eq(3);
+        expect(lowestBid.bCleared).to.be.eq(false);
+        expect(highestCancelBid.bCleared).to.be.eq(true);
         await skipTime(86400 * 3);
 
         // when closing auction, settles 29 top bids in the case of limit is 500_000
@@ -330,12 +330,12 @@ export function suite() {
         // console.log(auction.maxWinners, auction.reserve);
         let bidId = 502;
         let bid = await auctionContract.getBid(3, bidId);
-        while (bid.status != 0) {
+        while (bid.bCleared) {
           bid = await auctionContract.getBid(3, --bidId);
         }
         const lastSettledBidId = 493;
-        expect((await auctionContract.getBid(3, lastSettledBidId)).status).to.be.eq(3);
-        expect((await auctionContract.getBid(3, lastSettledBidId - 1)).status).to.be.eq(0);
+        expect((await auctionContract.getBid(3, lastSettledBidId)).bCleared).to.be.eq(true);
+        expect((await auctionContract.getBid(3, lastSettledBidId - 1)).bCleared).to.be.eq(false);
         expect(bidId).to.be.eq(lastSettledBidId - 1);
         let txReceipt = await tx.wait();
         const totalGas = txReceipt.gasUsed.mul(txReceipt.effectiveGasPrice);
@@ -393,7 +393,7 @@ export function suite() {
       it('update auction before bidding', async () => {
         await expect(auctionContract.updateAuction(5, 0, 0, 0)).to.be.revertedWithCustomError(auctionContract, 'NoAuctioneer');
         await expect(auctionContract.updateAuction(3, 0, 0, 0)).to.be.revertedWithCustomError(auctionContract, 'NoIdleAuction');
-        let tx = await auctionContract.createAuction({ ...defaultAuctionSetting, maxWinners: 255, auctionType: AuctionType.TimedAuction}, 1);
+        let tx = await auctionContract.createAuction({ ...defaultAuctionSetting, maxWinners: 255, auctionType: AuctionType.TimedAuction }, 1);
         await expect(auctionContract.connect(sender).updateAuction(4, 0, 0, 0)).to.be.revertedWithCustomError(auctionContract, 'NoAuctioneer');
         await auctionContract.updateAuction(4, toWei(1.1), 0, 0);
         let updatedAuction = await auctionContract.getAuction(4);
@@ -403,12 +403,73 @@ export function suite() {
       });
     });
 
-    describe('auction for water token', async function () {
+    describe('auction with water token and max winners 255', async function () {
       it('create auction with water as sell token', async function () {
-        await water.approve(water.address, toWei(110));
+        await water.approve(water.address, toWei(310));
         const waterBalance = await water.balanceOf(owner.address);
-        await auctionContract.createAuction({ ...defaultAuctionSetting, sellToken: water.address }, 1);
-        expect(waterBalance.sub(await water.balanceOf(owner.address))).to.be.eq(toWei(101.5));
+        await auctionContract.createAuction({
+          ...defaultAuctionSetting,
+          sellToken: water.address,
+          maxWinners: 255,
+          priceRangeStart: toWei(0.5),
+          sellAmount: toWei(300),
+          auctionType: AuctionType.TimedAuction,
+          incrementBidPrice: 0,
+        }, 1);
+        expect(waterBalance.sub(await water.balanceOf(owner.address))).to.be.eq(toWei(304.5));
+      });
+      it('bid with max winners 255', async () => {
+        // await skipTime(86400 * 3);
+        await dai.transfer(sender.address, toWei(600));
+        await dai.connect(sender).approve(auctionContract.address, toWei(600));
+        let updatedBalance = await dai.balanceOf(sender.address);
+        for (let i = 0; i < 255; i++) {
+          await auctionContract.connect(sender).placeBid(5, toWei(1), 0, 0, false);
+        }
+        let auction = await auctionContract.getAuction(5);
+        expect(auction.availableBidDepth).to.be.eq(255);
+        for (let i = 255; i < 500; i++) {
+          await auctionContract.connect(sender).placeBid(5, toWei(1), 0, 0, false);
+        }
+        auction = await auctionContract.getAuction(5);
+        const bid245 = await auctionContract.getBid(5, 245);
+        const bid246 = await auctionContract.getBid(5, 246);
+        const bid1 = await auctionContract.getBid(5, 1);
+        const bid500 = await auctionContract.getBid(5, 500);
+        expect(auction.availableBidDepth).to.be.eq(255);
+        expect(auction.totalBidAmount).to.be.eq(toWei(255));
+        expect(bid1.bCleared).to.be.eq(true);
+        expect(bid245.bCleared).to.be.eq(true);
+        expect(bid246.bCleared).to.be.eq(false);
+        expect(bid500.bCleared).to.be.eq(false);
+        expect((await dai.balanceOf(sender.address)).sub(updatedBalance)).to.be.eq(toWei(-127.5));
+      });
+      it('close auction with 255 winners', async () => {
+        let updatedBalance = await dai.balanceOf(owner.address);
+        await skipTime(86400 * 3);
+        let auction = await auctionContract.getAuction(5);
+        expect(auction.s.reserve).to.be.eq(toWei(300));
+        let updatedSellTokenBalance = await water.balanceOf(sender.address);
+        await auctionContract.closeAuction(5);
+        expect((await dai.balanceOf(owner.address)).sub(updatedBalance)).to.be.eq(toWei(127.5));
+        auction = await auctionContract.getAuction(5);
+        // 300-255 = 45 is refunded, then 10 is settled when closing auction
+        expect(auction.s.reserve).to.be.eq(toWei(245));
+        const lastSettledBidId = 491;
+        // winner that receives full token amount as same as bid amount      
+        const bid492 = await auctionContract.isWinnerBid(5, lastSettledBidId);
+        const bid491 = await auctionContract.isWinnerBid(5, lastSettledBidId - 1);
+        const bid246 = await auctionContract.isWinnerBid(5, 246);
+        const bid245 = await auctionContract.isWinnerBid(5, 245);
+        expect(bid491.isClaimed).to.be.eq(false);
+        expect(bid492.isClaimed).to.be.eq(true);
+        expect(bid246.isClaimed).to.be.eq(false);
+        expect(bid246.isWinner).to.be.eq(true);
+        expect(bid245.isWinner).to.be.eq(false);
+        for (let i = 490; i > 245; i--) {
+          await auctionContract.claimBid(5, i);
+        }
+        expect((await water.balanceOf(sender.address)).sub(updatedSellTokenBalance)).to.be.eq(toWei(255));
       });
     });
   });
