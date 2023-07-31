@@ -8,23 +8,9 @@ enum AuctionType {
     TimedAndFixed
 }
 
-// /// @dev we supports Tranche and ERC20 as listed assets
-
-// enum AssetType {
-//     ERC20,
-//     Tranche
-// }
-
 enum AuctionStatus {
     Open,
     Closed
-}
-
-enum BidStatus {
-    Bid,
-    Win,
-    Cancel,
-    Cleared
 }
 
 struct Bid {
@@ -34,29 +20,20 @@ struct Bid {
     // bid token amount paid out when bidding
     uint128 paidAmount;
     uint16 bidTokenId;
-    // bool bCleared;
-    BidStatus status;
+    bool bCleared;
 }
 
-// struct TokenData {
-//     // uint16 groupId;
-//     uint16 id;
-//     // address token;
-//     uint8 decimals;
-//     bool isEnabled;
-// }
-
 struct BidTokenGroup {
+    // tokens in one group should be max 255
     address[] bidTokens;
     // calculated price by this address
     address basePriceToken;
-    // max count of tokens in one group is 255
-    // uint8 count;
     bytes32 name;
 }
 
 struct AuctionSetting {
-    uint96 startTime;
+    uint48 startTime;
+    uint48 endTime;
     address sellToken;
     //
     uint256 trancheIndex;
@@ -71,21 +48,21 @@ struct AuctionSetting {
     uint128 reserve;
     //
     uint128 incrementBidPrice;
-    uint96 endTime;
     uint16 bidTokenGroupId;
     uint8 maxWinners;
     AuctionType auctionType;
-    //
 }
 /// @dev Contains all data for auction erc20 token and tranche
 struct AuctionData {
     AuctionSetting s;
+    //
     uint128 curBidId;
     uint128 totalBidAmount;
     //
     address seller;
     uint8 availableBidDepth;
     AuctionStatus status;
+    //
     uint256 feeAmount;
 }
 
@@ -103,7 +80,7 @@ library AuctionStorage {
         uint256 feeNumerator;
         address feeReceiver;
         uint96 maxIncrementRate;
-        uint96[] periods;
+        uint48[] periods;
     }
 
     bytes32 internal constant STORAGE_SLOT = keccak256("irrigation.contracts.storage.Auction");
