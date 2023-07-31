@@ -11,7 +11,7 @@ import "./AuctionStorage.sol";
 import "./TrancheBondStorage.sol";
 
 import "../utils/EIP2535Initializable.sol";
-import "../utils/IrrigationAccessControl.sol";
+// import "../utils/IrrigationAccessControl.sol";
 import "../libraries/FullMath.sol";
 import "../libraries/Constants.sol";
 
@@ -28,11 +28,7 @@ import "../interfaces/IWaterTowerUpgradeable.sol";
 ///     * buyer shuold have enough balance for bid tokens (price * buy amount)
 ///     4. anyone(buyer, seller, or any) close auction after end time
 
-contract AuctionUpgradeable is
-    EIP2535Initializable,
-    IrrigationAccessControl,
-    ReentrancyGuardUpgradeable
-{
+contract AuctionUpgradeable is EIP2535Initializable, ReentrancyGuardUpgradeable {
     using AuctionStorage for AuctionStorage.Layout;
     using TrancheBondStorage for TrancheBondStorage.Layout;
     using SafeERC20Upgradeable for IERC20Upgradeable;
@@ -90,10 +86,6 @@ contract AuctionUpgradeable is
 
     /// @notice Emitted by auction when bidder places a bid
     /// @param bid bid token struct
-    // / @param bidder The address od bidder
-    // / @param amountToBid The auctioning token amount that user want to buy
-    // / @param purchaseToken The address of token paid by user to buy auctioning token
-    // / @param bidPrice The bid price
     /// @param auctionId The id of auction list
     /// @param bidId The id of bid list
 
@@ -116,9 +108,6 @@ contract AuctionUpgradeable is
         uint incrementPrice
     );
 
-    event ClaimBid(uint indexed auctionId, uint indexed bidId, uint claimAmount);
-    event UpdateBidTokenGroup(uint indexed id, BidTokenGroup bidTokenGroup);
-    event UpdateSellTokens(address[] sellTokens, bool[] bEnables);
 
     uint256 internal constant FEE_DENOMINATOR = 1000;
     uint256 internal constant BID_GAS_LIMIT = 470000;
@@ -138,9 +127,8 @@ contract AuctionUpgradeable is
         if (auctionSetting.priceRangeStart > auctionSetting.priceRangeEnd) revert InvalidEndPrice();
         if (auctionSetting.startTime == 0) auctionSetting.startTime = uint96(block.timestamp);
         else if (auctionSetting.startTime < block.timestamp) revert InvalidStartTime();
-        auctionSetting.endTime =
-            auctionSetting.startTime +
-            auctionStorage.periods[periodId];
+        auctionSetting.endTime = auctionSetting.startTime + auctionStorage.periods[periodId];
+        uint256 auctionId = auctionStorage.currentAuctionId + 1;
         // receive auction asset
         if (auctionSetting.trancheIndex == 0) {
             IERC20Upgradeable(auctionSetting.sellToken).safeTransferFrom(
@@ -169,9 +157,8 @@ contract AuctionUpgradeable is
                 (bool success, ) = msg.sender.call{value: msg.value - feeAmount}("");
                 if (!success) revert NoTransferEther();
             }
-            IWaterTowerUpgradeable(address(this)).addETHReward{value: feeAmount}();
+            auctionStorage.auctions[auctionId].feeAmount = feeAmount;
         }
-        uint256 auctionId = auctionStorage.currentAuctionId + 1;
         auctionStorage.currentAuctionId = auctionId;
         auctionSetting.reserve = auctionSetting.sellAmount;
         auctionStorage.auctions[auctionId].s = auctionSetting;
@@ -179,42 +166,6 @@ contract AuctionUpgradeable is
         emit AuctionCreated(auctionSetting, msg.sender, auctionId);
         // return auctionId;
     }
-
-    // function _receiveAuctionAsset(
-    //     uint256 sellAmount,
-    //     address sellToken,
-    //     uint256 trancheIndex
-    // ) internal {
-    //     if (trancheIndex == 0) {
-    //         IERC20Upgradeable(sellToken).safeTransferFrom(
-    //             msg.sender,
-    //             address(this),
-    //             (uint256(sellAmount) * (FEE_DENOMINATOR + auctionStorage.feeNumerator)) /
-    //                 FEE_DENOMINATOR
-    //         );
-    //     } else {
-    //         if (trancheIndex & 3 == 3) revert NotListTrancheZ();
-    //         if (sellToken != address(this)) revert InvalidTrancheAuction();
-    //         IERC1155Upgradeable(address(this)).safeTransferFrom(
-    //             msg.sender,
-    //             address(this),
-    //             trancheIndex,
-    //             uint256(sellAmount),
-    //             Constants.EMPTY
-    //         );
-    //         /// @dev fee is calculated from usd value, and notation amount is BDV
-    //         uint256 ethPrice = IPriceOracleUpgradeable(address(this)).getUnderlyingPriceETH();
-    //         // tranche nft decimals is 6 and price decimals 18
-    //         uint256 feeAmount = (((sellAmount * 1e30) / ethPrice) *
-    //             auctionStorage.feeNumerator) / FEE_DENOMINATOR;
-    //         if (msg.value < feeAmount) revert InsufficientFee();
-    //         else if (msg.value > feeAmount) {
-    //             (bool success, ) = msg.sender.call{value: msg.value - feeAmount}("");
-    //             if (!success) revert NoTransferEther();
-    //         }
-    //         IWaterTowerUpgradeable(address(this)).addETHReward{value: feeAmount}();
-    //     }
-    // }
 
     /// @notice update important options of auction before any bidding
     /// @param auctionId auction id
@@ -272,18 +223,13 @@ contract AuctionUpgradeable is
         unchecked {
             auctionStorage.auctions[auctionId].s.reserve = availableAmount - purchaseAmount;
         }
-
         uint256 payAmount;
+        uint8 sellTokenDecimals;
         if (auction.s.trancheIndex == 0) {
-            payAmount = getPayAmount(
-                _purchaseToken,
-                purchaseAmount,
-                auction.s.fixedPrice,
-                IERC20MetadataUpgradeable(auction.s.sellToken).decimals()
-            );
+            sellTokenDecimals = IERC20MetadataUpgradeable(auction.s.sellToken).decimals();
             IERC20Upgradeable(auction.s.sellToken).safeTransfer(msg.sender, purchaseAmount);
         } else {
-            payAmount = getPayAmount(_purchaseToken, purchaseAmount, auction.s.fixedPrice, 6);
+            sellTokenDecimals = 6;
             IERC1155Upgradeable(address(this)).safeTransferFrom(
                 address(this),
                 msg.sender,
@@ -292,6 +238,12 @@ contract AuctionUpgradeable is
                 Constants.EMPTY
             );
         }
+        payAmount = getPayAmount(
+            _purchaseToken,
+            purchaseAmount,
+            auction.s.fixedPrice,
+            sellTokenDecimals
+        );
         IERC20Upgradeable(_purchaseToken).safeTransferFrom(msg.sender, auction.seller, payAmount);
 
         emit AuctionBuy(
@@ -535,6 +487,23 @@ contract AuctionUpgradeable is
                 ++i;
             }
         }
+        /// transfer fee
+        if (auction.s.sellAmount > availableAmount) {
+            uint256 totalSettledAmount;
+            unchecked {
+                totalSettledAmount = auction.s.sellAmount - availableAmount;
+            }
+            if (auction.s.trancheIndex == 0) {
+                IERC20Upgradeable(auction.s.sellToken).safeTransfer(
+                    auctionStorage.feeReceiver,
+                    (totalSettledAmount * auctionStorage.feeNumerator) / FEE_DENOMINATOR
+                );
+            } else {
+                IWaterTowerUpgradeable(address(this)).addETHReward{
+                    value: (auction.feeAmount * totalSettledAmount) / auction.s.sellAmount
+                }();
+            }
+        }
         if (auction.totalBidAmount < auction.s.reserve) {
             uint128 refundAmount;
             unchecked {
@@ -608,70 +577,57 @@ contract AuctionUpgradeable is
         }
     }
 
-    /// @notice cancel a bid and transfer purchase token to the bidder back
-    // function _cancelBid(
-    //     Bid memory bid,
-    //     uint256 auctionId,
-    //     uint256 bidId,
-    //     address bidToken
-    // ) internal {
-    //     if (bid.status != BidStatus.Bid) revert NoCancelBid();
-    //     IERC20Upgradeable(bidToken).safeTransfer(bid.bidder, bid.paidAmount);
-    //     auctionStorage.bids[auctionId][bidId].status = BidStatus.Cleared;
+    // admin setters
+    // enable or disable sell tokens
+    // function setSellTokens(
+    //     address[] memory tokens,
+    //     bool[] memory bEnables
+    // ) external onlySuperAdminRole {
+    //     AuctionStorage.Layout storage auctionStorage = AuctionStorage.layout();
+    //     for (uint256 i; i < tokens.length; ) {
+    //         auctionStorage.supportedSellTokens[tokens[i]] = bEnables[i];
+    //         unchecked {
+    //             ++i;
+    //         }
+    //     }
+    //     emit UpdateSellTokens(tokens, bEnables);
     // }
 
-    // admin setters
+    // function setAuctionFee(
+    //     uint256 _newFeeNumerator,
+    //     address _newfeeReceiver
+    // ) external onlySuperAdminRole {
+    //     AuctionStorage.Layout storage auctionStorage = AuctionStorage.layout();
+    //     if (_newFeeNumerator > 25) revert(); // "Fee higher than 2.5%");
+    //     // caution: for currently running auctions, the feeReceiver is changing as well.
+    //     auctionStorage.feeReceiver = _newfeeReceiver;
+    //     auctionStorage.feeNumerator = _newFeeNumerator;
+    // }
 
-    // enable or disable sell tokens
-    function setSellTokens(
-        address[] memory tokens,
-        bool[] memory bEnables
-    ) external onlySuperAdminRole {
-        AuctionStorage.Layout storage auctionStorage = AuctionStorage.layout();
-        for (uint256 i; i < tokens.length; ) {
-            auctionStorage.supportedSellTokens[tokens[i]] = bEnables[i];
-            unchecked {
-                ++i;
-            }
-        }
-        emit UpdateSellTokens(tokens, bEnables);
-    }
+    // function AddBidTokenGroup(BidTokenGroup memory bidTokenGroup) external onlySuperAdminRole {
+    //     AuctionStorage.Layout storage auctionStorage = AuctionStorage.layout();
+    //     uint256 count = auctionStorage.countOfTokenGroups;
+    //     _updateTokenGroup(count, bidTokenGroup);
+    //     unchecked {
+    //         auctionStorage.countOfTokenGroups = count + 1;
+    //     }
+    // }
 
-    function setAuctionFee(
-        uint256 _newFeeNumerator,
-        address _newfeeReceiver
-    ) external onlySuperAdminRole {
-        AuctionStorage.Layout storage auctionStorage = AuctionStorage.layout();
-        if (_newFeeNumerator > 25) revert(); // "Fee higher than 2.5%");
-        // caution: for currently running auctions, the feeReceiver is changing as well.
-        auctionStorage.feeReceiver = _newfeeReceiver;
-        auctionStorage.feeNumerator = _newFeeNumerator;
-    }
+    // function updateTokenGroup(
+    //     uint256 tokenGroupId,
+    //     BidTokenGroup memory bidTokenGroup
+    // ) external onlySuperAdminRole {
+    //     _updateTokenGroup(tokenGroupId, bidTokenGroup);
+    // }
 
-    function AddBidTokenGroup(BidTokenGroup memory bidTokenGroup) external onlySuperAdminRole {
-        AuctionStorage.Layout storage auctionStorage = AuctionStorage.layout();
-        uint256 count = auctionStorage.countOfTokenGroups;
-        _updateTokenGroup(count, bidTokenGroup);
-        unchecked {
-            auctionStorage.countOfTokenGroups = count + 1;
-        }
-    }
+    // function _updateTokenGroup(uint256 tokenGroupId, BidTokenGroup memory bidTokenGroup) internal {
+    //     AuctionStorage.layout().bidTokenGroups[tokenGroupId] = bidTokenGroup;
+    //     emit UpdateBidTokenGroup(tokenGroupId, bidTokenGroup);
+    // }
 
-    function updateTokenGroup(
-        uint256 tokenGroupId,
-        BidTokenGroup memory bidTokenGroup
-    ) external onlySuperAdminRole {
-        _updateTokenGroup(tokenGroupId, bidTokenGroup);
-    }
-
-    function _updateTokenGroup(uint256 tokenGroupId, BidTokenGroup memory bidTokenGroup) internal {
-        AuctionStorage.layout().bidTokenGroups[tokenGroupId] = bidTokenGroup;
-        emit UpdateBidTokenGroup(tokenGroupId, bidTokenGroup);
-    }
-
-    function updatePeriods(uint96[] memory periods) external onlySuperAdminRole {
-        AuctionStorage.layout().periods = periods;
-    }
+    // function updatePeriods(uint96[] memory periods) external onlySuperAdminRole {
+    //     AuctionStorage.layout().periods = periods;
+    // }
 
     // getters
     function getAuctionFee() external view returns (uint256 numerator, uint256 dominator) {
@@ -713,7 +669,7 @@ contract AuctionUpgradeable is
     }
 
     /// @dev returns true if auction in progress, false otherwise
-    function checkAuctionInProgress(uint endTime, uint startTime) internal view {
+    function checkAuctionInProgress(uint256 endTime, uint256 startTime) internal view {
         if (startTime > block.timestamp || (endTime > 0 && endTime <= block.timestamp))
             revert InactiveAuction();
     }

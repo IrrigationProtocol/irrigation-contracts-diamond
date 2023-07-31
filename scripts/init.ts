@@ -5,7 +5,7 @@ import { debug } from 'debug';
 import { ethers } from 'hardhat';
 import { CONTRACT_ADDRESSES, OracleType } from './shared';
 import {
-  AuctionUpgradeable,
+  IrrigationControlUpgradeable,
   PriceOracleUpgradeable,
   SprinklerUpgradeable,
   WaterTowerUpgradeable,
@@ -158,17 +158,17 @@ export async function initWaterTower(waterTower: WaterTowerUpgradeable) {
   await waterTower.setPool(Math.floor(date.getTime() / 1000), 0);
 }
 
-export async function initAuction(auction: AuctionUpgradeable) {
+export async function initAuction(adminControl: IrrigationControlUpgradeable) {
   const signers = await ethers.getSigners();
   // for (const token of purchaseTokens) {
   //   await auction.setPurchaseToken(token, true);
   // }
-  await auction.AddBidTokenGroup({ name: ethers.utils.formatBytes32String('Stables (USDC, USDT, DAI)'), bidTokens: purchaseTokens, basePriceToken: purchaseTokens[0] });
+  await adminControl.AddBidTokenGroup({ name: ethers.utils.formatBytes32String('Stables (USDC, USDT, DAI)'), bidTokens: purchaseTokens, basePriceToken: purchaseTokens[0] });
   // 1.5% auction fee
-  await auction.setAuctionFee(15, signers[2]?.address || process.env.REWARD_ADDRESS);
-  const tokens = [...auctionSellTokens, auction.address];
-  await auction.setSellTokens(tokens, tokens.map(e => true));
-  await auction.updatePeriods([86400, 86400 * 3, 86400 * 7, 86400 * 30]);
+  await adminControl.setAuctionFee(15, signers[2]?.address || process.env.REWARD_ADDRESS);
+  const tokens = [...auctionSellTokens, adminControl.address];
+  await adminControl.setSellTokens(tokens, tokens.map(e => true));
+  await adminControl.updatePeriods([86400, 86400 * 3, 86400 * 7, 86400 * 30]);
 }
 
 export async function initTrancheBond(contractAddress: string) {
@@ -183,10 +183,10 @@ export async function initAll(contractAddress: string) {
   const waterTower = await ethers.getContractAt('WaterTowerUpgradeable', contractAddress);
   const priceOracle = await ethers.getContractAt('PriceOracleUpgradeable', contractAddress);
   const sprinkler = await ethers.getContractAt('SprinklerUpgradeable', contractAddress);
-  const auction = await ethers.getContractAt('AuctionUpgradeable', contractAddress);
+  const irrigationControl = await ethers.getContractAt('IrrigationControlUpgradeable', contractAddress);
   await initPriceOracles(priceOracle);
   await initSprinkler(sprinkler);
   await initWaterTower(waterTower);
-  await initAuction(auction);
+  await initAuction(irrigationControl);
   await initTrancheBond(contractAddress);
 }
