@@ -237,7 +237,8 @@ export function suite() {
         // console.log('contract balance', fromWei(await token1.balanceOf(auctionContract.address)));
         // total reserve amount are settled.
         updatedContractTokenBalance = updatedContractTokenBalance.sub(await token1.balanceOf(auctionContract.address));
-        expect(updatedContractTokenBalance).to.be.eq(reserveAmount);
+        const feeAmount = auction.s.sellAmount.mul(15).div(1000);
+        expect(updatedContractTokenBalance).to.be.eq(reserveAmount.add(feeAmount));
         await expect(auctionContract.connect(sender).closeAuction(1)).to.be.rejectedWith(
           "auction can't be closed",
         );

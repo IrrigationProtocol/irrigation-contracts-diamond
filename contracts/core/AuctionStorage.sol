@@ -8,12 +8,12 @@ enum AuctionType {
     TimedAndFixed
 }
 
-/// @dev we supports Tranche and ERC20 as listed assets
+// /// @dev we supports Tranche and ERC20 as listed assets
 
-enum AssetType {
-    ERC20,
-    Tranche
-}
+// enum AssetType {
+//     ERC20,
+//     Tranche
+// }
 
 enum AuctionStatus {
     Open,
@@ -31,20 +31,20 @@ struct Bid {
     uint128 bidAmount;
     uint128 bidPrice;
     address bidder;
-    // purchase token amount paid out when bidding
+    // bid token amount paid out when bidding
     uint128 paidAmount;
     uint16 bidTokenId;
     // bool bCleared;
     BidStatus status;
 }
 
-struct TokenData {
-    // uint16 groupId;    
-    uint16 id;
-    // address token;
-    uint8 decimals;
-    bool isEnabled;
-}
+// struct TokenData {
+//     // uint16 groupId;
+//     uint16 id;
+//     // address token;
+//     uint8 decimals;
+//     bool isEnabled;
+// }
 
 struct BidTokenGroup {
     address[] bidTokens;
@@ -86,6 +86,7 @@ struct AuctionData {
     address seller;
     uint8 availableBidDepth;
     AuctionStatus status;
+    uint256 feeAmount;
 }
 
 library AuctionStorage {
