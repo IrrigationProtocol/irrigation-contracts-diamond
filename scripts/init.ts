@@ -41,8 +41,6 @@ export const auctionSellTokens = [
   CONTRACT_ADDRESSES.SNX,
   CONTRACT_ADDRESSES.SPOT,
   CONTRACT_ADDRESSES.stETH,
-  // CONTRACT_ADDRESSES.FERTILIZER,
-  // CONTRACT_ADDRESSES.ROOT,
 ];
 const purchaseTokens = [CONTRACT_ADDRESSES.DAI, CONTRACT_ADDRESSES.USDC, CONTRACT_ADDRESSES.USDT];
 export async function initPriceOracles(priceOracle: PriceOracleUpgradeable) {
@@ -86,7 +84,6 @@ export async function initPriceOracles(priceOracle: PriceOracleUpgradeable) {
       base: ethers.constants.AddressZero,
       oType: OracleType.CHAINLINK,
     },
-    ///
     {
       symbol: 'BEAN',
       asset: CONTRACT_ADDRESSES.BEAN,
@@ -160,9 +157,6 @@ export async function initWaterTower(waterTower: WaterTowerUpgradeable) {
 
 export async function initAuction(adminControl: IrrigationControlUpgradeable) {
   const signers = await ethers.getSigners();
-  // for (const token of purchaseTokens) {
-  //   await auction.setPurchaseToken(token, true);
-  // }
   await adminControl.AddBidTokenGroup({ name: ethers.utils.formatBytes32String('Stables (USDC, USDT, DAI)'), bidTokens: purchaseTokens, basePriceToken: purchaseTokens[0] });
   // 1.5% auction fee
   await adminControl.setAuctionFee(15, signers[2]?.address || process.env.REWARD_ADDRESS);

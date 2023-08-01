@@ -134,10 +134,6 @@ export function suite() {
         await expect(auctionContract.createAuction({ ...defaultAuctionSetting, minBidAmount: 0 }, 1)).to.be.revertedWithCustomError(auctionContract, 'InvalidMinBidAmount');
         await expect(auctionContract.createAuction({ ...defaultAuctionSetting, minBidAmount: toWei(1000) }, 1)).to.be.revertedWithCustomError(auctionContract, 'InvalidMinBidAmount');
         await expect(auctionContract.createAuction({ ...defaultAuctionSetting, startTime: 10000 }, 1)).to.be.revertedWithCustomError(auctionContract, 'InvalidStartTime');
-        // await expect(auctionContract.createAuction({ ...defaultAuctionSetting, endTime: 1 })).to.be.revertedWithCustomError(auctionContract, 'InvalidAuction');
-        // const startTime = await time.latest() + 10;
-        // await expect(auctionContract.createAuction({ ...defaultAuctionSetting, startTime, endTime: startTime + 10 })).to.be.revertedWithCustomError(auctionContract, 'InvalidAuction');
-        // await expect(auctionContract.createAuction({ ...defaultAuctionSetting, startTime, endTime: startTime + 181 * 31 * 86400 })).to.be.revertedWithCustomError(auctionContract, 'InvalidAuction');
       });
     });
 

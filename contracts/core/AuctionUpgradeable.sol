@@ -8,29 +8,25 @@ import "@gnus.ai/contracts-upgradeable-diamond/contracts/interfaces/IERC1155Upgr
 import "@gnus.ai/contracts-upgradeable-diamond/contracts/security/ReentrancyGuardUpgradeable.sol";
 
 import "./AuctionStorage.sol";
-import "./TrancheBondStorage.sol";
 
 import "../utils/EIP2535Initializable.sol";
-// import "../utils/IrrigationAccessControl.sol";
 import "../libraries/FullMath.sol";
 import "../libraries/Constants.sol";
 
 import "../interfaces/IPriceOracleUpgradeable.sol";
 import "../interfaces/IWaterTowerUpgradeable.sol";
 
-/// @title Auction Market for whitelisted erc20 tokens
-/// @dev  Auction contract allows users sell allowed tokens or buy listed tokens with allowed purchase tokens(stable coins)
-///     1. owner allow sell tokens and purchase tokens, and set auction fee
+/// @title Auction Market for whitelisted erc20 tokens and erc1155 tranche nft
+/// @dev  Auction contract allows users sell allowed tokens, buy or bid the tokens with allowed bid tokens
+///     1. owner allow sell tokens and bid token groups, and set auction fee
 ///     2. seller(auctioner) create auction
-///     * auction has end time
 ///     * seller should have enough balance for sell tokens (sell amount + auction fee)
 ///     3. buyer buy listed tokens immediately or bid with any price in a range
 ///     * buyer shuold have enough balance for bid tokens (price * buy amount)
 ///     4. anyone(buyer, seller, or any) close auction after end time
 
 contract AuctionUpgradeable is EIP2535Initializable, ReentrancyGuardUpgradeable {
-    using AuctionStorage for AuctionStorage.Layout;
-    using TrancheBondStorage for TrancheBondStorage.Layout;
+    using AuctionStorage for AuctionStorage.Layout;    
     using SafeERC20Upgradeable for IERC20Upgradeable;
     /// @dev errors
     error InsufficientFee();
@@ -111,6 +107,7 @@ contract AuctionUpgradeable is EIP2535Initializable, ReentrancyGuardUpgradeable 
     uint256 internal constant FEE_DENOMINATOR = 1000;
     uint256 internal constant BID_GAS_LIMIT = 470000;
     uint256 internal constant CLOSE_GAS_LIMIT = 180000;
+    uint256 internal constant D30 = 1e30;
 
     function createAuction(AuctionSetting memory auctionSetting, uint8 periodId) external payable {
         AuctionStorage.Layout storage auctionStorage = AuctionStorage.layout();
@@ -148,8 +145,8 @@ contract AuctionUpgradeable is EIP2535Initializable, ReentrancyGuardUpgradeable 
             );
             /// @dev fee is calculated from usd value, and notation amount is BDV
             uint256 ethPrice = IPriceOracleUpgradeable(address(this)).getUnderlyingPriceETH();
-            // tranche nft decimals is 6 and price decimals 18
-            uint256 feeAmount = (((auctionSetting.sellAmount * 1e30) / ethPrice) *
+            // tranche nft decimals is 6 and price decimals 18, so calculated factor = 10 ** (18+18-6)
+            uint256 feeAmount = (((auctionSetting.sellAmount * D30) / ethPrice) *
                 auctionStorage.feeNumerator) / FEE_DENOMINATOR;
             if (msg.value < feeAmount) revert InsufficientFee();
             else if (msg.value > feeAmount) {
@@ -228,7 +225,7 @@ contract AuctionUpgradeable is EIP2535Initializable, ReentrancyGuardUpgradeable 
             sellTokenDecimals = IERC20MetadataUpgradeable(auction.s.sellToken).decimals();
             IERC20Upgradeable(auction.s.sellToken).safeTransfer(msg.sender, purchaseAmount);
         } else {
-            sellTokenDecimals = 6;
+            sellTokenDecimals = Constants.TRANCHE_DECIMALS;
             IERC1155Upgradeable(address(this)).safeTransferFrom(
                 address(this),
                 msg.sender,
@@ -372,6 +369,7 @@ contract AuctionUpgradeable is EIP2535Initializable, ReentrancyGuardUpgradeable 
     }
 
     /// @notice claim bid for winner or canceled bid after auction is closed
+    /// @dev anyone can claim bid
     function claimBid(uint256 auctionId, uint256 bidId) external nonReentrant {
         AuctionStorage.Layout storage auctionStorage = AuctionStorage.layout();
         AuctionData memory auction = auctionStorage.auctions[auctionId];
@@ -384,8 +382,6 @@ contract AuctionUpgradeable is EIP2535Initializable, ReentrancyGuardUpgradeable 
         );
         if (isClaimed) revert ClaimedBid();
         auctionStorage.bids[auctionId][bidId].bCleared = true;
-        // anyone can claim bid, and transfer sell token to bidder, and transfer bid token to seller
-        // require(bid.bidder == msg.sender, "bidder only can claim");
         if (auction.status != AuctionStatus.Closed) revert NoClosedAuction();
         IERC20Upgradeable _purchaseToken = IERC20Upgradeable(
             auctionStorage.bidTokenGroups[auction.s.bidTokenGroupId].bidTokens[bid.bidTokenId]
@@ -504,9 +500,6 @@ contract AuctionUpgradeable is EIP2535Initializable, ReentrancyGuardUpgradeable 
         auctionStorage.auctions[auctionId].status = AuctionStatus.Closed;
 
         unchecked {
-            auctionStorage.auctions[auctionId].availableBidDepth =
-                auction.availableBidDepth -
-                uint8(settledBidCount);
             auctionStorage.auctions[auctionId].totalBidAmount =
                 auction.totalBidAmount -
                 availableAmount;
