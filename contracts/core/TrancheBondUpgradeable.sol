@@ -35,8 +35,6 @@ contract TrancheBondUpgradeable is
     uint256 internal constant FMV_DENOMINATOR = 100;
     uint256 internal constant MINIMUM_FMV = 1000;
     uint256 internal constant MINIMUM_WATER = 32;
-    // default maturity period
-    uint256 public constant MATURITY_PERIOD = 180 days;
 
     /// @dev Events
     event CreateTranche(
@@ -113,7 +111,7 @@ contract TrancheBondUpgradeable is
             uint256 _fmvInPlot = (IPodsOracleUpgradeable(address(this)).latestPriceOfPods(
                 id,
                 amount
-            ) * beanPrice) / 1e18;
+            ) * beanPrice) / Constants.D18;
             fmvs[i] = _fmvInPlot;
             totalFMV += _fmvInPlot;
             unchecked {
