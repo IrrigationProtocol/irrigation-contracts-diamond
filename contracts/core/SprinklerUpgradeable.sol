@@ -55,13 +55,12 @@ contract SprinklerUpgradeable is
             revert ExistingAsset();
 
         uint256 _tokenMultiplier;
+        // decimals of water is 18, and it is same as ether decimals
         if (_token == Constants.ETHER) _tokenMultiplier = 1;
         else
             _tokenMultiplier = _multiplier != 0
                 ? _multiplier
-                : 10 **
-                    (IERC20MetadataUpgradeable(address(this)).decimals() -
-                        IERC20MetadataUpgradeable(_token).decimals());
+                : 10 ** (Constants.WATER_DECIMALS - IERC20MetadataUpgradeable(_token).decimals());
         WhitelistAsset memory newAsset = WhitelistAsset(_tokenMultiplier, true);
         SprinklerStorage.layout().whitelistAssets[_token] = newAsset;
         SprinklerStorage.layout().allWhiteList.push(_token);
@@ -120,20 +119,16 @@ contract SprinklerUpgradeable is
         emit WaterExchanged(msg.sender, Constants.ETHER, msg.value, waterAmount, false);
     }
 
-    function depositWater(uint256 amount) public {
+    function depositWater(uint256 amount) external {
         if (amount == 0) revert InvalidAmount();
         IERC20Upgradeable(address(this)).transferFrom(msg.sender, address(this), amount);
-        SprinklerStorage.layout().availableWater =
-            SprinklerStorage.layout().availableWater +
-            amount;
+        SprinklerStorage.layout().availableWater += amount;
         emit DepositWater(amount);
     }
 
     /// internal functions
     function transferWater(uint256 amount) internal {
-        SprinklerStorage.layout().availableWater =
-            SprinklerStorage.layout().availableWater -
-            amount;
+        SprinklerStorage.layout().availableWater -= amount;
         IERC20Upgradeable(address(this)).transfer(msg.sender, amount);
     }
 
