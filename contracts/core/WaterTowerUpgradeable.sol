@@ -39,6 +39,8 @@ contract WaterTowerUpgradeable is
     error InsufficientEther();
 
     uint256 internal constant IRRIGATE_BONUS_DOMINATOR = 100;
+    uint256 internal constant AUTOIRRIGATE_GASLIMIT = 870200;
+    uint256 internal constant POOL_PERIOD = 30 days;
 
     function initWaterTower() external EIP2535Initializer onlySuperAdminRole {
         __IrrigationAccessControl_init();
@@ -84,8 +86,8 @@ contract WaterTowerUpgradeable is
     ) external onlySuperAdminRole {
         if (!WaterTowerStorage.layout().users[user].isAutoIrrigate) revert NotAutoIrrigate();
         _irrigate(user, rewardAmount, minSwapAmount);
-        /// @dev 870200: precalculated gasLimit
-        uint256 gasFee = 870200 * tx.gasprice;
+        /// @dev gas fee is paid based on precalculated gasLimit(870200)
+        uint256 gasFee = AUTOIRRIGATE_GASLIMIT * tx.gasprice;
         WaterTowerStorage.layout().users[user].pending -= gasFee;
         emit AutoIrrigate(user, rewardAmount, gasFee);
     }
@@ -272,7 +274,8 @@ contract WaterTowerUpgradeable is
     function setPool(uint256 endTime, uint256 monthlyRewards) external payable onlySuperAdminRole {
         if ((endTime != 0 && endTime < block.timestamp)) revert InvalidTime();
         updateMonthlyReward(monthlyRewards);
-        if (endTime == 0) endTime = block.timestamp + 30 days;
+        /// @dev default period is 30 days
+        if (endTime == 0) endTime = block.timestamp + POOL_PERIOD;
         uint256 poolIndex = WaterTowerStorage.layout().curPoolIndex;
         ++poolIndex;
         WaterTowerStorage.layout().pools[poolIndex].endTime = endTime;

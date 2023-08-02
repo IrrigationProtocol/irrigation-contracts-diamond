@@ -26,7 +26,7 @@ import "../interfaces/IWaterTowerUpgradeable.sol";
 ///     4. anyone(buyer, seller, or any) close auction after end time
 
 contract AuctionUpgradeable is EIP2535Initializable, ReentrancyGuardUpgradeable {
-    using AuctionStorage for AuctionStorage.Layout;    
+    using AuctionStorage for AuctionStorage.Layout;
     using SafeERC20Upgradeable for IERC20Upgradeable;
     /// @dev errors
     error InsufficientFee();
@@ -205,7 +205,8 @@ contract AuctionUpgradeable is EIP2535Initializable, ReentrancyGuardUpgradeable 
     ) external nonReentrant {
         AuctionStorage.Layout storage auctionStorage = AuctionStorage.layout();
         AuctionData memory auction = auctionStorage.auctions[auctionId];
-        if (auction.s.auctionType == AuctionType.TimedAuction || auction.seller == address(0))
+        // Check auction.seller if address(0) auction hasn't been initialized/created and then check the auction type.
+        if (auction.seller == address(0) || auction.s.auctionType == AuctionType.TimedAuction)
             revert InvalidAuction();
         address _purchaseToken = AuctionStorage
             .layout()
@@ -262,7 +263,7 @@ contract AuctionUpgradeable is EIP2535Initializable, ReentrancyGuardUpgradeable 
     ) external nonReentrant returns (uint256) {
         AuctionStorage.Layout storage auctionStorage = AuctionStorage.layout();
         AuctionData memory auction = auctionStorage.auctions[auctionId];
-        if (auction.s.auctionType == AuctionType.FixedPrice || auction.seller == address(0))
+        if (auction.seller == address(0) || auction.s.auctionType == AuctionType.FixedPrice)
             revert InvalidAuction();
         address _purchaseToken = AuctionStorage
             .layout()
