@@ -50,11 +50,13 @@ contract TrancheBondUpgradeable is
     event CreateTranche(
         uint depositIndex,
         address user,
-        uint totalFMV,
-        uint depositedAt,
-        uint beanPrice
+        uint periodId,
+        uint[] depositIndexes,
+        uint[] amounts,
+        uint[] fmvs
     );
     event ReceivePodsWithTranche(uint trancheId, address user, uint[] podIndexes, uint totalPods);
+    event SetMaturityPeriods(uint48[] periods);
 
     /// @dev Errors
     // errors for tranche pods
@@ -147,20 +149,21 @@ contract TrancheBondUpgradeable is
         /// Create tranche A, B, Z
         _createTranchesFromDeposit(curDepositCount, totalFMV, msg.sender);
         TrancheBondStorage.layout().curDepositCount = curDepositCount;
-        emit CreateTranche(curDepositCount, msg.sender, totalFMV, block.timestamp, beanPrice);
+        emit CreateTranche(curDepositCount, msg.sender, periodId, podIndexes, amounts, fmvs);
     }
 
     /// @dev receive pods with tranches after maturity date is over
-    function receivePodsForTranche(uint256 trancheId) external nonReentrant {
+    function receivePodsForTranche(uint256 trancheId) external onlyWaterHolder nonReentrant {
+        TrancheBondStorage.Layout storage tancheBondStorage = TrancheBondStorage.layout();
         (uint256 depositId, uint8 trancheLevel) = getTrancheInfo(trancheId);
-        DepositPods memory depositPlots = TrancheBondStorage.layout().depositedPods[depositId];
+        DepositPods memory depositPlots = tancheBondStorage.depositedPods[depositId];
         UnderlyingAssetMetadata memory underlyingAsset = TrancheBondStorage
             .layout()
             .underlyingAssets[depositId];
         if (underlyingAsset.assetType != UnderlyingAssetType.PODS) revert NotTranchePods();
         if (block.timestamp < underlyingAsset.maturityDate) revert NotMatureTranche();
 
-        uint256 claimedFMV = TrancheBondStorage.layout().tranches[trancheId].claimedFMV;
+        uint256 claimedFMV = tancheBondStorage.tranches[trancheId].claimedFMV;
         uint256 offsetFMV = _offsetFMVForTranche(
             trancheLevel,
             underlyingAsset.totalFMV,
@@ -227,15 +230,15 @@ contract TrancheBondUpgradeable is
             }
         }
         // update startIndex and startOffset for current tranche pods
-        TrancheBondStorage.layout().depositedPods[depositId].startIndexAndOffsets[
-            trancheLevel
-        ] = uint128(startIndex);
-        TrancheBondStorage.layout().depositedPods[depositId].startIndexAndOffsets[
+        tancheBondStorage.depositedPods[depositId].startIndexAndOffsets[trancheLevel] = uint128(
+            startIndex
+        );
+        tancheBondStorage.depositedPods[depositId].startIndexAndOffsets[
             trancheLevel + TRANCHE_COUNT
         ] = uint128(startOffset);
         {
             uint256 _trancheId = trancheId;
-            TrancheBondStorage.layout().tranches[_trancheId].claimedFMV = claimedFMV + fmv;
+            tancheBondStorage.tranches[_trancheId].claimedFMV = claimedFMV + fmv;
             IERC1155BurnableUpgradeable(address(this)).burn(msg.sender, _trancheId, fmv);
             emit ReceivePodsWithTranche(_trancheId, msg.sender, receivePodIndexes, totalPods);
         }
@@ -248,15 +251,11 @@ contract TrancheBondUpgradeable is
     ) internal {
         uint256[TRANCHE_COUNT] memory numeratorFMV = [FMV_A, FMV_B, FMV_Z];
         uint256 trancheAId = (depositId << 2) + 1;
-        for (uint256 i = 0; i < TRANCHE_COUNT; ) {
+        for (uint256 i; i < TRANCHE_COUNT; ) {
             uint256 trancheId = trancheAId + i;
             uint256 fmv = (totalFMVInUSD * numeratorFMV[i]) / FMV_DENOMINATOR;
-            TrancheBondStorage.layout().tranches[trancheId] = TrancheMetadata({
-                fmv: fmv,
-                claimedFMV: 0
-            });
-
-            /// mint tranche nft with trancheId and totalSupply
+            TrancheBondStorage.layout().tranches[trancheId].fmv = fmv;
+            /// mint tranche nft with trancheId and totalSupply fmv
             IERC1155WhitelistUpgradeable(address(this)).mint(owner, trancheId, fmv, "");
             unchecked {
                 ++i;
@@ -371,6 +370,7 @@ contract TrancheBondUpgradeable is
 
     function setMaturityPeriods(uint48[] calldata periods) external onlySuperAdminRole {
         TrancheBondStorage.layout().periods = periods;
+        emit SetMaturityPeriods(periods);
     }
 
     /// @dev modifiers

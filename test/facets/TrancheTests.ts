@@ -246,7 +246,7 @@ export function suite() {
           }, 1,
             { value: toWei(0.01) }
           ),
-        ).to.be.revertedWithCustomError(auctionContract, 'NotListTrancheZ');
+        ).to.be.revertedWithCustomError(auctionContract, 'NoListTrancheZ');
       });
 
       it('Test Tranche Auction create', async () => {

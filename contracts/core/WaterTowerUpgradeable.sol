@@ -250,6 +250,7 @@ contract WaterTowerUpgradeable is
     function addETHReward() external payable {
         if (msg.value == 0) revert InsufficientEther();
         WaterTowerStorage.layout().totalRewards += msg.value;
+        emit AddETHReward(msg.value);
     }
 
     function updateMonthlyReward(uint256 monthlyRewards) internal onlySuperAdminRole {
