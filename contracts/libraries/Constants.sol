@@ -22,7 +22,9 @@ library Constants {
 
     /// underlying decimals
     uint256 internal constant D18 = 1e18;
+    // tranche nft is fractionalized with decimals 6
     uint8 internal constant TRANCHE_DECIMALS = 6;
+    uint8 internal constant WATER_DECIMALS = 18;    
 
     bytes internal constant EMPTY = "";
 
