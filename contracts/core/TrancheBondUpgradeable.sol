@@ -34,7 +34,17 @@ contract TrancheBondUpgradeable is
 
     uint256 internal constant FMV_DENOMINATOR = 100;
     uint256 internal constant MINIMUM_FMV = 1000;
-    uint256 internal constant MINIMUM_WATER = 32;
+    uint256 internal constant MINIMUM_WATER = 32 * 1e18;
+    // Offset(%) for each tranche
+    uint256 internal constant OFFSET_A = 0;
+    uint256 internal constant OFFSET_B = 20;
+    uint256 internal constant OFFSET_Z = 50;
+    // FMV(%) for each tranche
+    uint256 internal constant FMV_A = 20;
+    uint256 internal constant FMV_B = 30;
+    uint256 internal constant FMV_Z = 50;
+    // 3 tranches like A, B, and Z
+    uint256 internal constant TRANCHE_COUNT = 3;
 
     /// @dev Events
     event CreateTranche(
@@ -107,7 +117,7 @@ contract TrancheBondUpgradeable is
                 amounts[i] = amount;
             }
             totalPods += amount;
-            /// @dev we calculate fmv in usd
+            /// @dev we calculate fmv in usd, decimals is 6 and it is same as bean price
             uint256 _fmvInPlot = (IPodsOracleUpgradeable(address(this)).latestPriceOfPods(
                 id,
                 amount
@@ -221,7 +231,7 @@ contract TrancheBondUpgradeable is
             trancheLevel
         ] = uint128(startIndex);
         TrancheBondStorage.layout().depositedPods[depositId].startIndexAndOffsets[
-            trancheLevel + 3
+            trancheLevel + TRANCHE_COUNT
         ] = uint128(startOffset);
         {
             uint256 _trancheId = trancheId;
@@ -236,9 +246,9 @@ contract TrancheBondUpgradeable is
         uint256 totalFMVInUSD,
         address owner
     ) internal {
-        uint256[3] memory numeratorFMV = [uint256(20), 30, 50];
+        uint256[TRANCHE_COUNT] memory numeratorFMV = [FMV_A, FMV_B, FMV_Z];
         uint256 trancheAId = (depositId << 2) + 1;
-        for (uint256 i = 0; i < 3; ) {
+        for (uint256 i = 0; i < TRANCHE_COUNT; ) {
             uint256 trancheId = trancheAId + i;
             uint256 fmv = (totalFMVInUSD * numeratorFMV[i]) / FMV_DENOMINATOR;
             TrancheBondStorage.layout().tranches[trancheId] = TrancheMetadata({
@@ -299,7 +309,7 @@ contract TrancheBondUpgradeable is
         uint256 totalFMV,
         uint256 claimedFMV
     ) internal pure returns (uint256 offsetFMV) {
-        uint256[3] memory offsetFMVs = [uint256(0), 20, 50];
+        uint256[TRANCHE_COUNT] memory offsetFMVs = [OFFSET_A, OFFSET_B, OFFSET_Z];
         offsetFMV = (offsetFMVs[trancheLevel] * totalFMV) / FMV_DENOMINATOR + claimedFMV;
     }
 
@@ -365,8 +375,7 @@ contract TrancheBondUpgradeable is
 
     /// @dev modifiers
     modifier onlyWaterHolder() {
-        if (WaterTowerStorage.userInfo(msg.sender).amount < MINIMUM_WATER * 1e18)
-            revert NotEligible();
+        if (WaterTowerStorage.userInfo(msg.sender).amount < MINIMUM_WATER) revert NotEligible();
         _;
     }
 }
