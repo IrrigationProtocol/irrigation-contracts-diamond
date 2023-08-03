@@ -3,6 +3,7 @@ import { dc, assert, toWei, toD6, fromD6, fromWei } from '../../scripts/common';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { IrrigationDiamond } from '../../typechain-types/hardhat-diamond-abi/HardhatDiamondABI.sol';
 import {
+  IERC20MetadataUpgradeable,
   IERC20Upgradeable,
   PriceOracleUpgradeable,
   SprinklerUpgradeable,
@@ -26,6 +27,7 @@ export function suite() {
     let sprinkler: SprinklerUpgradeable;
     let waterToken: WaterUpgradeable;
     let priceOracle: PriceOracleUpgradeable;
+    let usdt: IERC20MetadataUpgradeable;
     const irrigationMainAddress: string = irrigationDiamond.address;
 
     before(async () => {
@@ -39,6 +41,7 @@ export function suite() {
       sprinkler = await ethers.getContractAt('SprinklerUpgradeable', irrigationMainAddress);
       waterToken = await ethers.getContractAt('WaterUpgradeable', irrigationMainAddress);
       priceOracle = await ethers.getContractAt('PriceOracleUpgradeable', irrigationMainAddress);
+      usdt = await ethers.getContractAt('IERC20MetadataUpgradeable', CONTRACT_ADDRESSES.USDT);
     });
     it('Test Sprinkler sprinkleable water amount should be enough', async () => {
       expect(await sprinkler.sprinkleableWater()).to.be.eq(toWei(10_000));
@@ -187,7 +190,10 @@ export function suite() {
       await sprinkler.depositWater(toWei(100_000));
       await expect(sprinkler.exchangeTokenToWater(CONTRACT_ADDRESSES.ETHER, toWei(1))).
         to.be.revertedWithCustomError(sprinkler, 'InvalidSwapToken');
-    });    
+    });
 
+    it('Multiplier of usdt should be 18-6', async () => {
+      expect(await sprinkler.tokenMultiplier(usdt.address)).to.be.eq(10 ** 12);
+    });
   });
 }

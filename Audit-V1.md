@@ -54,7 +54,6 @@
    | libraries/PodTransferHelper.sol          |
    | libraries/Oracle/LibPrice.sol            |
    | oracles/BeanPriceOracle.sol              |
-   | oracles/ChainlinkOracle.sol              |
    | oracles/uniswapv3/UniswapV3Twap.sol      |
    | oracles/AggregatorV2V3Interface.sol      |
 

@@ -72,9 +72,9 @@ const config: HardhatUserConfig = {
     hardhat: {
       forking: process.env.FORK_URL
         ? {
-            url: process.env.FORK_URL,
-            blockNumber: parseInt(process.env.FORK_BLOCK_NUMBER) || undefined,
-          }
+          url: process.env.FORK_URL,
+          blockNumber: parseInt(process.env.FORK_BLOCK_NUMBER) || undefined,
+        }
         : undefined,
       // chainId: 1337,
       hardfork: 'london',
@@ -91,9 +91,9 @@ const config: HardhatUserConfig = {
       url: 'http://localhost:8545',
       forking: process.env.FORK_URL
         ? {
-            url: process.env.FORK_URL,
-            blockNumber: parseInt(process.env.FORK_BLOCK_NUMBER) || undefined,
-          }
+          url: process.env.FORK_URL,
+          blockNumber: parseInt(process.env.FORK_BLOCK_NUMBER) || undefined,
+        }
         : undefined,
       chainId: 31337,
     },

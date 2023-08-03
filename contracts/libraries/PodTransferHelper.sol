@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-// import "hardhat/console.sol";
-
 // helper methods for interacting with plots on beanstalk
 library PodTransferHelper {
     /// @dev get start position and pods amount for sub plot by FMV

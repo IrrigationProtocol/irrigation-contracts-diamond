@@ -16,8 +16,16 @@ library Constants {
     address internal constant BEANSTALK = 0xC1E088fC1323b20BCBee9bd1B9fC9546db5624C5;
     address internal constant FERTILIZER = 0x402c84De2Ce49aF88f5e2eF3710ff89bFED36cB6;
 
+    /// @notice time out to get price from chainlink
+    /// @dev should update before deploying on mainnet
+    uint256 internal constant GRACE_PERIOD_TIME = 72000000;
+
     /// underlying decimals
     uint256 internal constant D18 = 1e18;
+    // tranche nft is fractionalized with decimals 6
+    uint8 internal constant TRANCHE_DECIMALS = 6;
+    uint8 internal constant WATER_DECIMALS = 18;    
+
     bytes internal constant EMPTY = "";
 
     /// function selectors

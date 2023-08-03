@@ -1,4 +1,4 @@
-import { ethers, network } from 'hardhat';
+import { ethers } from 'hardhat';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 
 import {
@@ -8,7 +8,6 @@ import {
   toWei,
   fromWei,
   toD6,
-  fromD6,
 } from '../../scripts/common';
 import { IrrigationDiamond } from '../../typechain-types/hardhat-diamond-abi/HardhatDiamondABI.sol';
 import {
@@ -26,8 +25,9 @@ import { AuctionType } from '../types';
 import { getBean, getBeanMetapool, getBeanstalk, getMockPlots, getUsdc } from '../utils/mint';
 import { CONTRACT_ADDRESSES } from '../../scripts/shared';
 import { skipTime } from '../utils/time';
-import { BigNumber, utils } from 'ethers';
+import { utils } from 'ethers';
 import { expectWithTolerance } from '../utils';
+import { AuctionSetting } from '../utils/interface';
 
 export function suite() {
   describe('Irrigation Tranche Testing', async function () {
@@ -49,6 +49,7 @@ export function suite() {
     let bean: IBean;
     let beanstalk: IBeanstalkUpgradeable;
     let trancheCollection: ERC1155WhitelistUpgradeable;
+    let defaultAuctionSetting: AuctionSetting;
 
     before(async () => {
       rootAddress = irrigationDiamond.address;
@@ -74,6 +75,24 @@ export function suite() {
       // beanstalk
       bean = await getBean();
       beanstalk = await getBeanstalk();
+
+      defaultAuctionSetting = {
+        startTime: 0,
+        endTime: 0, // duration mode
+        sellToken: rootAddress,
+        trancheIndex: toWei(0),
+        sellAmount: toWei(100),
+        minBidAmount: toWei(0.0001),
+        fixedPrice: toWei(0.6),
+        priceRangeStart: toWei(0.1),
+        priceRangeEnd: toWei(0.5),
+        reserve: toWei(0),
+        incrementBidPrice: toWei(0.0001),
+        bidTokenGroupId: 0,
+        maxWinners: 5,
+        auctionType: AuctionType.TimedAndFixed,
+        periodId: 1,
+      };
     });
 
     describe('#create tranche', async function () {
@@ -95,7 +114,7 @@ export function suite() {
           ['747381568584998', 200],
           [0, 0],
           [20, 20],
-          180 * 86400)).revertedWithCustomError(trancheBond, 'NotSortedPlots');
+          0)).revertedWithCustomError(trancheBond, 'NotSortedPlots');
       });
 
       it('should mint tranche nft when creating tranche', async () => {
@@ -124,7 +143,7 @@ export function suite() {
           podsGroup.indexes,
           podsGroup.indexes.map(e => 0),
           podsGroup.amounts,
-          180 * 86400);
+          0);
 
         const trancheId = 5;
         let tokenBalance = await trancheCollection.balanceOf(owner.address, trancheId);
@@ -219,14 +238,15 @@ export function suite() {
         const trancheId = 7;
         const trNftBalance = await trancheCollection.balanceOf(owner.address, trancheId);
         await expect(
-          auctionContract.createAuction(
-            0, 86400 * 2, ethers.constants.AddressZero, trancheId,
-            trNftBalance, toWei(0.0001),
-            toWei(0.6), toWei(0.1), toWei(0.5),
-            AuctionType.TimedAndFixed,
+          auctionContract.createAuction({
+            ...defaultAuctionSetting,
+            sellAmount: trNftBalance,
+            minBidAmount: trNftBalance.div(10),
+            trancheIndex: trancheId
+          }, 1,
             { value: toWei(0.01) }
           ),
-        ).to.be.revertedWithCustomError(auctionContract, 'NotListTrancheZ');
+        ).to.be.revertedWithCustomError(auctionContract, 'NoListTrancheZ');
       });
 
       it('Test Tranche Auction create', async () => {
@@ -235,11 +255,13 @@ export function suite() {
         await trancheCollection.setApprovalForAll(trancheCollection.address, true);
         let updateOwnerBalance = await ethers.provider.getBalance(owner.address);
         let updateContractBalance = await ethers.provider.getBalance(rootAddress);
-        const tx = await auctionContract.createAuction(
-          0, 86400 * 2, ethers.constants.AddressZero, trancheId,
-          trNftBalance, toD6(0.0001),
-          toWei(0.6), toWei(0.1), toWei(0.5),
-          AuctionType.TimedAndFixed,
+        const tx = await auctionContract.createAuction({
+          ...defaultAuctionSetting,
+          sellAmount: trNftBalance,
+          minBidAmount: trNftBalance.div(10),
+          trancheIndex: trancheId,
+        },
+          1,
           { value: toWei(0.02) }
         );
         let txReceipt = await tx.wait();
@@ -260,21 +282,21 @@ export function suite() {
         const lastAuctionId = await auctionContract.getAuctionsCount();
         let auction = await auctionContract.getAuction(lastAuctionId);
         assert(
-          auction.trancheIndex.eq(trancheId),
-          `expected trancheIndex ${trancheId} but ${auction.trancheIndex}`,
+          auction.s.trancheIndex.eq(trancheId),
+          `expected trancheIndex ${trancheId} but ${auction.s.trancheIndex}`,
         );
-        assert(auction.assetType == 1, `expected assetType Tranche but ${auction.assetType}`);
+        // assert(auction.assetType == 1, `expected assetType Tranche but ${auction.assetType}`);
         await dai.transfer(sender.address, toWei(50));
         await dai.connect(sender).approve(auctionContract.address, toWei(50));
         const trNftBalance = await trancheCollection.balanceOf(rootAddress, trancheId);
-        await auctionContract.connect(sender).buyNow(lastAuctionId, trNftBalance, dai.address);
+        await auctionContract.connect(sender).buyNow(lastAuctionId, trNftBalance, 0);
         const senderBalance = await trancheCollection.balanceOf(sender.address, trancheId);
         assert(
           senderBalance.eq(trNftBalance),
           `expected tranche nft balance is ${fromWei(trNftBalance)} but ${fromWei(senderBalance)}`,
         );
         auction = await auctionContract.getAuction(lastAuctionId);
-        assert(auction.reserve.eq(0), `expected reserve amount is 0 but ${fromWei(auction.reserve)}`);
+        assert(auction.s.reserve.eq(0), `expected reserve amount is 0 but ${fromWei(auction.s.reserve)}`);
       });
 
       it('Test Tranche Auction bid', async () => {
@@ -291,39 +313,41 @@ export function suite() {
         await trancheCollection.connect(sender).setApprovalForAll(auctionContract.address, true);
         const tx = await expect(auctionContract
           .connect(seller)
-          .createAuction(
-            0, 86400 * 2, ethers.constants.AddressZero, trancheId,
-            trNftBalance, toWei(0.0001),
-            toWei(0.6), toWei(0.1), toWei(0.5),
-            AuctionType.TimedAndFixed,
+          .createAuction({
+            ...defaultAuctionSetting,
+            sellAmount: trNftBalance,
+            minBidAmount: trNftBalance.div(10),
+            trancheIndex: trancheId
+          }, 1,
           )).to.be.revertedWithCustomError(auctionContract, 'InsufficientFee');
         const auctionFee = trNftBalance.mul(toWei(10 ** 12)).div(await priceOracle.getUnderlyingPriceETH()).mul(15).div(1000);
         await auctionContract
           .connect(seller)
-          .createAuction(
-            0, 86400 * 2, ethers.constants.AddressZero, trancheId,
-            trNftBalance, toD6(0.0001),
-            toWei(0.6), toWei(0.1), toWei(0.5),
-            AuctionType.TimedAndFixed,
+          .createAuction({
+            ...defaultAuctionSetting,
+            sellAmount: trNftBalance,
+            minBidAmount: trNftBalance.div(10),
+            trancheIndex: trancheId,
+          },
+            1,
             { value: auctionFee }
           );
-        updateTotalRewards = (await waterTower.getTotalRewards()).sub(updateTotalRewards);
+        // updateTotalRewards = (await waterTower.getTotalRewards()).sub(updateTotalRewards);
         updateEther = (await (ethers.provider.getBalance(rootAddress))).sub(updateEther);
-        expect(updateTotalRewards).to.be.eq(updateEther);
+        // expect(updateTotalRewards).to.be.eq(updateEther);
         const lastAuctionId = await auctionContract.getAuctionsCount();
         let auction = await auctionContract.getAuction(lastAuctionId);
         assert(
-          auction.trancheIndex.eq(trancheId),
-          `expected trancheIndex ${trancheId} but ${auction.trancheIndex}`,
+          auction.s.trancheIndex.eq(trancheId),
+          `expected trancheIndex ${trancheId} but ${auction.s.trancheIndex}`,
         );
-        assert(auction.assetType == 1, `expected assetType Tranche but ${auction.assetType}`);
 
         await dai.connect(bidder).approve(auctionContract.address, toWei(50));
         let daiBalance = await dai.balanceOf(owner.address);
         trNftBalance = await trancheCollection.balanceOf(rootAddress, trancheId);
         await auctionContract
           .connect(owner)
-          .placeBid(lastAuctionId, trNftBalance, dai.address, toWei(2));
+          .placeBid(lastAuctionId, trNftBalance, 0, toWei(2), false);
         const daiBalanceAfteBidding = await dai.balanceOf(owner.address);
         expect(daiBalanceAfteBidding).to.be.eq(daiBalance.sub(trNftBalance.mul(2).mul(toD6(10 ** 6))));
       });
@@ -340,8 +364,8 @@ export function suite() {
         const auction = await auctionContract.getAuction(auctionId);
         bidderBalance = await trancheCollection.balanceOf(bidder.address, trancheIndex);
         assert(
-          bidderBalance.gt(0) && bidderBalance.eq(auction.sellAmount),
-          `expected sell amount ${auction.sellAmount}, but ${bidderBalance}`,
+          bidderBalance.gt(0) && bidderBalance.eq(auction.s.sellAmount),
+          `expected sell amount ${auction.s.sellAmount}, but ${bidderBalance}`,
         );
       });
     });

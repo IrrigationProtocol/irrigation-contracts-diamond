@@ -5,6 +5,7 @@ import { IrrigationDiamond } from '../../typechain-types/hardhat-diamond-abi/Har
 import { WaterTowerUpgradeable, WaterUpgradeable } from '../../typechain-types';
 import { CONTRACT_ADDRESSES } from '../../scripts/shared';
 import { skipTime } from '../utils/time';
+import { BigNumber } from 'ethers';
 
 export function suite() {
   describe('Irrigation WaterTower Testing', async function () {
@@ -140,9 +141,9 @@ export function suite() {
         await sprinkler.addAssetToWhiteList(CONTRACT_ADDRESSES.BEAN, 0);
       }
       let originalAmount = (await waterTower.userInfo(sender.address)).amount;
-      const { waterAmount, bonusAmount } = await waterTower.getBonusForIrrigate(irrigateValue);
-
-      let tx = await waterTower.connect(sender).irrigate(irrigateValue);
+      const { waterAmount, bonusAmount, swapAmount } = await waterTower.getBonusForIrrigate(irrigateValue);
+      /// slippage 5%
+      let tx = await waterTower.connect(sender).irrigate(irrigateValue, swapAmount.mul(95).div(100));
 
       await expect(tx).to.emit(irrigationDiamond, 'Claimed').withArgs(sender.address, irrigateValue);
       const addedWaterAmount = (await waterTower.userInfo(sender.address)).amount.sub(originalAmount);
@@ -181,7 +182,7 @@ export function suite() {
       let irrigateValue = toWei(0.5);
       let originalAmount = (await waterTower.userInfo(sender.address)).amount;
       const { waterAmount, bonusAmount } = await waterTower.getBonusForIrrigate(irrigateValue);
-      let tx = await waterTower.connect(sender).irrigate(0);
+      let tx = await waterTower.connect(sender).irrigate(0, 0);
       const addedWaterAmount = (await waterTower.userInfo(sender.address)).amount.sub(originalAmount);
       expect(addedWaterAmount.sub(bonusAmount.add(waterAmount)).abs().mul(1000)).to.be.lte(addedWaterAmount);
       updatedEthInContract = updatedEthInContract.sub(
@@ -203,14 +204,32 @@ export function suite() {
       await waterTower.setPool(0, toWei(0.5));
       let testerReward = await waterTower.userETHReward(tester.address);
       const oldDepositAmount = (await waterTower.userInfo(tester.address)).amount;
-      const { waterAmount, bonusAmount } = await waterTower.getBonusForIrrigate(testerReward);
-      const tx = await waterTower.autoIrrigate(tester.address, testerReward.sub(toWei(0.001)));
+      const { waterAmount, bonusAmount, swapAmount } = await waterTower.getBonusForIrrigate(testerReward);
+      // slippage 10%     
+      const tx = await waterTower.autoIrrigate(tester.address, testerReward.sub(toWei(0.001)), swapAmount.mul(90).div(100));
       let txReceipt = await tx.wait();
-      const totalGas = txReceipt.gasUsed.mul(txReceipt.effectiveGasPrice);
+      const subractedGasFee = BigNumber.from('870200').mul(txReceipt.effectiveGasPrice);
       testerReward = await waterTower.userETHReward(tester.address);
-      expect(testerReward).to.be.eq(toWei(0.001).sub(totalGas));
+      expect(testerReward).to.be.eq(toWei(0.001).sub(subractedGasFee));
       expect((await waterTower.userInfo(tester.address)).amount.sub(oldDepositAmount)).to.be.gt(bonusAmount);
       expect(bonusAmount).to.be.gt(toD6(0.01));
+    });
+
+    it('totalReward should be same as rewards of total users in same pool', async () => {
+      const currentPoolIndex = await waterTower.getPoolIndex();
+      let currentPool = await waterTower.getPoolInfo(currentPoolIndex);
+      let senderInfo = await waterTower.userInfo(sender.address);
+      let testerInfo = await waterTower.userInfo(tester.address);
+      if (!senderInfo.lastPoolIndex.eq(currentPoolIndex) && senderInfo.rewardRate.gt(0)) {
+        await waterTower.connect(sender).deposit(0, false);
+        senderInfo = await waterTower.userInfo(sender.address);
+      }
+      currentPool = await waterTower.getPoolInfo(currentPoolIndex);
+      expect(senderInfo.lastPoolIndex).to.be.eq(currentPoolIndex);
+      expect(testerInfo.lastPoolIndex).to.be.eq(currentPoolIndex);
+      let senderReward = senderInfo.rewardRate;
+      let testerReward = testerInfo.rewardRate;
+      expect(currentPool.totalRewardRate).to.be.eq(senderReward.add(testerReward));
     });
   });
 }

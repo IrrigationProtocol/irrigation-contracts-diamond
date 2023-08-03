@@ -13,6 +13,9 @@ import "../oracles/uniswapv3/UniswapV3Twap.sol";
 
 contract PriceOracleUpgradeable is EIP2535Initializable, IrrigationAccessControl {
     using PriceOracleStorage for PriceOracleStorage.Layout;
+    /// @dev errors
+    error StalePrice();
+    error InvalidChainLinkPrice();
 
     /// @dev events
     event UpdateAssetPrice(address asset, uint256 oldPrice, uint256 price);
@@ -51,9 +54,12 @@ contract PriceOracleUpgradeable is EIP2535Initializable, IrrigationAccessControl
         return getPrice(address(this));
     }
 
-    /// @dev returns price with decimals 18
+    /// @dev returns chainlink price
     function getChainlinkPrice(AggregatorV2V3Interface feed) internal view returns (uint256) {
-        return uint256(feed.latestAnswer());
+        (uint80 roundId, int256 answer, , uint256 updatedAt, ) = feed.latestRoundData();
+        if (answer == 0 || roundId == 0) revert InvalidChainLinkPrice();
+        if (block.timestamp > updatedAt + Constants.GRACE_PERIOD_TIME) revert StalePrice();
+        return uint256(answer);
     }
 
     function getUniswapV3Price(
