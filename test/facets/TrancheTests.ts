@@ -16,6 +16,7 @@ import {
   IBean,
   IBeanstalkUpgradeable,
   IERC20Upgradeable,
+  PodsOracleUpgradeable,
   PriceOracleUpgradeable,
   TrancheBondUpgradeable,
   WaterTowerUpgradeable,
@@ -25,7 +26,7 @@ import { AuctionType } from '../types';
 import { getBean, getBeanMetapool, getBeanstalk, getMockPlots, getUsdc } from '../utils/mint';
 import { CONTRACT_ADDRESSES } from '../../scripts/shared';
 import { skipTime } from '../utils/time';
-import { utils } from 'ethers';
+import { BigNumber, utils } from 'ethers';
 import { expectWithTolerance } from '../utils';
 import { AuctionSetting } from '../utils/interface';
 
@@ -39,6 +40,7 @@ export function suite() {
     let usdc: IBean;
     let usdt: IERC20Upgradeable;
     let sender: SignerWithAddress;
+    let tester: SignerWithAddress;
     let auctionContract: AuctionUpgradeable;
     let trancheBond: TrancheBondUpgradeable;
     let waterTower: WaterTowerUpgradeable;
@@ -51,12 +53,14 @@ export function suite() {
     let trancheCollection: ERC1155WhitelistUpgradeable;
     let defaultAuctionSetting: AuctionSetting;
 
+    let podsOracle: PodsOracleUpgradeable;
+
     before(async () => {
       rootAddress = irrigationDiamond.address;
       signers = await ethers.getSigners();
       owner = signers[0];
       sender = signers[1];
-
+      tester = signers[2];
       // get stable tokens
       dai = await ethers.getContractAt('IERC20Upgradeable', CONTRACT_ADDRESSES.DAI);
       usdt = await ethers.getContractAt('IERC20Upgradeable', CONTRACT_ADDRESSES.USDT);
@@ -70,7 +74,7 @@ export function suite() {
       trancheBond = await ethers.getContractAt('TrancheBondUpgradeable', rootAddress);
       trancheCollection = await ethers.getContractAt('ERC1155WhitelistUpgradeable', rootAddress);
       water = await ethers.getContractAt('WaterUpgradeable', rootAddress);
-
+      podsOracle = await ethers.getContractAt('PodsOracleUpgradeable', rootAddress);
 
       // beanstalk
       bean = await getBean();
@@ -93,6 +97,14 @@ export function suite() {
         auctionType: AuctionType.TimedAndFixed,
         periodId: 1,
       };
+
+      // hold water
+      await water.transfer(sender.address, toWei(50));
+      await water.connect(sender).approve(water.address, toWei(50));
+      await waterTower.connect(sender).deposit(toWei(50), false);
+      await water.transfer(tester.address, toWei(50));
+      await water.connect(tester).approve(water.address, toWei(50));
+      await waterTower.connect(tester).deposit(toWei(50), false);
     });
 
     describe('#create tranche', async function () {
@@ -466,6 +478,83 @@ export function suite() {
         // expect(pods).to.be.eq(expectedReceivePods[0].div(2));
         expectWithTolerance(expectedReceivePods[0].div(2), pods);
       });
+    });
+
+    describe('#tranches with old plots', async function () {
+
+      it('create tranches and receive pods with 2 plots', async () => {
+        const testPlots = [
+          { index: BigNumber.from("345456176278838"), pods: BigNumber.from("7622833600000") },
+          { index: BigNumber.from("672857205023752"), pods: BigNumber.from("10622053659968") },
+        ];
+        let holdPlots = [
+          { index: BigNumber.from("353078009878838"), pods: toD6(1000) },
+          { index: BigNumber.from("683478258683720"), pods: toD6(1000) },
+        ]
+        const pods0 = await beanstalk.plot(owner.address, testPlots[0].index);
+        expect(pods0).to.be.eq(testPlots[0].pods);
+        // harvestable index 57799313214613 podIndex 870004746667651
+        // transfer 1000 pods
+        await beanstalk.transferPlot(owner.address, tester.address, testPlots[0].index, testPlots[0].pods.sub(toD6(1000)), testPlots[0].pods);
+        expect(await beanstalk.plot(tester.address, holdPlots[0].index)).to.be.eq(holdPlots[0].pods);
+        await beanstalk.transferPlot(owner.address, tester.address, testPlots[1].index, testPlots[1].pods.sub(toD6(1000)), testPlots[1].pods);
+        expect(await beanstalk.plot(tester.address, holdPlots[1].index)).to.be.eq(holdPlots[1].pods);
+        await beanstalk.connect(tester).approvePods(trancheBond.address, toD6(2000));
+        await trancheBond.connect(tester).createTranchesWithPods(holdPlots.map(e => e.index), holdPlots.map(e => 0), holdPlots.map(e => e.pods), 0);
+        const { starts } = await trancheBond.getPlotsForTranche(11);
+        await skipTime(180 * 86400);
+        await trancheCollection.connect(tester).setApprovalForAll(trancheBond.address, true);
+        await trancheBond.connect(tester).receivePodsForTranche(11);
+        await trancheBond.connect(tester).receivePodsForTranche(9);
+        await trancheBond.connect(tester).receivePodsForTranche(10);
+        const pods1 = await beanstalk.plot(tester.address, holdPlots[0].index);
+        const pods2 = await beanstalk.plot(tester.address, holdPlots[0].index.add(pods1));
+        const pods3 = await beanstalk.plot(tester.address, holdPlots[0].index.add(starts[0]));
+        expect(pods1.add(pods2).add(pods3)).to.be.eq(toD6(999.999996));
+        expect(await beanstalk.plot(tester.address, holdPlots[1].index)).to.be.eq(toD6(1000));
+      });
+
+      it('create tranches and receive pods with 3 plots', async () => {
+        const testPlots = [
+          { index: BigNumber.from("345456176278838"), pods: BigNumber.from("7621833600000") },
+          { index: BigNumber.from("548233773854003"), pods: BigNumber.from("8118000000000") },
+          { index: BigNumber.from("672857205023752"), pods: BigNumber.from("10612053659968") },
+        ];
+        let holdPlots = [
+          { index: BigNumber.from("353077009878838"), pods: toD6(1000) },
+          { index: BigNumber.from("556350773854003"), pods: toD6(1000) },
+          { index: BigNumber.from("683468258683720"), pods: toD6(1000) },
+        ]
+        const pods0 = await beanstalk.plot(owner.address, testPlots[0].index);
+        expect(pods0).to.be.eq(testPlots[0].pods);
+        // harvestable index 57799313214613 podIndex 870004746667651
+        // transfer 1000 pods
+        await beanstalk.transferPlot(owner.address, tester.address, testPlots[0].index, testPlots[0].pods.sub(toD6(1000)), testPlots[0].pods);
+        expect(await beanstalk.plot(tester.address, holdPlots[0].index)).to.be.eq(holdPlots[0].pods);
+        await beanstalk.transferPlot(owner.address, tester.address, testPlots[1].index, testPlots[1].pods.sub(toD6(1000)), testPlots[1].pods);
+        expect(await beanstalk.plot(tester.address, holdPlots[1].index)).to.be.eq(holdPlots[1].pods);
+        await beanstalk.transferPlot(owner.address, tester.address, testPlots[2].index, testPlots[2].pods.sub(toD6(1000)), testPlots[2].pods);
+        expect(await beanstalk.plot(tester.address, holdPlots[2].index)).to.be.eq(holdPlots[2].pods);
+        await beanstalk.connect(tester).approvePods(trancheBond.address, toD6(3000));
+        const tx = await trancheBond.connect(tester).createTranchesWithPods(holdPlots.map(e => e.index), holdPlots.map(e => 0), holdPlots.map(e => e.pods), 0);
+        await tx.wait(1);
+        expect(await beanstalk.plot(trancheBond.address, holdPlots[0].index)).to.be.eq(toD6(1000));
+        expect(await beanstalk.plot(trancheBond.address, holdPlots[1].index)).to.be.eq(toD6(1000));
+        expect(await beanstalk.plot(trancheBond.address, holdPlots[2].index)).to.be.eq(toD6(1000));
+        const { starts } = await trancheBond.getPlotsForTranche(15);
+        await skipTime(180 * 86400);
+        await trancheCollection.connect(tester).setApprovalForAll(trancheBond.address, true);
+        await trancheBond.connect(tester).receivePodsForTranche(14);
+        await trancheBond.connect(tester).receivePodsForTranche(15);
+        await trancheBond.connect(tester).receivePodsForTranche(13);
+        const pods1 = await beanstalk.plot(tester.address, holdPlots[0].index);
+        const pods2 = await beanstalk.plot(tester.address, holdPlots[0].index.add(pods1));
+        const pods3 = await beanstalk.plot(tester.address, holdPlots[0].index.add(starts[0]));
+        expect(pods1.add(pods2).add(pods3)).to.be.eq(toD6(999.999997));
+        expect(await beanstalk.plot(tester.address, holdPlots[1].index)).to.be.eq(toD6(1000));
+        expect(await beanstalk.plot(tester.address, holdPlots[2].index)).to.be.eq(toD6(1000));
+      });
+
     });
 
   });

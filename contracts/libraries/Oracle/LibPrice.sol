@@ -23,7 +23,7 @@ library LibPrice {
         uint256 harvestableIndex
     ) internal pure returns (uint256) {
         uint256 unharvestable = podIndex - harvestableIndex;
-        uint256 accumulatedPrice = 0;
+        uint256 accumulatedPrice;
         if (unharvestable == 0 || placeInLine + pods <= harvestableIndex) {
             return pods * BDV_FACTOR;
         } else if (placeInLine <= harvestableIndex) {
