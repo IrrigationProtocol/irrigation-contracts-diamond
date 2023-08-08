@@ -79,7 +79,7 @@ export async function mintAllTokensForTesting(address: string) {
   await mintLUSD(address, toWei(100_000));
   await mintWithTransfer(CONTRACT_ADDRESSES.SPOT, tokenHolders.SPOT, address, toD6(100_000_000));
   await mintWithTransfer(CONTRACT_ADDRESSES.PAXG, tokenHolders.PAXG, address, toWei(10_000));
-  await mintWithTransfer(CONTRACT_ADDRESSES.CNHT, tokenHolders.CNHT, address, toD6(100_000));  
+  await mintWithTransfer(CONTRACT_ADDRESSES.CNHT, tokenHolders.CNHT, address, toD6(100_000));
   await mintERC20Token(CONTRACT_ADDRESSES.frxETH, address, toWei(100_000), 0);
 }
 
@@ -99,49 +99,50 @@ export async function deployMockToken(name, symbol, mockDeployer, factoryAddress
   return token.address;
 }
 
+export const oldPlots = [
+  {
+    "farmer": {
+      "id": "0xd79e92124a020410c238b23fb93c95b2922d0b9e"
+    },
+    "index": "160299068297321",
+    "pods": "7664165865816"
+  },
+  {
+    "farmer": {
+      "id": "0x10bf1dcb5ab7860bab1c3320163c6dddf8dcc0e4"
+    },
+    "index": "345456176278838",
+    "pods": "7622833600000"
+  },
+  {
+    "farmer": {
+      "id": "0x4a24e54a090b0fa060f7faaf561510775d314e84"
+    },
+    "index": "548233773854003",
+    "pods": "8118000000000"
+  },
+  {
+    "farmer": {
+      "id": "0x15390a3c98fa5ba602f1b428bc21a3059362afaf"
+    },
+    "index": "672857205023752",
+    "pods": "10622053659968"
+  },
+  {
+    "farmer": {
+      "id": "0x9a00beffa3fc064104b71f6b7ea93babdc44d9da"
+    },
+    "index": "747381568584998",
+    "pods": "12828436637551"
+  }
+];
+
 export async function getMockPlots() {
-  const oldPlots = [
-    {
-      "farmer": {
-        "id": "0xd79e92124a020410c238b23fb93c95b2922d0b9e"
-      },
-      "index": "160299068297321",
-      "pods": "7664165865816"
-    },
-    {
-      "farmer": {
-        "id": "0x10bf1dcb5ab7860bab1c3320163c6dddf8dcc0e4"
-      },
-      "index": "345456176278838",
-      "pods": "7622833600000"
-    },
-    {
-      "farmer": {
-        "id": "0x4a24e54a090b0fa060f7faaf561510775d314e84"
-      },
-      "index": "548233773854003",
-      "pods": "8118000000000"
-    },
-    {
-      "farmer": {
-        "id": "0x15390a3c98fa5ba602f1b428bc21a3059362afaf"
-      },
-      "index": "672857205023752",
-      "pods": "10622053659968"
-    },
-    {
-      "farmer": {
-        "id": "0x9a00beffa3fc064104b71f6b7ea93babdc44d9da"
-      },
-      "index": "747381568584998",
-      "pods": "12828436637551"
-    }
-  ];
   const [owner] = await ethers.getSigners();
   const beanstalk = await getBeanstalk();
   for (let plot of oldPlots) {
     const account = plot.farmer.id;
     const signer = await impersonateSigner(account);
-    await beanstalk.connect(signer).transferPlot(signer.address, owner.address, plot.index, 0, plot.pods);    
+    await beanstalk.connect(signer).transferPlot(signer.address, owner.address, plot.index, 0, plot.pods);
   }
 }
