@@ -86,11 +86,7 @@ contract AuctionUpgradeable is EIP2535Initializable, ReentrancyGuardUpgradeable 
     /// @notice Emitted by auction when bidder or auctioneer closes a auction
     /// @param unSoldAmount Amount of unsold auctioning token
     /// @param auctionId Auction id
-    event AuctionClosed(
-        uint256 unSoldAmount,
-        uint256 indexed auctionId,
-        uint256 settledBidCount
-    );
+    event AuctionClosed(uint256 unSoldAmount, uint256 indexed auctionId, uint256 settledBidCount);
 
     event AuctionUpdate(
         uint indexed auctionId,
@@ -105,6 +101,7 @@ contract AuctionUpgradeable is EIP2535Initializable, ReentrancyGuardUpgradeable 
     uint256 internal constant BID_GAS_LIMIT = 470000;
     uint256 internal constant CLOSE_GAS_LIMIT = 180000;
     uint256 internal constant D30 = 1e30;
+    uint256 internal constant MINBID_FACTOR = 100;
 
     function createAuction(AuctionSetting memory auctionSetting, uint8 periodId) external payable {
         AuctionStorage.Layout storage auctionStorage = AuctionStorage.layout();
@@ -113,10 +110,9 @@ contract AuctionUpgradeable is EIP2535Initializable, ReentrancyGuardUpgradeable 
         if (auctionSetting.bidTokenGroupId >= auctionStorage.countOfTokenGroups)
             revert InvalidBidToken();
         if (
-            auctionSetting.minBidAmount == 0 ||
+            auctionSetting.minBidAmount < auctionSetting.sellAmount / MINBID_FACTOR ||
             auctionSetting.minBidAmount > auctionSetting.sellAmount
         ) revert InvalidMinBidAmount();
-        if (auctionSetting.maxWinners == 0) revert InvalidMaxWinners();
         if (auctionSetting.priceRangeStart > auctionSetting.priceRangeEnd) revert InvalidEndPrice();
         if (auctionSetting.startTime == 0) auctionSetting.startTime = uint48(block.timestamp);
         else if (auctionSetting.startTime < block.timestamp) revert InvalidStartTime();
@@ -306,10 +302,7 @@ contract AuctionUpgradeable is EIP2535Initializable, ReentrancyGuardUpgradeable 
                 uint256 _cancelBidId = currentBidId - availableBidDepth + 1;
                 Bid memory cancelBid = auctionStorage.bids[_auctionId][_cancelBidId];
                 // even though reserve sell amount is smaller than bidAmount, settle the bid and the bidder receives sell token as possible
-                if (
-                    availableBidDepth <= auction.s.maxWinners &&
-                    totalBidAmount < auction.s.reserve + cancelBid.bidAmount
-                ) break;
+                if (totalBidAmount < auction.s.reserve + cancelBid.bidAmount) break;
                 unchecked {
                     totalBidAmount -= cancelBid.bidAmount;
                     availableBidDepth--;
@@ -404,7 +397,7 @@ contract AuctionUpgradeable is EIP2535Initializable, ReentrancyGuardUpgradeable 
         uint256[] memory payoutAmounts = new uint256[](bidTokens.length);
         bool bOverGasLimit = false;
         uint128 reserve = availableAmount;
-        while (curBidId > 0 && settledBidCount <= auction.s.maxWinners && reserve > 0) {
+        while (curBidId > 0 && reserve > 0) {
             Bid memory bid = auctionStorage.bids[auctionId][curBidId];
             if (bid.bCleared) break;
             if (!bOverGasLimit && gasLimit <= gasleft() + CLOSE_GAS_LIMIT) {
@@ -425,16 +418,14 @@ contract AuctionUpgradeable is EIP2535Initializable, ReentrancyGuardUpgradeable 
             } else {
                 // it allows the calculation for gas limit done only one time
                 if (!bOverGasLimit) bOverGasLimit = true;
-                if (bid.bidAmount >= reserve) {
-                    payoutAmounts[bid.bidTokenId] +=
-                        (bid.paidAmount * (bid.bidAmount - reserve)) /
-                        bid.bidAmount;
+                if (bid.bidAmount > reserve) {
+                    payoutAmounts[bid.bidTokenId] += (bid.paidAmount * reserve) / bid.bidAmount;
                     reserve = 0;
                 } else {
+                    payoutAmounts[bid.bidTokenId] += bid.paidAmount;
                     unchecked {
                         reserve -= bid.bidAmount;
                     }
-                    payoutAmounts[bid.bidTokenId] += bid.paidAmount;
                 }
             }
             unchecked {

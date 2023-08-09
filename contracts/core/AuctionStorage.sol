@@ -54,8 +54,6 @@ struct AuctionSetting {
     uint128 incrementBidPrice;
     // bid token group id
     uint16 bidTokenGroupId;
-    // maximum number of winners
-    uint8 maxWinners;
     // auction type
     AuctionType auctionType;
 }
