@@ -47,6 +47,7 @@ contract AuctionUpgradeable is EIP2535Initializable, ReentrancyGuardUpgradeable 
     error NoAuctioneer();
     error NoIdleAuction();
     error InvalidPurchaseAmount();
+    error InvalidIncrementBidPrice();
     // bid and buy
     error LowBid();
     error OverPriceBid();
@@ -116,6 +117,10 @@ contract AuctionUpgradeable is EIP2535Initializable, ReentrancyGuardUpgradeable 
         if (auctionSetting.priceRangeStart > auctionSetting.priceRangeEnd) revert InvalidEndPrice();
         if (auctionSetting.startTime == 0) auctionSetting.startTime = uint48(block.timestamp);
         else if (auctionSetting.startTime < block.timestamp) revert InvalidStartTime();
+        if (
+            auctionSetting.incrementBidPrice == 0 ||
+            auctionSetting.incrementBidPrice >= auctionSetting.priceRangeStart * 10
+        ) revert InvalidIncrementBidPrice();
         auctionSetting.endTime = auctionSetting.startTime + auctionStorage.periods[periodId];
         uint256 auctionId = auctionStorage.currentAuctionId + 1;
         // receive auction asset
