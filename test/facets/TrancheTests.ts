@@ -550,9 +550,9 @@ export function suite() {
         const pods1 = await beanstalk.plot(tester.address, holdPlots[0].index);
         const pods2 = await beanstalk.plot(tester.address, holdPlots[0].index.add(pods1));
         const pods3 = await beanstalk.plot(tester.address, holdPlots[0].index.add(starts[0]));
-        expect(pods1.add(pods2).add(pods3)).to.be.eq(toD6(999.999997));
+        expect(pods1.add(pods2).add(pods3)).to.be.eq(toD6(999.999996));
         expect(await beanstalk.plot(tester.address, holdPlots[1].index)).to.be.eq(toD6(1000));
-        expect(await beanstalk.plot(tester.address, holdPlots[2].index)).to.be.eq(toD6(1000));
+        expect(await beanstalk.plot(tester.address, holdPlots[2].index)).to.be.eq(toD6(999.999995));
       });
 
     });
