@@ -304,11 +304,11 @@ export function suite() {
         // this transction cancels 24 low bids when max gas limit is 500_000
         await auctionContract.connect(owner).placeBid(3, toWei(50), 0, toWei(0.8), false);
         auction = await auctionContract.getAuction(3);
-        expect(auction.totalBidAmount).to.be.eq(toWei(125.5));
-        expect(auction.availableBidDepth).to.be.eq(76);
+        expect(auction.totalBidAmount).to.be.eq(toWei(126.5));
+        expect(auction.availableBidDepth).to.be.eq(77);
         expect(auction.curBidId).to.be.eq(502);
-        const lowestBid = await auctionContract.getBid(3, 502 - 75);
-        const highestCancelBid = await auctionContract.getBid(3, 502 - 76);
+        const lowestBid = await auctionContract.getBid(3, 502 - 76);
+        const highestCancelBid = await auctionContract.getBid(3, 502 - 77);
         expect(lowestBid.bCleared).to.be.eq(false);
         expect(highestCancelBid.bCleared).to.be.eq(true);
         await skipTime(86400 * 3);

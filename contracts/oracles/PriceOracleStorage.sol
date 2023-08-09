@@ -29,7 +29,8 @@ library PriceOracleStorage {
         mapping(address => OracleItem) oracleItems;
     }
 
-    bytes32 internal constant STORAGE_SLOT = keccak256("irrigation.contracts.storage.PriceOracle");
+    bytes32 internal constant STORAGE_SLOT =
+        bytes32(uint256(keccak256("irrigation.contracts.storage.PriceOracle")) - 1);
 
     function layout() internal pure returns (Layout storage l) {
         bytes32 slot = STORAGE_SLOT;

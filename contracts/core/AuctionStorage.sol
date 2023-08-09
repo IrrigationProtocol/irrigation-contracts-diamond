@@ -89,7 +89,7 @@ library AuctionStorage {
         mapping(uint256 => BidTokenGroup) bidTokenGroups;
         // count of bid token groups
         uint256 countOfTokenGroups;
-        // fee amount and fee receiver address        
+        // fee amount and fee receiver address
         uint256 feeNumerator;
         address feeReceiver;
         // deprecated
@@ -98,7 +98,8 @@ library AuctionStorage {
         uint48[] periods;
     }
 
-    bytes32 internal constant STORAGE_SLOT = keccak256("irrigation.contracts.storage.Auction");
+    bytes32 internal constant STORAGE_SLOT =
+        bytes32(uint256(keccak256("irrigation.contracts.storage.Auction")) - 1);
 
     function layout() internal pure returns (Layout storage ls) {
         bytes32 slot = STORAGE_SLOT;

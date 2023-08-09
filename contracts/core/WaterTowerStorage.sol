@@ -38,7 +38,6 @@ library WaterTowerStorage {
         mapping(uint256 => PoolInfo) pools;
         // deposit amount, pending reward, and setting for user
         mapping(address => UserInfo) users;
-
         /// @dev config variables
         // bonus percent for irrigator
         uint256 irrigateBonusRate;
@@ -46,7 +45,8 @@ library WaterTowerStorage {
         address middleAssetForIrrigate;
     }
 
-    bytes32 internal constant STORAGE_SLOT = keccak256("irrigation.contracts.storage.WaterTower");
+    bytes32 internal constant STORAGE_SLOT =
+        bytes32(uint256(keccak256("irrigation.contracts.storage.WaterTower")) - 1);
 
     function layout() internal pure returns (Layout storage l) {
         bytes32 slot = STORAGE_SLOT;

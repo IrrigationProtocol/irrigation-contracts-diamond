@@ -8,15 +8,16 @@ library ZSCStorage {
         address tokenAddress;
         uint256 fee;
         uint256 epochLength;
-        mapping(bytes32 => Utils.G1Point[2]) acc;       // main account mapping
-        mapping(bytes32 => Utils.G1Point[2]) pending;   // storage for pending transfers
+        mapping(bytes32 => Utils.G1Point[2]) acc; // main account mapping
+        mapping(bytes32 => Utils.G1Point[2]) pending; // storage for pending transfers
         mapping(bytes32 => uint256) lastRollOver;
-        bytes32[] nonceSet;                             // would be more natural to use a mapping, but they can't be deleted / reset!
-        uint256 lastGlobalUpdate;                       // will be also used as a proxy for "current epoch", seeing as rollovers will be anticipated
+        bytes32[] nonceSet; // would be more natural to use a mapping, but they can't be deleted / reset!
+        uint256 lastGlobalUpdate; // will be also used as a proxy for "current epoch", seeing as rollovers will be anticipated
         // not implementing account locking for now...revisit
     }
 
-    bytes32 internal constant STORAGE_SLOT = keccak256("irrigation.contracts.storage.ZSC");
+    bytes32 internal constant STORAGE_SLOT =
+        bytes32(uint256(keccak256("irrigation.contracts.storage.ZSC")) - 1);
 
     function layout() internal pure returns (Layout storage ls) {
         bytes32 slot = STORAGE_SLOT;
