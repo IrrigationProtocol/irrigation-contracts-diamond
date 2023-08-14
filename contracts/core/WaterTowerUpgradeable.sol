@@ -39,7 +39,7 @@ contract WaterTowerUpgradeable is
     error InsufficientEther();
 
     uint256 internal constant IRRIGATE_BONUS_DOMINATOR = 100;
-    uint256 internal constant AUTOIRRIGATE_GASLIMIT = 870200;
+    uint256 internal constant AUTOIRRIGATE_GASLIMIT = 877100;
     uint256 internal constant POOL_PERIOD = 30 days;
 
     function initWaterTower() external EIP2535Initializer onlySuperAdminRole {
@@ -84,12 +84,41 @@ contract WaterTowerUpgradeable is
         uint256 rewardAmount,
         uint256 minSwapAmount
     ) external onlySuperAdminRole {
-        if (!WaterTowerStorage.layout().users[user].isAutoIrrigate) revert NotAutoIrrigate();
-        _irrigate(user, rewardAmount, minSwapAmount);
         /// @dev gas fee is paid based on precalculated gasLimit(870200)
         uint256 gasFee = AUTOIRRIGATE_GASLIMIT * tx.gasprice;
-        WaterTowerStorage.layout().users[user].pending -= gasFee;
+        _autoIrrigate(user, rewardAmount, minSwapAmount, gasFee);
+        (bool success, ) = msg.sender.call{value: gasFee}("");
+        if (!success) revert InsufficientBalance();
         emit AutoIrrigate(user, rewardAmount, gasFee);
+    }
+
+    function _autoIrrigate(
+        address userAddress,
+        uint256 rewardAmount,
+        uint256 minSwapAmount,
+        uint256 gasFee
+    ) internal {
+        UserInfo storage user = WaterTowerStorage.layout().users[userAddress];
+        if (!user.isAutoIrrigate) revert NotAutoIrrigate();
+        _irrigate(userAddress, rewardAmount, minSwapAmount);
+        user.pending -= gasFee;
+    }
+
+    function batchAutoIrrigate(
+        address[] calldata users,
+        uint256[] calldata rewardAmounts,
+        uint256[] calldata minSwapAmounts
+    ) external onlySuperAdminRole {
+        /// @dev gas fee is paid based on precalculated gasLimit(870200)
+        uint256 gasFee = AUTOIRRIGATE_GASLIMIT * tx.gasprice;
+        for (uint256 i; i < users.length; ) {
+            _autoIrrigate(users[i], rewardAmounts[i], minSwapAmounts[i], gasFee);
+            unchecked {
+                ++i;
+            }
+        }
+        (bool success, ) = msg.sender.call{value: gasFee * users.length}("");
+        if (!success) revert InsufficientBalance();
     }
 
     function setAutoIrrigate(bool bAutoIrrigate) public {
@@ -118,8 +147,7 @@ contract WaterTowerUpgradeable is
                     (_userInfo.rewardRate * lastPoolInfo.monthlyRewards) /
                     lastPoolInfo.totalRewardRate;
             }
-            uint256 userRewardRate = WaterTowerStorage.userInfo(user).amount *
-                (poolInfo.endTime - block.timestamp);
+            uint256 userRewardRate = _userInfo.amount * (poolInfo.endTime - block.timestamp);
             _userInfo.lastPoolIndex = curPoolIndex;
             /// @dev if user deposit in last month, reward rate is increased
             ///      and if there is no deposit for user, reward rate start from 0
@@ -163,26 +191,28 @@ contract WaterTowerUpgradeable is
     }
 
     function _deposit(address user, uint amount) internal {
-        uint256 curPoolIndex = WaterTowerStorage.layout().curPoolIndex;
-        PoolInfo memory poolInfo = WaterTowerStorage.layout().pools[curPoolIndex];
+        WaterTowerStorage.Layout storage l = WaterTowerStorage.layout();
+        uint256 curPoolIndex = l.curPoolIndex;
+        PoolInfo memory poolInfo = l.pools[curPoolIndex];
         _updateUserPool(user, poolInfo, curPoolIndex);
-        WaterTowerStorage.layout().users[user].amount += amount;
+        l.users[user].amount += amount;
         uint256 rewardRate = amount * (poolInfo.endTime - block.timestamp);
-        WaterTowerStorage.layout().users[user].rewardRate += rewardRate;
-        WaterTowerStorage.layout().pools[curPoolIndex].totalRewardRate += rewardRate;
-        WaterTowerStorage.layout().totalDeposits += amount;
+        l.users[user].rewardRate += rewardRate;
+        l.pools[curPoolIndex].totalRewardRate += rewardRate;
+        l.totalDeposits += amount;
         emit Deposited(user, amount);
     }
 
     function _withdraw(address user, uint amount) internal {
-        uint256 curPoolIndex = WaterTowerStorage.layout().curPoolIndex;
-        PoolInfo memory poolInfo = WaterTowerStorage.layout().pools[curPoolIndex];
+        WaterTowerStorage.Layout storage l = WaterTowerStorage.layout();
+        uint256 curPoolIndex = l.curPoolIndex;
+        PoolInfo memory poolInfo = l.pools[curPoolIndex];
         _updateUserPool(user, poolInfo, curPoolIndex);
-        WaterTowerStorage.layout().users[user].amount -= amount;
+        l.users[user].amount -= amount;
         uint256 rewardRate = amount * (poolInfo.endTime - block.timestamp);
-        WaterTowerStorage.layout().users[user].rewardRate -= rewardRate;
-        WaterTowerStorage.layout().pools[curPoolIndex].totalRewardRate -= rewardRate;
-        WaterTowerStorage.layout().totalDeposits -= amount;
+        l.users[user].rewardRate -= rewardRate;
+        l.pools[curPoolIndex].totalRewardRate -= rewardRate;
+        l.totalDeposits -= amount;
         emit Withdrawn(user, amount);
     }
 
