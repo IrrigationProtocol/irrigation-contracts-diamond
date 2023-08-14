@@ -138,9 +138,9 @@ export async function initPriceOracles(priceOracle: PriceOracleUpgradeable) {
 export async function initSprinkler(sprinkler: SprinklerUpgradeable) {
   for (const address of whitelist) {
     await sprinkler.addAssetToWhiteList(address, 0);
-    const waterToken = await ethers.getContractAt('WaterUpgradeable', sprinkler.address);
-    await waterToken.approve(sprinkler.address, toWei(10_000));
   }
+  const waterToken = await ethers.getContractAt('WaterUpgradeable', sprinkler.address);
+  await waterToken.approve(sprinkler.address, toWei(10_000));
   await sprinkler.depositWater(toWei(10_000));
 }
 
@@ -149,7 +149,8 @@ export async function initWaterTower(waterTower: WaterTowerUpgradeable) {
   // added bonus for irrigating is 5%
   await waterTower.setIrrigateBonusRate(5);
   // calculate month end
-  let date = new Date();
+  const curTimestamp = (await ethers.provider.getBlock('latest')).timestamp;
+  let date = new Date(curTimestamp * 1000);
   date.setMonth(date.getMonth() + 1);
   date.setDate(0);
   await waterTower.setPool(Math.floor(date.getTime() / 1000), 0);
