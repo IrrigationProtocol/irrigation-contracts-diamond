@@ -84,6 +84,18 @@ export function getSelectors(
   return selectors;
 }
 
+// get function errors and signatures from contract
+export function getErrors(
+  contract: Contract
+): any {
+  const signatures = Object.keys(contract.interface.errors);
+  const values = signatures.map((error) => {
+    const sig = contract.interface.getSighash(error);
+    return { error, sig };
+  });
+  return values;
+}
+
 // find a particular address position in the return value of diamondLoupeFacet.facets()
 export function findAddressPositionInFacets(
   facetAddress: string,
@@ -99,8 +111,8 @@ export function findAddressPositionInFacets(
 export function getInterfaceID(contractInterface: utils.Interface) {
   let interfaceID: BigNumber = ethers.constants.Zero;
   const functions: string[] = Object.keys(contractInterface.functions);
-  for (let i=0; i< functions.length; i++) {
-      interfaceID = interfaceID.xor(contractInterface.getSighash(functions[i]));
+  for (let i = 0; i < functions.length; i++) {
+    interfaceID = interfaceID.xor(contractInterface.getSighash(functions[i]));
   }
 
   return interfaceID;
@@ -114,11 +126,11 @@ export async function getDeployedFuncSelectors(networkDeployInfo: INetworkDeploy
   const deployedContractFuncSelectors: Record<string, string[]> = {};
   let diamondLoupe: DiamondLoupeFacet | undefined;
   if (networkDeployInfo.FacetDeployedInfo["DiamondLoupeFacet"]?.address &&
-      networkDeployInfo.FacetDeployedInfo["DiamondLoupeFacet"].funcSelectors &&
-          networkDeployInfo.FacetDeployedInfo["DiamondLoupeFacet"].funcSelectors.length > 0) {
+    networkDeployInfo.FacetDeployedInfo["DiamondLoupeFacet"].funcSelectors &&
+    networkDeployInfo.FacetDeployedInfo["DiamondLoupeFacet"].funcSelectors.length > 0) {
     const factory = await ethers.getContractFactory("DiamondLoupeFacet")
     diamondLoupe = factory.attach(networkDeployInfo.DiamondAddress) as DiamondLoupeFacet;
-    const deployedFacets = await diamondLoupe.facets({ gasLimit: 2000000});
+    const deployedFacets = await diamondLoupe.facets({ gasLimit: 2000000 });
     for (const facetDeployedInfo of deployedFacets) {
       for (const facetIndex of facetDeployedInfo.functionSelectors) {
         deployedFuncSelectors[facetIndex] = facetDeployedInfo.facetAddress;
@@ -130,7 +142,7 @@ export async function getDeployedFuncSelectors(networkDeployInfo: INetworkDeploy
     const facetInfo = networkDeployInfo.FacetDeployedInfo[contractName];
     // make sure these were really deployed using louper
     if (diamondLoupe && facetInfo.address) {
-      facetInfo.funcSelectors = await diamondLoupe.facetFunctionSelectors(facetInfo.address,{ gasLimit: 2000000});
+      facetInfo.funcSelectors = await diamondLoupe.facetFunctionSelectors(facetInfo.address, { gasLimit: 2000000 });
       deployedContractFuncSelectors[contractName] = facetInfo.funcSelectors;
     } else if (facetInfo.funcSelectors) {
       deployedContractFuncSelectors[contractName] = facetInfo.funcSelectors;
@@ -140,5 +152,5 @@ export async function getDeployedFuncSelectors(networkDeployInfo: INetworkDeploy
     }
   }
 
-  return Promise.resolve({ facets: deployedFuncSelectors, contractFacets: deployedContractFuncSelectors} );
+  return Promise.resolve({ facets: deployedFuncSelectors, contractFacets: deployedContractFuncSelectors });
 }

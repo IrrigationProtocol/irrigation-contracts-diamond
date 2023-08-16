@@ -261,6 +261,20 @@ export function suite() {
         ).to.be.revertedWithCustomError(auctionContract, 'NoListTrancheZ');
       });
 
+      it('Test Auction for not minted tranche nft should be failed ', async () => {
+        // 4 is deposit id and tranche nft for id 4 is not minted
+        await expect(
+          auctionContract.createAuction({
+            ...defaultAuctionSetting,
+            sellAmount: 1000,
+            minBidAmount: 10,
+            trancheIndex: 4
+          }, 1,
+            { value: toWei(0.01) }
+          ),
+        ).to.be.revertedWith('ERC1155: caller is not token owner or approved');
+      });
+
       it('Test Tranche Auction create', async () => {
         let trancheId = 6;
         let trNftBalance = await trancheCollection.balanceOf(owner.address, trancheId);
