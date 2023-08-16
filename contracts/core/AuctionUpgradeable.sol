@@ -103,6 +103,7 @@ contract AuctionUpgradeable is EIP2535Initializable, ReentrancyGuardUpgradeable 
     uint256 internal constant CLOSE_GAS_LIMIT = 180000;
     uint256 internal constant D30 = 1e30;
     uint256 internal constant MINBID_FACTOR = 100;
+    uint256 internal constant INCREMENTBID_FACTOR = 2;
 
     function createAuction(AuctionSetting memory auctionSetting, uint8 periodId) external payable {
         AuctionStorage.Layout storage auctionStorage = AuctionStorage.layout();
@@ -114,12 +115,16 @@ contract AuctionUpgradeable is EIP2535Initializable, ReentrancyGuardUpgradeable 
             auctionSetting.minBidAmount < auctionSetting.sellAmount / MINBID_FACTOR ||
             auctionSetting.minBidAmount > auctionSetting.sellAmount
         ) revert InvalidMinBidAmount();
+        if (auctionSetting.sellAmount == 0) revert InvalidAuctionAmount();
         if (auctionSetting.priceRangeStart > auctionSetting.priceRangeEnd) revert InvalidEndPrice();
         if (auctionSetting.startTime == 0) auctionSetting.startTime = uint48(block.timestamp);
-        else if (auctionSetting.startTime < block.timestamp) revert InvalidStartTime();
+        else if (
+            auctionSetting.startTime < block.timestamp ||
+            auctionSetting.startTime > block.timestamp + 30 days
+        ) revert InvalidStartTime();
         if (
             auctionSetting.incrementBidPrice == 0 ||
-            auctionSetting.incrementBidPrice >= auctionSetting.priceRangeStart * 10
+            auctionSetting.incrementBidPrice * INCREMENTBID_FACTOR > auctionSetting.priceRangeStart
         ) revert InvalidIncrementBidPrice();
         auctionSetting.endTime = auctionSetting.startTime + auctionStorage.periods[periodId];
         uint256 auctionId = auctionStorage.currentAuctionId + 1;

@@ -19,6 +19,7 @@ import { CONTRACT_ADDRESSES } from '../../scripts/shared';
 import { skipTime } from '../utils/time';
 import { AuctionSetting, Bid } from '../utils/interface';
 import { time } from '@nomicfoundation/hardhat-network-helpers';
+import { getCurrentTime } from '../utils';
 
 export function suite() {
   describe('Irrigation Auction Testing', async function () {
@@ -134,7 +135,10 @@ export function suite() {
         await expect(auctionContract.createAuction({ ...defaultAuctionSetting, minBidAmount: 0 }, 1)).to.be.revertedWithCustomError(auctionContract, 'InvalidMinBidAmount');
         await expect(auctionContract.createAuction({ ...defaultAuctionSetting, minBidAmount: toWei(1000) }, 1)).to.be.revertedWithCustomError(auctionContract, 'InvalidMinBidAmount');
         await expect(auctionContract.createAuction({ ...defaultAuctionSetting, startTime: 10000 }, 1)).to.be.revertedWithCustomError(auctionContract, 'InvalidStartTime');
+        await expect(auctionContract.createAuction({ ...defaultAuctionSetting, startTime: (await getCurrentTime()).add(86400 * 31) }, 1)).to.be.revertedWithCustomError(auctionContract, 'InvalidStartTime');
         await expect(auctionContract.createAuction({ ...defaultAuctionSetting, incrementBidPrice: 0 }, 1)).to.be.revertedWithCustomError(auctionContract, 'InvalidIncrementBidPrice');
+        await expect(auctionContract.createAuction({ ...defaultAuctionSetting, incrementBidPrice: defaultAuctionSetting.priceRangeStart.div(2).add(1) }, 1)).to.be.revertedWithCustomError(auctionContract, 'InvalidIncrementBidPrice');
+        await expect(auctionContract.createAuction({ ...defaultAuctionSetting, sellAmount: 0, minBidAmount: 0 }, 1)).to.be.revertedWithCustomError(auctionContract, 'InvalidAuctionAmount');
       });
     });
 
@@ -287,7 +291,7 @@ export function suite() {
 
     describe('#max bidders', async function () {
       it('Test Auction with 500 bids and winners 50', async () => {
-        let tx = await auctionContract.createAuction({ ...defaultAuctionSetting, auctionType: AuctionType.TimedAuction/* , maxWinners: 255  */ }, 1);
+        let tx = await auctionContract.createAuction({ ...defaultAuctionSetting, auctionType: AuctionType.TimedAuction }, 1);
         await dai.transfer(sender.address, toWei(600));
         await dai.connect(sender).approve(auctionContract.address, toWei(600));
         for (let i = 0; i < 500; i++) {
