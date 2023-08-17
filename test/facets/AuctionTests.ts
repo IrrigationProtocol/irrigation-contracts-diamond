@@ -75,7 +75,6 @@ export function suite() {
         reserve: toWei(0),
         incrementBidPrice: toWei(0.00001),
         bidTokenGroupId: 0,
-        maxWinners: 5,
         auctionType: AuctionType.FixedPrice,
         periodId: 1
       };
@@ -136,9 +135,10 @@ export function suite() {
         await expect(auctionContract.createAuction({ ...defaultAuctionSetting, minBidAmount: toWei(1000) }, 1)).to.be.revertedWithCustomError(auctionContract, 'InvalidMinBidAmount');
         await expect(auctionContract.createAuction({ ...defaultAuctionSetting, startTime: 10000 }, 1)).to.be.revertedWithCustomError(auctionContract, 'InvalidStartTime');
         await expect(auctionContract.createAuction({ ...defaultAuctionSetting, startTime: (await getCurrentTime()).add(86400 * 31) }, 1)).to.be.revertedWithCustomError(auctionContract, 'InvalidStartTime');
-        await expect(auctionContract.createAuction({ ...defaultAuctionSetting, incrementBidPrice: 0 }, 1)).to.be.revertedWithCustomError(auctionContract, 'InvalidIncrementBidPrice');
-        await expect(auctionContract.createAuction({ ...defaultAuctionSetting, incrementBidPrice: defaultAuctionSetting.priceRangeStart.div(2).add(1) }, 1)).to.be.revertedWithCustomError(auctionContract, 'InvalidIncrementBidPrice');
         await expect(auctionContract.createAuction({ ...defaultAuctionSetting, sellAmount: 0, minBidAmount: 0 }, 1)).to.be.revertedWithCustomError(auctionContract, 'InvalidAuctionAmount');
+        await expect(auctionContract.createAuction({ ...defaultAuctionSetting, auctionType: AuctionType.TimedAuction, incrementBidPrice: 0, }, 1)).to.be.revertedWithCustomError(auctionContract, 'InvalidIncrementBidPrice');
+        await expect(auctionContract.createAuction({ ...defaultAuctionSetting, auctionType: AuctionType.TimedAuction, incrementBidPrice: defaultAuctionSetting.priceRangeStart.div(2).add(1) }, 1)).to.be.revertedWithCustomError(auctionContract, 'InvalidIncrementBidPrice');
+        await expect(auctionContract.createAuction({ ...defaultAuctionSetting, auctionType: AuctionType.TimedAuction, priceRangeEnd: 0 }, 1)).to.be.revertedWithCustomError(auctionContract, 'InvalidEndPrice');
       });
     });
 
@@ -261,9 +261,10 @@ export function suite() {
           ...defaultAuctionSetting,
           minBidAmount: toWei(1),
           fixedPrice: toWei(5),
-          priceRangeStart: toWei(2),
-          priceRangeEnd: toWei(10),
-          incrementBidPrice: toWei(0.001),
+          priceRangeStart: toWei(0),
+          priceRangeEnd: toWei(0),
+          incrementBidPrice: toWei(0),
+          auctionType: AuctionType.FixedPrice,
         }, 1);
         expect(tx).to.emit(auctionContract, 'AuctionCreated');
 
@@ -286,6 +287,13 @@ export function suite() {
         await dai.transfer(sender.address, toWei(50));
         await dai.connect(sender).approve(auctionContract.address, toWei(50));
         await auctionContract.connect(sender).buyNow(2, toWei(1), 0);
+      });
+      it('Bidding on fixed price auction should be failed', async () => {
+        await expect(auctionContract.placeBid(2, toWei(1), 0, toWei(1), false)).revertedWithCustomError(auctionContract, 'InvalidAuction');
+      });
+      it('Close auction with fixed price', async () => {
+        await skipTime(3 * 86400);
+        await auctionContract.closeAuction(2);
       });
     });
 
@@ -395,11 +403,24 @@ export function suite() {
       it('update auction before bidding', async () => {
         await expect(auctionContract.updateAuction(5, 0, 0, 0)).to.be.revertedWithCustomError(auctionContract, 'NoAuctioneer');
         await expect(auctionContract.updateAuction(3, 0, 0, 0)).to.be.revertedWithCustomError(auctionContract, 'NoIdleAuction');
-        let tx = await auctionContract.createAuction({ ...defaultAuctionSetting, maxWinners: 255, auctionType: AuctionType.TimedAuction }, 1);
+        await auctionContract.createAuction({ ...defaultAuctionSetting, auctionType: AuctionType.TimedAuction }, 1);
         await expect(auctionContract.connect(sender).updateAuction(4, 0, 0, 0)).to.be.revertedWithCustomError(auctionContract, 'NoAuctioneer');
+        // update minBidAmount
         await auctionContract.updateAuction(4, toWei(1.1), 0, 0);
         let updatedAuction = await auctionContract.getAuction(4);
         expect(updatedAuction.s.minBidAmount).to.be.eq(toWei(1.1));
+        // update start price
+        await auctionContract.updateAuction(4, toWei(1.1), toWei(0.4) , 0);
+        updatedAuction = await auctionContract.getAuction(4);
+        expect(updatedAuction.s.priceRangeStart).to.be.eq(toWei(0.4));
+        // update increment price
+        await auctionContract.updateAuction(4, toWei(1.1), 0 , toWei(0.0065));
+        updatedAuction = await auctionContract.getAuction(4);
+        expect(updatedAuction.s.incrementBidPrice).to.be.eq(toWei(0.0065));       
+        // don't update increment price because it is not in available range
+        await auctionContract.updateAuction(4, toWei(1.1), 0 , toWei(10));
+        updatedAuction = await auctionContract.getAuction(4);
+        expect(updatedAuction.s.incrementBidPrice).to.be.eq(toWei(0.0065));
         await auctionContract.connect(secondBidder).placeBid(4, toWei(1.1), 0, 0, false);
         await expect(auctionContract.updateAuction(4, 0, 0, 0)).to.be.revertedWithCustomError(auctionContract, 'NoIdleAuction');
       });
