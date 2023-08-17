@@ -39,7 +39,6 @@ contract AuctionUpgradeable is EIP2535Initializable, ReentrancyGuardUpgradeable 
     error InvalidMinBidAmount();
     error InvalidEndPrice();
     error InvalidSellToken();
-    error InvalidMaxWinners();
     error NoClosedAuction();
     error NoAuction();
     error InvalidAuction();
@@ -116,16 +115,22 @@ contract AuctionUpgradeable is EIP2535Initializable, ReentrancyGuardUpgradeable 
             auctionSetting.minBidAmount > auctionSetting.sellAmount
         ) revert InvalidMinBidAmount();
         if (auctionSetting.sellAmount == 0) revert InvalidAuctionAmount();
-        if (auctionSetting.priceRangeStart > auctionSetting.priceRangeEnd) revert InvalidEndPrice();
+
+        if (auctionSetting.auctionType != AuctionType.FixedPrice) {
+            if (auctionSetting.priceRangeStart > auctionSetting.priceRangeEnd)
+                revert InvalidEndPrice();
+            if (
+                auctionSetting.incrementBidPrice == 0 ||
+                auctionSetting.incrementBidPrice * INCREMENTBID_FACTOR >
+                auctionSetting.priceRangeStart
+            ) revert InvalidIncrementBidPrice();
+        }
+
         if (auctionSetting.startTime == 0) auctionSetting.startTime = uint48(block.timestamp);
         else if (
             auctionSetting.startTime < block.timestamp ||
             auctionSetting.startTime > block.timestamp + 30 days
         ) revert InvalidStartTime();
-        if (
-            auctionSetting.incrementBidPrice == 0 ||
-            auctionSetting.incrementBidPrice * INCREMENTBID_FACTOR > auctionSetting.priceRangeStart
-        ) revert InvalidIncrementBidPrice();
         auctionSetting.endTime = auctionSetting.startTime + auctionStorage.periods[periodId];
         uint256 auctionId = auctionStorage.currentAuctionId + 1;
         // receive auction asset
@@ -187,13 +192,19 @@ contract AuctionUpgradeable is EIP2535Initializable, ReentrancyGuardUpgradeable 
 
         if (priceRangeStart > auction.s.priceRangeEnd) revert InvalidEndPrice();
 
-        if (minBidAmount != 0 && minBidAmount <= auction.s.sellAmount)
-            auctionStorage.auctions[auctionId].s.minBidAmount = minBidAmount;
+        if (
+            auction.s.minBidAmount >= auction.s.sellAmount / MINBID_FACTOR &&
+            minBidAmount <= auction.s.sellAmount
+        ) auctionStorage.auctions[auctionId].s.minBidAmount = minBidAmount;
+
         if (priceRangeStart != 0)
             auctionStorage.auctions[auctionId].s.priceRangeStart = priceRangeStart;
-        // once incrementBidPrice is set into no-zero value, it can't be updated into zero
-        if (incrementBidPrice != 0)
-            auctionStorage.auctions[auctionId].s.incrementBidPrice = incrementBidPrice;
+        if (
+            incrementBidPrice != 0 &&
+            incrementBidPrice * INCREMENTBID_FACTOR <=
+            auctionStorage.auctions[auctionId].s.priceRangeStart
+        ) auctionStorage.auctions[auctionId].s.incrementBidPrice = incrementBidPrice;
+
         emit AuctionUpdate(auctionId, minBidAmount, priceRangeStart, incrementBidPrice);
     }
 
