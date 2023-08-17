@@ -21,9 +21,7 @@ export interface AuctionData {
     // sum of bidAmounts of bidders
     totalBidAmount: BigNumber;
     bidTokenGroupId: number;
-    maxWinners: number;
     // bids in [id = curBidId + 1 - availableBidDepth, curBidId] are winners
-    // availableBidDepth <= maxWinners
     availableBidDepth: number;
     status: number;
     auctionType: number;    
@@ -47,7 +45,6 @@ export interface AuctionSetting {
     incrementBidPrice: BigNumber;
     endTime: number;
     bidTokenGroupId: number;
-    maxWinners: number;
     auctionType: number;
     periodId: number;
 }
