@@ -236,7 +236,9 @@ export async function deployFuncSelectors(
   // upgrade diamond with facets
   log('');
   log('Diamond Cut:', cut);
-  const diamondCut = dc.IrrigationDiamond as IDiamondCut;
+  let diamondCut = dc.IrrigationDiamond as IDiamondCut;
+  // when upgrading, gets DiamondCutFacet interface from address
+  if(!diamondCut) diamondCut = await ethers.getContractAt('DiamondCutFacet', networkDeployInfo.DiamondAddress);
 
   for (const facetCutInfo of cut) {
     const contract = dc[facetCutInfo.name]!;
@@ -321,31 +323,33 @@ export async function deployAndInitDiamondFacets(
 }
 
 export async function deployExternalLibraries(networkDeployedInfo: INetworkDeployInfo) {
-  const innerVerifierContract = await ethers.getContractFactory('InnerVerifier');
-  const innerVerifier = await innerVerifierContract.deploy();
-  const burnVerifierContract = await ethers.getContractFactory('BurnVerifier', {
-    libraries: {
-      InnerVerifier: innerVerifier.address,
-    },
-  });
-  const burnVerifier = await burnVerifierContract.deploy();
-  const zetherVerifierContract = await ethers.getContractFactory('ZetherVerifier', {
-    libraries: {
-      InnerVerifier: innerVerifier.address,
-    },
-  });
-  const zetherVerifier = await zetherVerifierContract.deploy();
-  const LibEncryptionContract = await ethers.getContractFactory('libEncryption');
-  const libEncryption = await LibEncryptionContract.deploy();
-
   const uniswapV3TwapContract = await ethers.getContractFactory('UniswapV3Twap');
   const uniswapV3Twap = await uniswapV3TwapContract.deploy();
-
   networkDeployedInfo.ExternalLibraries = {};
-  networkDeployedInfo.ExternalLibraries['BurnVerifier'] = burnVerifier.address;
-  networkDeployedInfo.ExternalLibraries['ZetherVerifier'] = zetherVerifier.address;
-  networkDeployedInfo.ExternalLibraries['libEncryption'] = libEncryption.address;
   networkDeployedInfo.ExternalLibraries['UniswapV3Twap'] = uniswapV3Twap.address;
+  /**
+   * @dev we don't deploy zk utility contracts in version 1.0
+   */  
+  // const innerVerifierContract = await ethers.getContractFactory('InnerVerifier');
+  // const innerVerifier = await innerVerifierContract.deploy();
+  // const burnVerifierContract = await ethers.getContractFactory('BurnVerifier', {
+  //   libraries: {
+  //     InnerVerifier: innerVerifier.address,
+  //   },
+  // });
+  // const burnVerifier = await burnVerifierContract.deploy();
+  // const zetherVerifierContract = await ethers.getContractFactory('ZetherVerifier', {
+  //   libraries: {
+  //     InnerVerifier: innerVerifier.address,
+  //   },
+  // });
+  // const zetherVerifier = await zetherVerifierContract.deploy();
+  // const LibEncryptionContract = await ethers.getContractFactory('libEncryption');
+  // const libEncryption = await LibEncryptionContract.deploy();
+
+  // networkDeployedInfo.ExternalLibraries['BurnVerifier'] = burnVerifier.address;
+  // networkDeployedInfo.ExternalLibraries['ZetherVerifier'] = zetherVerifier.address;
+  // networkDeployedInfo.ExternalLibraries['libEncryption'] = libEncryption.address;
 }
 
 export async function deployDiamondFacets(
