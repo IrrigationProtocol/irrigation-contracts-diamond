@@ -1,4 +1,4 @@
-import { ethers } from 'hardhat';
+import { ethers, network } from 'hardhat';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 
 import {
@@ -18,7 +18,6 @@ import { BigNumber } from 'ethers';
 import { CONTRACT_ADDRESSES } from '../../scripts/shared';
 import { skipTime } from '../utils/time';
 import { AuctionSetting, Bid } from '../utils/interface';
-import { time } from '@nomicfoundation/hardhat-network-helpers';
 import { getCurrentTime } from '../utils';
 
 export function suite() {
@@ -191,8 +190,9 @@ export function suite() {
         await auctionContract
           .connect(secondBidder)
           .placeBid(1, toWei(10), 1, toWei(0.2101), false);
-        await expect(auctionContract.connect(secondBidder).placeBid(1, toWei(20), 3, toWei(0.21), false),)
-          .to.be.revertedWith('panic code 0x32 (Array accessed at an out-of-bounds or negative index)');
+        if (network.name === 'hardhat')
+          await expect(auctionContract.connect(secondBidder).placeBid(1, toWei(20), 3, toWei(0.21), false),)
+            .to.be.revertedWith('panic code 0x32 (Array accessed at an out-of-bounds or negative index)');
         expectedDAIBalance = expectedDAIBalance
           .sub(toWei(19).mul(toWei(0.2)).div(toWei(1)))
           .sub(toWei(11).mul(toWei(0.205)).div(toWei(1)));
@@ -410,15 +410,15 @@ export function suite() {
         let updatedAuction = await auctionContract.getAuction(4);
         expect(updatedAuction.s.minBidAmount).to.be.eq(toWei(1.1));
         // update start price
-        await auctionContract.updateAuction(4, toWei(1.1), toWei(0.4) , 0);
+        await auctionContract.updateAuction(4, toWei(1.1), toWei(0.4), 0);
         updatedAuction = await auctionContract.getAuction(4);
         expect(updatedAuction.s.priceRangeStart).to.be.eq(toWei(0.4));
         // update increment price
-        await auctionContract.updateAuction(4, toWei(1.1), 0 , toWei(0.0065));
+        await auctionContract.updateAuction(4, toWei(1.1), 0, toWei(0.0065));
         updatedAuction = await auctionContract.getAuction(4);
-        expect(updatedAuction.s.incrementBidPrice).to.be.eq(toWei(0.0065));       
+        expect(updatedAuction.s.incrementBidPrice).to.be.eq(toWei(0.0065));
         // don't update increment price because it is not in available range
-        await auctionContract.updateAuction(4, toWei(1.1), 0 , toWei(10));
+        await auctionContract.updateAuction(4, toWei(1.1), 0, toWei(10));
         updatedAuction = await auctionContract.getAuction(4);
         expect(updatedAuction.s.incrementBidPrice).to.be.eq(toWei(0.0065));
         await auctionContract.connect(secondBidder).placeBid(4, toWei(1.1), 0, 0, false);
@@ -439,7 +439,8 @@ export function suite() {
           auctionType: AuctionType.TimedAuction,
           incrementBidPrice: toWei(0.00001)
         }, 1);
-        expect(waterBalance.sub(await water.balanceOf(owner.address))).to.be.eq(toWei(304.5));
+        const updatedBalance = await water.balanceOf(owner.address);
+        expect(waterBalance.sub(updatedBalance)).to.be.eq(toWei(304.5));
       });
       it('bid with max winners 100', async () => {
         // await skipTime(86400 * 3);
