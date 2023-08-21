@@ -335,5 +335,171 @@ export const deployments: { [key: string]: INetworkDeployInfo } = {
       libEncryption: '0xE2b5bDE7e80f89975f7229d78aD9259b2723d11F',
       UniswapV3Twap: '0xC6c5Ab5039373b0CBa7d0116d9ba7fb9831C3f42'
     }
+  },
+  local: {
+    DiamondAddress: '0x66765c83edd9042E4AAf45217902f709635e0466',
+    DeployerAddress: '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266',
+    FacetDeployedInfo: {
+      DiamondCutFacet: {
+        address: '0x021DBfF4A864Aa25c51F0ad2Cd73266Fde66199d',
+        tx_hash: '0xaf2754f75a7d820666732176403ec85114d21b39cabb6084271c4e8348035349',
+        version: 0,
+        funcSelectors: [ '0x1f931c1c' ]
+      },
+      DiamondLoupeFacet: {
+        address: '0x6DcBc91229d812910b54dF91b5c2b592572CD6B0',
+        tx_hash: '0xaa99a5f73c31aab573e2afee3667fd433fa227fd8bc12114f9c53f4044d5d708',
+        version: 0,
+        funcSelectors: [
+          '0xcdffacc6',
+          '0x52ef6b2c',
+          '0xadfca15e',
+          '0x7a0ed627',
+          '0x01ffc9a7'
+        ]
+      },
+      OwnershipFacet: {
+        address: '0x245e77E56b1514D77910c9303e4b44dDb44B788c',
+        tx_hash: '0xee24dd1741274b44ab9d1c4a23685469884c8bc48b7541251dd6769ee98dfe96',
+        version: 0,
+        funcSelectors: [ '0x8da5cb5b', '0xf2fde38b' ]
+      },
+      SprinklerUpgradeable: {
+        address: '0xE2b5bDE7e80f89975f7229d78aD9259b2723d11F',
+        tx_hash: '0xd9597767331903e220ea039c4f7738d147e8bf27ef0e2b663297a06c203a9102',
+        version: 0,
+        funcSelectors: [
+          '0xa217fddf', '0xf72c0d8b',
+          '0xa6b4fc9a', '0x0c427550',
+          '0xa09dc7a6', '0x51763ea0',
+          '0xb387ad93', '0x248a9ca3',
+          '0x9010d07c', '0xca15c873',
+          '0x4e2f37d5', '0xd01f63f5',
+          '0x2f2ff15d', '0x91d14854',
+          '0x36568abe', '0xd547741f',
+          '0x6f992a45', '0xd555fd78',
+          '0xb2dc23c3', '0x6b1f8ac5',
+          '0x01e33667'
+        ]
+      },
+      WaterCommonUpgradeable: {
+        address: '0xC6c5Ab5039373b0CBa7d0116d9ba7fb9831C3f42',
+        tx_hash: '0x05267ccf7d5dd15d5b643553250fc71a5d5d92bdf9a29c0dc6198d3c99ad9515',
+        version: 0,
+        funcSelectors: [ '0xab967b8d', '0x3a2b6901', '0x74c7c578' ]
+      },
+      WaterTowerUpgradeable: {
+        address: '0x4ea0Be853219be8C9cE27200Bdeee36881612FF2',
+        tx_hash: '0xf8aa96b80ecccf9f51c41ce3d0b570579d897dd2bd2dca11ceda0bb33c728913',
+        version: 0,
+        funcSelectors: [
+          '0x41f894ff', '0xc5e78556',
+          '0x23eb4574', '0x379607f5',
+          '0x9a408321', '0x775def35',
+          '0xeedb94a9', '0x22c14db9',
+          '0x2f380b35', '0xe627f2db',
+          '0x3904503f', '0xd0a2b314',
+          '0x62c799a9', '0x92eb6da5',
+          '0x297a5edf', '0x46430af1',
+          '0x7d882097', '0xe7d7f14d',
+          '0x1959a002', '0x2e1a7d4d'
+        ]
+      },
+      WaterUpgradeable: {
+        address: '0x46d4674578a2daBbD0CEAB0500c6c7867999db34',
+        tx_hash: '0xd7f84a14d7d3616b98b2902c2c1895d93b586fe946a1f2da8b6e57f9c9f4829f',
+        version: 0,
+        funcSelectors: [
+          '0xd6c5362e', '0xdd62ed3e',
+          '0x095ea7b3', '0x70a08231',
+          '0x313ce567', '0xa457c2d7',
+          '0x39509351', '0x06fdde03',
+          '0x95d89b41', '0x18160ddd',
+          '0xa9059cbb', '0x23b872dd'
+        ]
+      },
+      AuctionUpgradeable: {
+        address: '0x9155497EAE31D432C0b13dBCc0615a37f55a2c87',
+        tx_hash: '0x8638c5914ca514e0a92437415f1b99deaa2b9fbc24ffd12de37e88a2e1754d27',
+        version: 0,
+        funcSelectors: [
+          '0xd14228d3', '0xc34a7336',
+          '0x236ed8f3', '0x8f031880',
+          '0x78bd7935', '0x1031ca44',
+          '0xca039017', '0xe45c1879',
+          '0x582c7ffd', '0xa6523f8f',
+          '0x4c1cafc6', '0x808bf40c',
+          '0x76741bb9', '0x4c85ab91',
+          '0xe47fd1f1'
+        ]
+      },
+      PodsOracleUpgradeable: {
+        address: '0xfB12F7170FF298CDed84C793dAb9aBBEcc01E798',
+        tx_hash: '0x45f3c387c3cf0e3f0ca0605723a131007ce66e2ff1a3ce13cc80cc33c8a6eb67',
+        version: 0,
+        funcSelectors: [ '0xd8246d43', '0x42919ce3' ]
+      },
+      TrancheBondUpgradeable: {
+        address: '0xc1EeD9232A0A44c2463ACB83698c162966FBc78d',
+        tx_hash: '0xc5f31b25da2ad832f4346b26e6646c887c30ecd46b3109f9d9cc1a6e2993c93a',
+        version: 0,
+        funcSelectors: [
+          '0x3bf5e1e4',
+          '0xd6f5e33f',
+          '0xddd17fa9',
+          '0x1b20eaef',
+          '0x6f84303b',
+          '0xa8ff2cb5'
+        ]
+      },
+      ERC1155WhitelistUpgradeable: {
+        address: '0xC220Ed128102d888af857d137a54b9B7573A41b2',
+        tx_hash: '0x51ebc80b45796066e74997106c79f71c2cbec177e25aaf5f8179a1165b193f72',
+        version: 0,
+        funcSelectors: [
+          '0xd679ecf5', '0x96dd3397',
+          '0x00fdd58e', '0x4e1273f4',
+          '0xf5298aca', '0x6b20c454',
+          '0x9762b150', '0xe8a3d485',
+          '0x4f558e79', '0x3aebb682',
+          '0xe985e9c5', '0x3c1c30c5',
+          '0x731133e9', '0x1f7fdffa',
+          '0xbc197c81', '0xf23a6e61',
+          '0x15213188', '0x2eb2c2d6',
+          '0xf242432a', '0xa22cb465',
+          '0x938e3d7b', '0x8ef79e91',
+          '0xbd85b039', '0xa3d71180',
+          '0x0e89341c'
+        ]
+      },
+      PriceOracleUpgradeable: {
+        address: '0xfaE849108F2A63Abe3BaB17E21Be077d07e7a9A2',
+        tx_hash: '0x3857801d06b97cc788fbfd173b19233ab637e377de0ab69961e88eecc64cd41b',
+        version: 0,
+        funcSelectors: [
+          '0xea0129ca',
+          '0xd63c570b',
+          '0x41976e09',
+          '0x84a2ce13',
+          '0x7d848fec',
+          '0x09a8acb0',
+          '0x4680bab0'
+        ]
+      },
+      IrrigationControlUpgradeable: {
+        address: '0x840748F7Fd3EA956E5f4c88001da5CC1ABCBc038',
+        tx_hash: '0xa59386f6b4abdf68d231b8c56a426ec13d7868ba602c4d4d062c7a09f3e15831',
+        version: 1.1,
+        funcSelectors: [
+          '0xcb3597d8',
+          '0x54fdbe1a',
+          '0x49981ef5',
+          '0x3a46153e',
+          '0x733754e5'
+        ]
+      }
+    },
+    FactoryAddress: '0x14E7558B76569be517fD48441D8F83564AE5a780',
+    ExternalLibraries: { UniswapV3Twap: '0x447786d977Ea11Ad0600E193b2d07A06EfB53e5F' }
   }
 };

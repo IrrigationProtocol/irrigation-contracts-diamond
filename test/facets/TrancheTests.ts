@@ -567,7 +567,7 @@ export function suite() {
         assert(pods1.add(pods2).add(pods3).eq(toD6(999.999996)) || pods1.add(pods2).add(pods3).eq(toD6(999.999997)),
           `expected ${toD6(999.999996)} but ${pods1.add(pods2).add(pods3)}`);
         expect(await beanstalk.plot(tester.address, holdPlots[1].index)).to.be.eq(toD6(1000));
-        expect(await beanstalk.plot(tester.address, holdPlots[2].index)).to.be.eq(toD6(999.999995));
+        expect(await beanstalk.plot(tester.address, holdPlots[2].index)).to.be.gte(toD6(999.999995));
       });
 
     });

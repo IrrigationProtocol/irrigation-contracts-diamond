@@ -16,7 +16,7 @@ const log: debug.Debugger = debug("IrrigationUpgrade:log");
 // @ts-ignore
 log.color = "158";
 
-export async function GetUpdatedFacets (facetsDeployed: FacetDeployedInfo) : Promise<FacetToDeployInfo> {
+export async function GetUpdatedFacets(facetsDeployed: FacetDeployedInfo): Promise<FacetToDeployInfo> {
   const updatedFacetsToDeploy: FacetToDeployInfo = {};
 
   for (const name in Facets) {
@@ -25,7 +25,7 @@ export async function GetUpdatedFacets (facetsDeployed: FacetDeployedInfo) : Pro
   return updatedFacetsToDeploy;
 }
 
-async function attachIrrigationDiamond (networkDeployInfo: INetworkDeployInfo) {
+async function attachIrrigationDiamond(networkDeployInfo: INetworkDeployInfo) {
 
   // deploy DiamondCutFacet
   const DiamondCutFacet = await ethers.getContractFactory("DiamondCutFacet");
@@ -35,13 +35,11 @@ async function attachIrrigationDiamond (networkDeployInfo: INetworkDeployInfo) {
   const diamondAddress = networkDeployInfo.DiamondAddress;
   dc._IrrigationDiamond = (await ethers.getContractFactory("contracts/IrrigationDiamond.sol:IrrigationDiamond"))
     .attach(diamondAddress);
-  dc.IrrigationDiamond = (await ethers.getContractFactory("hardhat-diamond-abi/IrrigationDiamond.sol:IrrigationDiamond"))
-    .attach(diamondAddress);
 
   log(`Diamond attached ${diamondAddress}`);
 }
 
-async function main () {
+async function main() {
   // Hardhat always runs the compile task when running scripts with its command
   // line interface.
   //
