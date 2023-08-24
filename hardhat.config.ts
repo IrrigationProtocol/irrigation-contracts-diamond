@@ -11,6 +11,9 @@ import 'solidity-coverage';
 import '@nomiclabs/hardhat-ethers';
 import '@foundry-rs/hardhat-anvil';
 import '@nomiclabs/hardhat-web3';
+import { CONTRACT_ADDRESSES } from './scripts/shared';
+import { getPriceOfPods } from './test/utils/price';
+import { BigNumber } from 'ethers';
 
 dotenv.config();
 
@@ -23,6 +26,21 @@ task('accounts', 'Prints the list of accounts', async (taskArgs, hre) => {
     console.log(account.address);
   }
 });
+
+task('podIndex', 'Prints podIndex and harvestableIndex', async (taskArgs, hre) => {
+  const podContract = await hre.ethers.getContractAt('IBeanstalkUpgradeable', CONTRACT_ADDRESSES.BEANSTALK);
+  console.log('blockNumber:', await hre.ethers.provider.getBlockNumber());
+  console.log('podIndex:', (await podContract.podIndex()).toNumber(), 'harvestable:', (await podContract.harvestableIndex()).toNumber());
+});
+
+task('podsPrice', 'Prints calculated pods price', async (taskArgs: any, hre) => {
+  const podContract = await hre.ethers.getContractAt('IBeanstalkUpgradeable', CONTRACT_ADDRESSES.BEANSTALK);
+  console.log('blockNumber:', await hre.ethers.provider.getBlockNumber());
+  const podIndex = await podContract.podIndex();
+  const harvestableIndex = await podContract.harvestableIndex();
+  console.log('podIndex:', podIndex.toNumber(), 'harvestable:', harvestableIndex.toNumber());
+  console.log('pods price:', getPriceOfPods(BigNumber.from(taskArgs?.podindex), BigNumber.from(taskArgs?.pods), podIndex, harvestableIndex).toString());
+}).addParam('podindex').addParam('pods');
 
 const elementSeenSet = new Set<string>();
 // filter out duplicate function signatures
