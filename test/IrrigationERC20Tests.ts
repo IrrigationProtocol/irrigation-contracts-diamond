@@ -1,5 +1,6 @@
 import { ethers } from "hardhat";
-import { dc, assert, expect, toWei, FERTILIZER_TOKEN_ID } from "../scripts/common";
+import { dc, toWei } from "../scripts/common";
+import { assert, expect } from "./utils/debug";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { IrrigationDiamond } from "../typechain-types/hardhat-diamond-abi/HardhatDiamondABI.sol";
 import { IERC20Upgradeable__factory } from "../typechain-types/";

@@ -1,14 +1,7 @@
 import { ethers } from 'hardhat';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 
-import {
-  dc,
-  assert,
-  expect,
-  toWei,
-  fromWei,
-  toD6,
-} from '../../scripts/common';
+import { dc, toWei, fromWei, toD6 } from '../../scripts/common';
 import { IrrigationDiamond } from '../../typechain-types/hardhat-diamond-abi/HardhatDiamondABI.sol';
 import {
   AuctionUpgradeable,
@@ -16,7 +9,6 @@ import {
   IBean,
   IBeanstalkUpgradeable,
   IERC20Upgradeable,
-  PodsOracleUpgradeable,
   PriceOracleUpgradeable,
   TrancheBondUpgradeable,
   WaterTowerUpgradeable,
@@ -29,6 +21,7 @@ import { skipTime } from '../utils/time';
 import { BigNumber, utils } from 'ethers';
 import { expectWithTolerance } from '../utils';
 import { AuctionSetting } from '../utils/interface';
+import { assert, expect } from '../utils/debug';
 
 export function suite() {
   describe('Irrigation Tranche Testing', async function () {
@@ -53,8 +46,6 @@ export function suite() {
     let trancheCollection: ERC1155WhitelistUpgradeable;
     let defaultAuctionSetting: AuctionSetting;
 
-    let podsOracle: PodsOracleUpgradeable;
-
     before(async () => {
       rootAddress = irrigationDiamond.address;
       signers = await ethers.getSigners();
@@ -74,7 +65,6 @@ export function suite() {
       trancheBond = await ethers.getContractAt('TrancheBondUpgradeable', rootAddress);
       trancheCollection = await ethers.getContractAt('ERC1155WhitelistUpgradeable', rootAddress);
       water = await ethers.getContractAt('WaterUpgradeable', rootAddress);
-      podsOracle = await ethers.getContractAt('PodsOracleUpgradeable', rootAddress);
 
       // beanstalk
       bean = await getBean();
@@ -129,7 +119,7 @@ export function suite() {
       });
 
       it('should mint tranche nft when creating tranche', async () => {
-        /// buy beans and pods and assign
+        /// buy beans and pods
         const beanMetaPool = await getBeanMetapool();
         await usdc.approve(beanMetaPool.address, ethers.constants.MaxUint256);
         await beanMetaPool.exchange_underlying('2', '0', toD6(1000), '0');
@@ -138,11 +128,8 @@ export function suite() {
         await beanstalk.sow(toD6(30), 0, 0);
         let podsAmount = await beanstalk.plot(owner.address, podIndex);
         podsGroup = { indexes: [podIndex], amounts: [podsAmount] };
-        // console.log('---first:', fromD6(podIndex), fromD6(podsAmount));
         podIndex = await beanstalk.podIndex();
         await beanstalk.sow(toD6(40), 0, 0);
-        // await beanstalk.transferPlot(owner.address, sender.address, notDepositedPodIndex, 0, "65039999");
-        // console.log(await beanstalk.plot(sender.address, notDepositedPodIndex));
         // simulate separate podlines
         podIndex = await beanstalk.podIndex();
         await beanstalk.sow(toD6(140), 0, 0);

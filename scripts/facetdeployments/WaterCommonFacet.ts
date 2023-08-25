@@ -1,5 +1,6 @@
+import { assert, debuglog } from '../../test/utils/debug';
 import { IrrigationDiamond } from '../../typechain-types/hardhat-diamond-abi/HardhatDiamondABI.sol';
-import { dc, assert, debuglog, INetworkDeployInfo, AfterDeployInit } from '../common';
+import { dc,INetworkDeployInfo, AfterDeployInit } from '../common';
 import { Facets } from '../facets';
 import hre from 'hardhat';
 

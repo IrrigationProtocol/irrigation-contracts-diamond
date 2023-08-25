@@ -3,14 +3,13 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 
 import {
   dc,
-  assert,
-  expect,
   toWei,
   fromWei,
   toD6,
   toBN,
   mulDivRoundingUp,
 } from '../../scripts/common';
+import { assert, expect, debuglog } from '../utils/debug';
 import { IrrigationDiamond } from '../../typechain-types/hardhat-diamond-abi/HardhatDiamondABI.sol';
 import { AuctionUpgradeable, IERC20Upgradeable, OwnershipFacet__factory } from '../../typechain-types';
 import { AuctionType } from '../types';

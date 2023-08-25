@@ -13,7 +13,8 @@ import '@foundry-rs/hardhat-anvil';
 import '@nomiclabs/hardhat-web3';
 import { CONTRACT_ADDRESSES } from './scripts/shared';
 import { getPriceOfPods } from './test/utils/price';
-import { BigNumber } from 'ethers';
+import { deployments } from './scripts/deployments';
+import { fromWei, toBN } from './scripts/common';
 
 dotenv.config();
 
@@ -39,8 +40,15 @@ task('podsPrice', 'Prints calculated pods price', async (taskArgs: any, hre) => 
   const podIndex = await podContract.podIndex();
   const harvestableIndex = await podContract.harvestableIndex();
   console.log('podIndex:', podIndex.toNumber(), 'harvestable:', harvestableIndex.toNumber());
-  console.log('pods price:', getPriceOfPods(BigNumber.from(taskArgs?.podindex), BigNumber.from(taskArgs?.pods), podIndex, harvestableIndex).toString());
+  console.log('pods price:', getPriceOfPods(toBN(taskArgs?.podindex), toBN(taskArgs?.pods), podIndex, harvestableIndex).toString());
 }).addParam('podindex').addParam('pods');
+
+task('rewards', 'Prints rewards on Water Tower', async (taskArgs, hre) => {
+  const waterTowerContract = await hre.ethers.getContractAt('WaterTowerUpgradeable', deployments[hre.network.name].DiamondAddress);
+  console.log('totalRewards in WaterTower:', fromWei(await waterTowerContract.getTotalRewards()));
+  const curPool = await waterTowerContract.getPoolInfo(await waterTowerContract.getPoolIndex());
+  console.log('monthlyRewards in WaterTower:', fromWei(curPool.monthlyRewards));
+});
 
 const elementSeenSet = new Set<string>();
 // filter out duplicate function signatures

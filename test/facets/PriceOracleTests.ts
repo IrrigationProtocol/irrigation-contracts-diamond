@@ -1,9 +1,10 @@
 import { ethers } from 'hardhat';
-import { dc, assert, expect, toWei, fromWei, INetworkDeployInfo } from '../../scripts/common';
+import { dc, fromWei, INetworkDeployInfo } from '../../scripts/common';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { IrrigationDiamond } from '../../typechain-types/hardhat-diamond-abi/HardhatDiamondABI.sol';
-import { CONTRACT_ADDRESSES, OracleType } from '../../scripts/shared';
+import { CONTRACT_ADDRESSES } from '../../scripts/shared';
 import { PriceOracleUpgradeable } from '../../typechain-types';
+import { expect } from '../utils/debug';
 
 export function suite(networkDeployedInfo: INetworkDeployInfo) {
   describe('Irrigation PriceOracle Testing', async function () {
