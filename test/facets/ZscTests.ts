@@ -2,24 +2,16 @@ import { ethers, web3, network } from 'hardhat';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { time } from '@nomicfoundation/hardhat-network-helpers';
 
-import {
-  dc,
-  assert,
-  expect,
-  toWei,
-  fromWei,
-  toD6,
-  toBN,
-  mulDivRoundingUp,
-} from '../../scripts/common';
+import { dc, toWei, toD6 } from '../../scripts/common';
 import { IrrigationDiamond } from '../../typechain-types/hardhat-diamond-abi/HardhatDiamondABI.sol';
 import { MockERC20Upgradeable, ZSCUpgradeable } from '../../typechain-types';
 import { MockERC20D6Upgradeable } from '../../typechain-types/contracts/mock/MockERC20D6Upgradeable';
 
 import Client from '@irrigation/zk-utils/src/client';
 import bn128 from '@irrigation/zk-utils/src/utils/bn128';
-import { delaySecond, getCurrentTime } from '../utils';
+import { delaySecond } from '../utils';
 import { BigNumber } from 'ethers';
+import { expect } from '../utils/debug';
 /**
  * simulate block time similar as real network because the block.timestamp value in the Hardhat network will not reflect the current time.
  */
@@ -38,7 +30,6 @@ export function suite() {
     let dai: MockERC20Upgradeable;
     let usdc: MockERC20D6Upgradeable;
     let sender: SignerWithAddress;
-    let secondBidder: SignerWithAddress;
     let zscContract: ZSCUpgradeable;
     let zscClient: Client;
     let zscClientForTester: Client;
@@ -58,7 +49,6 @@ export function suite() {
       usdc = await mockTokenD6Contract.deploy();
       await usdc.Token_Initialize('USDC', 'USDC', toD6(100_000_000));
       sender = signers[1];
-      secondBidder = signers[2];
       zscContract = await ethers.getContractAt('ZSCUpgradeable', irrigationDiamond.address);
       await zscContract.init(token1.address, 16);
       zscClient = new Client(web3, zscContract, owner, signers);

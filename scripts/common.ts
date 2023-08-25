@@ -1,29 +1,10 @@
-import { BaseContract, BigNumber, Contract } from 'ethers';
-import { ethers } from 'hardhat';
-import { debug } from 'debug';
-import * as chai from 'chai';
-
-export const assert: Chai.AssertStatic = chai.assert;
-export const expect: Chai.ExpectStatic = chai.expect;
-import chaiAsPromised from 'chai-as-promised';
+import { BaseContract, BigNumber, utils } from 'ethers';
 import { Fragment } from '@ethersproject/abi';
 import fs from 'fs';
 import util from 'util';
 import crypto from 'crypto';
 
-chai.use(chaiAsPromised);
-
-declare global {
-  export var debuglog: debug.Debugger;
-}
-
-global.debuglog = debug('IrrigationUnitTest:log');
-global.debuglog.color = '158';
-
-export const debuglog = global.debuglog;
-
 export const toBN = BigNumber.from;
-
 export const FERTILIZER_TOKEN_ID = 0;
 
 export interface IFacetDeployedInfo {
@@ -77,20 +58,20 @@ export interface IFacetToDeployInfo {
 export type FacetToDeployInfo = Record<string, IFacetToDeployInfo>;
 
 export function toWei(value: number | string): BigNumber {
-  return ethers.utils.parseEther(value.toString());
+  return utils.parseEther(value.toString());
 }
 
 export function toD6(value: number | string): BigNumber {
   if (typeof value === 'number') value = Math.floor(value * 10 ** 6) / 10 ** 6;
-  return ethers.utils.parseUnits(value.toString(), 6);
+  return utils.parseUnits(value.toString(), 6);
 }
 
 export function fromWei(value: number | string | BigNumber): number {
-  return Number(ethers.utils.formatEther(value));
+  return Number(utils.formatEther(value));
 }
 
 export function fromD6(value: number | string | BigNumber): string {
-  return ethers.utils.formatUnits(value, 6);
+  return utils.formatUnits(value, 6);
 }
 
 export function formatFixed(value: number): number {
@@ -104,17 +85,17 @@ export function mulDivRoundingUp(a: BigNumber, b: BigNumber, d: BigNumber): BigN
 }
 
 export function getSighash(funcSig: string): string {
-  return ethers.utils.Interface.getSighash(Fragment.fromString(funcSig));
+  return utils.Interface.getSighash(Fragment.fromString(funcSig));
 }
 
 export function writeDeployedInfo(deployments: { [key: string]: INetworkDeployInfo }) {
   fs.writeFileSync(
     'scripts/deployments.ts',
     `\nimport { INetworkDeployInfo } from "../scripts/common";\n` +
-      `export const deployments: { [key: string]: INetworkDeployInfo } = ${util.inspect(
-        deployments,
-        { depth: null },
-      )};\n`,
+    `export const deployments: { [key: string]: INetworkDeployInfo } = ${util.inspect(
+      deployments,
+      { depth: null },
+    )};\n`,
     'utf8',
   );
 }

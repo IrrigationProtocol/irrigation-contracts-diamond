@@ -9,12 +9,13 @@ import {
   deployIrrigationDiamond,
 } from '../scripts/deploy';
 import { IrrigationDiamond } from '../typechain-types/hardhat-diamond-abi/HardhatDiamondABI.sol';
-import { dc, debuglog, assert, INetworkDeployInfo } from '../scripts/common';
+import { dc, INetworkDeployInfo } from '../scripts/common';
+import { debuglog, assert } from './utils/debug';
+
 import { LoadFacetDeployments } from '../scripts/facets';
 import { deployments } from '../scripts/deployments';
 import util from 'util';
 import { debug } from 'debug';
-
 // other files suites to execute
 import * as IrrigationERC20Tests from './IrrigationERC20Tests';
 // suites for facets
