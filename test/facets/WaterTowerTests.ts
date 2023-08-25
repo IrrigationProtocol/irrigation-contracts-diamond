@@ -1,11 +1,12 @@
 import { ethers } from 'hardhat';
-import { dc, assert, expect, toWei, fromWei, toD6 } from '../../scripts/common';
+import { dc, toWei, fromWei, toD6 } from '../../scripts/common';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { IrrigationDiamond } from '../../typechain-types/hardhat-diamond-abi/HardhatDiamondABI.sol';
 import { WaterTowerUpgradeable, WaterUpgradeable } from '../../typechain-types';
 import { CONTRACT_ADDRESSES } from '../../scripts/shared';
 import { skipTime } from '../utils/time';
 import { BigNumber } from 'ethers';
+import { assert, expect } from '../utils/debug';
 
 export function suite() {
   describe('Irrigation WaterTower Testing', async function () {

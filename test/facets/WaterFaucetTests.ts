@@ -1,5 +1,5 @@
 import { ethers, network } from 'hardhat';
-import { dc, assert, expect, toWei } from '../../scripts/common';
+import { dc, toWei } from '../../scripts/common';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { IrrigationDiamond } from '../../typechain-types/hardhat-diamond-abi/HardhatDiamondABI.sol';
 import {
@@ -8,6 +8,7 @@ import {
   WaterUpgradeable,
 } from '../../typechain-types';
 import { CONTRACT_ADDRESSES } from '../../scripts/shared';
+import { assert, expect } from '../utils/debug';
 
 export function suite() {
   describe('Irrigation WaterFaucet Testing', async function () {

@@ -1,5 +1,5 @@
 import { ethers } from 'hardhat';
-import { dc, assert, toWei, toD6, fromD6, fromWei } from '../../scripts/common';
+import { dc, toWei, toD6, fromD6, fromWei } from '../../scripts/common';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { IrrigationDiamond } from '../../typechain-types/hardhat-diamond-abi/HardhatDiamondABI.sol';
 import {
@@ -13,6 +13,7 @@ import { BigNumber } from 'ethers';
 import { CONTRACT_ADDRESSES } from '../../scripts/shared';
 import { whitelist } from '../../scripts/init';
 import { expect } from 'chai';
+import { assert } from '../utils/debug';
 
 export function suite() {
   describe('Irrigation Sprintkler Testing', async function () {
