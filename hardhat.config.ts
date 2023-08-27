@@ -46,8 +46,8 @@ task('podsPrice', 'Prints calculated pods price', async (taskArgs: any, hre) => 
 task('rewards', 'Prints rewards on Water Tower', async (taskArgs, hre) => {
   const waterTowerContract = await hre.ethers.getContractAt('WaterTowerUpgradeable', deployments[hre.network.name].DiamondAddress);
   console.log('totalRewards in WaterTower:', fromWei(await waterTowerContract.getTotalRewards()));
-  const curPool = await waterTowerContract.getPoolInfo(await waterTowerContract.getPoolIndex());
-  console.log('monthlyRewards in WaterTower:', fromWei(curPool.monthlyRewards));
+  const lastPool = await waterTowerContract.getPoolInfo((await waterTowerContract.getPoolIndex()).sub(1));
+  console.log('last monthly Rewards in WaterTower:', fromWei(lastPool.monthlyRewards));
 });
 
 const elementSeenSet = new Set<string>();
