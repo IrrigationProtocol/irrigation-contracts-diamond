@@ -137,6 +137,8 @@ export function suite() {
         await expect(auctionContract.createAuction({ ...defaultAuctionSetting, auctionType: AuctionType.TimedAuction, incrementBidPrice: 0, }, 1)).to.be.revertedWithCustomError(auctionContract, 'InvalidIncrementBidPrice');
         await expect(auctionContract.createAuction({ ...defaultAuctionSetting, auctionType: AuctionType.TimedAuction, incrementBidPrice: defaultAuctionSetting.priceRangeStart.div(2).add(1) }, 1)).to.be.revertedWithCustomError(auctionContract, 'InvalidIncrementBidPrice');
         await expect(auctionContract.createAuction({ ...defaultAuctionSetting, auctionType: AuctionType.TimedAuction, priceRangeEnd: 0 }, 1)).to.be.revertedWithCustomError(auctionContract, 'InvalidEndPrice');
+        await expect(auctionContract.createAuction({ ...defaultAuctionSetting, auctionType: AuctionType.TimedAndFixed, fixedPrice: 0 }, 1)).to.be.revertedWithCustomError(auctionContract, 'InvalidFixedPrice');
+        await expect(auctionContract.createAuction({ ...defaultAuctionSetting, auctionType: AuctionType.FixedPrice, fixedPrice: 0 }, 1)).to.be.revertedWithCustomError(auctionContract, 'InvalidFixedPrice');
       });
     });
 
