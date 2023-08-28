@@ -81,6 +81,7 @@ export async function mintAllTokensForTesting(address: string) {
   await mintWithTransfer(CONTRACT_ADDRESSES.PAXG, tokenHolders.PAXG, address, toWei(10_000));
   await mintWithTransfer(CONTRACT_ADDRESSES.CNHT, tokenHolders.CNHT, address, toD6(100_000));
   await mintERC20Token(CONTRACT_ADDRESSES.frxETH, address, toWei(100_000), 0);
+  await mintERC20Token(CONTRACT_ADDRESSES.UNRIPE_BEAN, address, toD6(100_000), 0);
 }
 
 export async function deployMockToken(name, symbol, mockDeployer, factoryAddress) {
