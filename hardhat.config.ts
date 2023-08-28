@@ -50,6 +50,24 @@ task('rewards', 'Prints rewards on Water Tower', async (taskArgs, hre) => {
   console.log('last monthly Rewards in WaterTower:', fromWei(lastPool.monthlyRewards));
 });
 
+task('sync-devchain', 'Syncing dev chain', async (taskArgs, hre) => {
+  if (hre.network.name !== 'dev') {
+    console.log('Support syncing for dev chain');
+    return;
+  }
+  const curTime = Math.floor(Date.now() / 1000);
+  console.log('Current time:', new Date(curTime * 1000));
+  const curBlockTime = (await hre.ethers.provider.getBlock('latest')).timestamp;
+  if (curTime > 5 + curBlockTime) {
+    await hre.ethers.provider.send('evm_setNextBlockTimestamp', [curTime]);
+    await hre.ethers.provider.send('evm_mine', []);
+    console.log('Updated block timestamp:', new Date((await hre.ethers.provider.getBlock('latest')).timestamp * 1000));
+  }
+  else {
+    console.log('Already synced');
+  }
+});
+
 const elementSeenSet = new Set<string>();
 // filter out duplicate function signatures
 function genSignature(name: string, inputs: Array<any>, type: string): string {
