@@ -37,6 +37,7 @@ contract AuctionUpgradeable is EIP2535Initializable, ReentrancyGuardUpgradeable 
     error InvalidAuctionAmount();
     error InvalidStartTime();
     error InvalidMinBidAmount();
+    error InvalidFixedPrice();
     error InvalidEndPrice();
     error InvalidSellToken();
     error NoClosedAuction();
@@ -115,6 +116,12 @@ contract AuctionUpgradeable is EIP2535Initializable, ReentrancyGuardUpgradeable 
             auctionSetting.minBidAmount > auctionSetting.sellAmount
         ) revert InvalidMinBidAmount();
         if (auctionSetting.sellAmount == 0) revert InvalidAuctionAmount();
+
+        if (
+            (auctionSetting.auctionType == AuctionType.FixedPrice ||
+                auctionSetting.auctionType == AuctionType.TimedAndFixed) &&
+            auctionSetting.fixedPrice == 0
+        ) revert InvalidFixedPrice();
 
         if (auctionSetting.auctionType != AuctionType.FixedPrice) {
             if (auctionSetting.priceRangeStart > auctionSetting.priceRangeEnd)
