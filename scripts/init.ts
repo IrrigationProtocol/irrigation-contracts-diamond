@@ -91,13 +91,13 @@ export async function initPriceOracles(priceOracle: PriceOracleUpgradeable) {
       base: ethers.constants.AddressZero,
       oType: OracleType.CUSTOM_ORACLE,
     },
-    {
-      symbol: 'ROOT',
-      asset: CONTRACT_ADDRESSES.ROOT,
-      oracle: CONTRACT_ADDRESSES.UNIV3_POOL_ROOT,
-      base: CONTRACT_ADDRESSES.BEAN,
-      oType: OracleType.UNISWAP_V3,
-    },
+    // {
+    //   symbol: 'ROOT',
+    //   asset: CONTRACT_ADDRESSES.ROOT,
+    //   oracle: CONTRACT_ADDRESSES.UNIV3_POOL_ROOT,
+    //   base: CONTRACT_ADDRESSES.BEAN,
+    //   oType: OracleType.UNISWAP_V3,
+    // },
     {
       symbol: 'SPOT',
       asset: CONTRACT_ADDRESSES.SPOT,
