@@ -7,7 +7,6 @@ import { debug } from 'debug';
 import fs from 'fs';
 import util from 'util';
 
-import tokenData from '../test/mockTokens.json';
 import { deployments } from './deployments';
 import { INetworkDeployInfo } from './common';
 
@@ -16,17 +15,6 @@ log.color = '159';
 
 const networkName = process?.argv?.[2] || 'dev';
 
-async function clearMockTokens() {
-  for (const token of tokenData) {
-    if (token.addresses?.[networkName]) {
-      delete token.addresses[networkName];
-    }
-    if (token.priceOracles?.[networkName]) {
-      delete token.priceOracles[networkName];
-    }
-  }
-  fs.writeFileSync(`test/mockTokens.json`, JSON.stringify(tokenData, null, 4));
-}
 
 async function deletDeployedInfo(deployments: { [key: string]: INetworkDeployInfo }) {
   fs.writeFileSync(
@@ -44,9 +32,7 @@ async function main() {
   if (require.main === module) {
     debug.enable('Irrigation.*:log');
   }
-  log(`clearing cache data for dev chain`);
-  log(`--- clearing mock tokens addresses.`);
-  await clearMockTokens();
+  log(`clearing cache data for dev chain`); 
   /**
    * delete deployed addreses
    */

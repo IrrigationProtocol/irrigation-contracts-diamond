@@ -1,0 +1,194 @@
+[
+    {
+        "facet": "----- Auction -----",
+        "error": "ClaimedBid()",
+        "sig": "0xb3f0f1d8"
+    },
+    {
+        "error": "InactiveAuction()",
+        "sig": "0xd6c41220"
+    },
+    {
+        "error": "InsufficientFee()",
+        "sig": "0x025dbdd4"
+    },
+    {
+        "error": "InsufficientReserveAsset()",
+        "sig": "0x2beee6cf"
+    },
+    {
+        "error": "InvalidAuction()",
+        "sig": "0x21562160"
+    },
+    {
+        "error": "InvalidAuctionAmount()",
+        "sig": "0x5a5a1b30"
+    },
+    {
+        "error": "InvalidBidToken()",
+        "sig": "0x02777d5e"
+    },
+    {
+        "error": "InvalidEndPrice()",
+        "sig": "0x8ab0a5e0"
+    },
+    {
+        "error": "InvalidFixedPrice()",
+        "sig": "0x84477d04"
+    },
+    {
+        "error": "InvalidIncrementBidPrice()",
+        "sig": "0xda6b4f0a"
+    },
+    {
+        "error": "InvalidMinBidAmount()",
+        "sig": "0x2304cb6e"
+    },
+    {
+        "error": "InvalidPurchaseAmount()",
+        "sig": "0x8e4353d3"
+    },
+    {
+        "error": "InvalidSellToken()",
+        "sig": "0x5110df24"
+    },
+    {
+        "error": "InvalidStartTime()",
+        "sig": "0xb290253c"
+    },
+    {
+        "error": "InvalidTrancheAuction()",
+        "sig": "0xc99421ae"
+    },
+    {
+        "error": "LowBid()",
+        "sig": "0xbecfaa2b"
+    },
+    {
+        "error": "NoAuction()",
+        "sig": "0x71d00de2"
+    },
+    {
+        "error": "NoAuctioneer()",
+        "sig": "0x49734eca"
+    },
+    {
+        "error": "NoBidder()",
+        "sig": "0x6a7e0247"
+    },
+    {
+        "error": "NoCancelBid()",
+        "sig": "0x11da50f1"
+    },
+    {
+        "error": "NoClosedAuction()",
+        "sig": "0x5814bd1f"
+    },
+    {
+        "error": "NoIdleAuction()",
+        "sig": "0x8ccce47e"
+    },
+    {
+        "error": "NoListTrancheZ()",
+        "sig": "0x2dbdd4d1"
+    },
+    {
+        "error": "NoTransferEther()",
+        "sig": "0x305bcd3c"
+    },
+    {
+        "error": "OverPriceBid()",
+        "sig": "0x2c4a793c"
+    },
+    {
+        "error": "SmallBidAmount()",
+        "sig": "0x332a74ac"
+    },
+    {
+        "facet": "----- WaterTower -----",
+        "error": "InsufficientBalance()",
+        "sig": "0xf4d678b8"
+    },
+    {
+        "error": "InsufficientEther()",
+        "sig": "0xe058b898"
+    },
+    {
+        "error": "InsufficientReward()",
+        "sig": "0xd77b6db6"
+    },
+    {
+        "error": "InvalidRewardPool()",
+        "sig": "0x8ed6a9d9"
+    },
+    {
+        "error": "InvalidTime()",
+        "sig": "0x6f7eac26"
+    },
+    {
+        "error": "NotAutoIrrigate()",
+        "sig": "0xd3539910"
+    },
+    {
+        "facet": "----- Sprinkler -----",
+        "error": "ExistingAsset()",
+        "sig": "0x284951ae"
+    },
+    {
+        "error": "InsufficientWater()",
+        "sig": "0xc6fc6401"
+    },
+    {
+        "error": "InvalidAmount()",
+        "sig": "0x2c5211c6"
+    },
+    {
+        "error": "InvalidSwapToken()",
+        "sig": "0x3539a701"
+    },
+    {
+        "error": "NoSprinklerWhitelist()",
+        "sig": "0x89975dbb"
+    },
+    {
+        "error": "NoWaterWithdraw()",
+        "sig": "0x12b7d4c4"
+    },
+    {
+        "error": "NoWithdrawEther()",
+        "sig": "0x4605332f"
+    },
+    {
+        "error": "ZeroWaterOut()",
+        "sig": "0xe46a20a6"
+    },
+    {
+        "facet": "----- TrancheBond -----",
+        "error": "InsufficientPods()",
+        "sig": "0xd70d8d94"
+    },
+    {
+        "error": "InvalidPods()",
+        "sig": "0x751e616f"
+    },
+    {
+        "error": "NotEligible()",
+        "sig": "0xf8eb54de"
+    },
+    {
+        "error": "NotMatureTranche()",
+        "sig": "0xc7ce86b6"
+    },
+    {
+        "error": "NotOwnerOfTranche()",
+        "sig": "0xfd18152b"
+    },
+    {
+        "error": "NotSortedPlots()",
+        "sig": "0x92b04f05"
+    },
+    {
+        "error": "NotTranchePods()",
+        "sig": "0xcb4fd563"
+    }
+]
