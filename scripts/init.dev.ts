@@ -4,7 +4,7 @@
  *        Initialization is required one time only
  */
 import { debug } from 'debug';
-import hre, { ethers } from 'hardhat';
+import hre, { ethers, network } from 'hardhat';
 import { toWei } from './common';
 import { deployments } from './deployments';
 import { initAll } from './init';
@@ -22,7 +22,8 @@ async function main() {
   log(`initialize contracts on ${networkName}`);  
   const contractAddress = deployments[networkName]?.DiamondAddress;
   const [deployer] = await ethers.getSigners();
-  await mintAllTokensForTesting(deployer.address);
+  if(network.name !== 'mainnet') await mintAllTokensForTesting(deployer.address);
+  log(`minting is done`);
   await initAll(contractAddress);
 }
 

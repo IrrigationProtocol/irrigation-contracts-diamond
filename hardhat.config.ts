@@ -57,6 +57,7 @@ task('sync-devchain', 'Syncing dev chain', async (taskArgs, hre) => {
   }
   const curTime = Math.floor(Date.now() / 1000);
   console.log('Current time:', new Date(curTime * 1000));
+  await hre.ethers.provider.send('evm_mine', []);
   const curBlockTime = (await hre.ethers.provider.getBlock('latest')).timestamp;
   if (curTime > 5 + curBlockTime) {
     await hre.ethers.provider.send('evm_setNextBlockTimestamp', [curTime]);

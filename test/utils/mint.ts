@@ -74,10 +74,10 @@ export async function mintAllTokensForTesting(address: string) {
   await mintERC20Token(CONTRACT_ADDRESSES.DAI, address, toWei(100_000), 2);
   await mintERC20Token(CONTRACT_ADDRESSES.USDT, address, toWei(100_000), 2);
   await mintERC20Token(CONTRACT_ADDRESSES.BEAN, address, toD6(100_000), 0);
-  await mintWithTransfer(CONTRACT_ADDRESSES.ROOT, tokenHolders.ROOT, address, toWei(10_000));
+  // await mintWithTransfer(CONTRACT_ADDRESSES.ROOT, tokenHolders.ROOT, address, toWei(10_000));
   await mintERC20Token(CONTRACT_ADDRESSES.OHM, address, toWei(100_000), 0);
   await mintLUSD(address, toWei(100_000));
-  await mintWithTransfer(CONTRACT_ADDRESSES.SPOT, tokenHolders.SPOT, address, toD6(100_000_000));
+  await mintWithTransfer(CONTRACT_ADDRESSES.SPOT, tokenHolders.SPOT, address, toD6(30_000_000));
   await mintWithTransfer(CONTRACT_ADDRESSES.PAXG, tokenHolders.PAXG, address, toWei(10_000));
   await mintWithTransfer(CONTRACT_ADDRESSES.CNHT, tokenHolders.CNHT, address, toD6(100_000));
   await mintERC20Token(CONTRACT_ADDRESSES.frxETH, address, toWei(100_000), 0);
