@@ -349,7 +349,7 @@ export function suite() {
         expect(bidId).to.be.eq(lastSettledBidId - 1);
         let txReceipt = await tx.wait();
         const totalGas = txReceipt.gasUsed.mul(txReceipt.effectiveGasPrice);
-        debuglog(`max gas for 255 winners: ${fromWei(totalGas)}`);
+        debuglog(`max gas for 50 winners: ${fromWei(totalGas)}`);
       });
 
       it('Not settled winner bids should be able to claim after auction is closed', async () => {
