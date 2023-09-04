@@ -14,7 +14,7 @@ import '@nomiclabs/hardhat-web3';
 import { CONTRACT_ADDRESSES } from './scripts/shared';
 import { getPriceOfPods } from './test/utils/price';
 import { deployments } from './scripts/deployments';
-import { fromWei, toBN } from './scripts/common';
+import { fromWei, toBN, toWei } from './scripts/common';
 
 dotenv.config();
 
@@ -29,26 +29,69 @@ task('accounts', 'Prints the list of accounts', async (taskArgs, hre) => {
 });
 
 task('podIndex', 'Prints podIndex and harvestableIndex', async (taskArgs, hre) => {
-  const podContract = await hre.ethers.getContractAt('IBeanstalkUpgradeable', CONTRACT_ADDRESSES.BEANSTALK);
+  const podContract = await hre.ethers.getContractAt(
+    'IBeanstalkUpgradeable',
+    CONTRACT_ADDRESSES.BEANSTALK,
+  );
   console.log('blockNumber:', await hre.ethers.provider.getBlockNumber());
-  console.log('podIndex:', (await podContract.podIndex()).toNumber(), 'harvestable:', (await podContract.harvestableIndex()).toNumber());
+  console.log(
+    'podIndex:',
+    (await podContract.podIndex()).toNumber(),
+    'harvestable:',
+    (await podContract.harvestableIndex()).toNumber(),
+  );
 });
 
 task('podsPrice', 'Prints calculated pods price', async (taskArgs: any, hre) => {
-  const podContract = await hre.ethers.getContractAt('IBeanstalkUpgradeable', CONTRACT_ADDRESSES.BEANSTALK);
+  const podContract = await hre.ethers.getContractAt(
+    'IBeanstalkUpgradeable',
+    CONTRACT_ADDRESSES.BEANSTALK,
+  );
   console.log('blockNumber:', await hre.ethers.provider.getBlockNumber());
   const podIndex = await podContract.podIndex();
   const harvestableIndex = await podContract.harvestableIndex();
   console.log('podIndex:', podIndex.toNumber(), 'harvestable:', harvestableIndex.toNumber());
-  console.log('pods price:', getPriceOfPods(toBN(taskArgs?.podindex), toBN(taskArgs?.pods), podIndex, harvestableIndex).toString());
-}).addParam('podindex').addParam('pods');
+  console.log(
+    'pods price:',
+    getPriceOfPods(
+      toBN(taskArgs?.podindex),
+      toBN(taskArgs?.pods),
+      podIndex,
+      harvestableIndex,
+    ).toString(),
+  );
+})
+  .addParam('podindex')
+  .addParam('pods');
 
 task('rewards', 'Prints rewards on Water Tower', async (taskArgs, hre) => {
-  const waterTowerContract = await hre.ethers.getContractAt('WaterTowerUpgradeable', deployments[hre.network.name].DiamondAddress);
+  const waterTowerContract = await hre.ethers.getContractAt(
+    'WaterTowerUpgradeable',
+    deployments[hre.network.name].DiamondAddress,
+  );
   console.log('totalRewards in WaterTower:', fromWei(await waterTowerContract.getTotalRewards()));
-  const lastPool = await waterTowerContract.getPoolInfo((await waterTowerContract.getPoolIndex()).sub(1));
+  const lastPool = await waterTowerContract.getPoolInfo(
+    (await waterTowerContract.getPoolIndex()).sub(1),
+  );
   console.log('last monthly Rewards in WaterTower:', fromWei(lastPool.monthlyRewards));
 });
+
+task('update-rewards', 'Update monthly rewards on Water Tower', async (taskArgs: any, hre) => {
+  const waterTowerContract = await hre.ethers.getContractAt(
+    'WaterTowerUpgradeable',
+    deployments[hre.network.name].DiamondAddress,
+  );
+  const curTimestamp = (await hre.ethers.provider.getBlock('latest')).timestamp;
+  let date = new Date(curTimestamp * 1000);
+  date.setMonth(date.getMonth() + 1);
+  date.setDate(0);
+  await waterTowerContract.setPool(Math.floor(date.getTime() / 1000), toWei(taskArgs?.monthly));
+  console.log('totalRewards in WaterTower:', fromWei(await waterTowerContract.getTotalRewards()));
+  const lastPool = await waterTowerContract.getPoolInfo(
+    (await waterTowerContract.getPoolIndex()).sub(1),
+  );
+  console.log('last monthly Rewards in WaterTower:', fromWei(lastPool.monthlyRewards));
+}).addParam('monthly');
 
 task('sync-devchain', 'Syncing dev chain', async (taskArgs, hre) => {
   if (hre.network.name !== 'dev') {
@@ -62,9 +105,11 @@ task('sync-devchain', 'Syncing dev chain', async (taskArgs, hre) => {
   if (curTime > 5 + curBlockTime) {
     await hre.ethers.provider.send('evm_setNextBlockTimestamp', [curTime]);
     await hre.ethers.provider.send('evm_mine', []);
-    console.log('Updated block timestamp:', new Date((await hre.ethers.provider.getBlock('latest')).timestamp * 1000));
-  }
-  else {
+    console.log(
+      'Updated block timestamp:',
+      new Date((await hre.ethers.provider.getBlock('latest')).timestamp * 1000),
+    );
+  } else {
     console.log('Already synced');
   }
 });
@@ -107,6 +152,9 @@ const config: HardhatUserConfig = {
   solidity: {
     version: '0.8.17',
     settings: {
+      metadata: {
+        bytecodeHash: 'none',
+      },
       optimizer: {
         enabled: true,
         runs: 1000,
@@ -117,9 +165,9 @@ const config: HardhatUserConfig = {
     hardhat: {
       forking: process.env.FORK_URL
         ? {
-          url: process.env.FORK_URL,
-          blockNumber: parseInt(process.env.FORK_BLOCK_NUMBER) || undefined,
-        }
+            url: process.env.FORK_URL,
+            blockNumber: parseInt(process.env.FORK_BLOCK_NUMBER) || undefined,
+          }
         : undefined,
       // chainId: 1337,
       hardfork: 'london',
@@ -136,9 +184,9 @@ const config: HardhatUserConfig = {
       url: 'http://localhost:8545',
       forking: process.env.FORK_URL
         ? {
-          url: process.env.FORK_URL,
-          blockNumber: parseInt(process.env.FORK_BLOCK_NUMBER) || undefined,
-        }
+            url: process.env.FORK_URL,
+            blockNumber: parseInt(process.env.FORK_BLOCK_NUMBER) || undefined,
+          }
         : undefined,
       chainId: 31337,
     },
@@ -156,9 +204,9 @@ const config: HardhatUserConfig = {
     },
     mainnet: {
       chainId: 1,
-      url: `https://mainnet.infura.io/v3/${process.env.INFURA_API_KEY}` || "",
+      url: `https://mainnet.infura.io/v3/${process.env.INFURA_API_KEY}` || '',
       accounts: process.env.PRIVATE_KEY !== undefined ? [process.env.PRIVATE_KEY] : [],
-      timeout: 100000
+      timeout: 100000,
     },
   },
   gasReporter: {
