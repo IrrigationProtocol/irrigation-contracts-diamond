@@ -2,7 +2,6 @@ import { ethers } from 'hardhat';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 
 import { dc, toWei, fromWei, toD6 } from '../../scripts/common';
-import { IrrigationDiamond } from '../../typechain-types/hardhat-diamond-abi/HardhatDiamondABI.sol';
 import {
   AuctionUpgradeable,
   ERC1155WhitelistUpgradeable,
@@ -28,7 +27,6 @@ export function suite() {
     let rootAddress: string;
     let signers: SignerWithAddress[];
     let owner: SignerWithAddress;
-    const irrigationDiamond = dc.IrrigationDiamond as IrrigationDiamond;
     let dai: IERC20Upgradeable;
     let usdc: IBean;
     let usdt: IERC20Upgradeable;
@@ -47,7 +45,7 @@ export function suite() {
     let defaultAuctionSetting: AuctionSetting;
 
     before(async () => {
-      rootAddress = irrigationDiamond.address;
+      rootAddress = dc.IrrigationDiamond.address;
       signers = await ethers.getSigners();
       owner = signers[0];
       sender = signers[1];
@@ -78,8 +76,8 @@ export function suite() {
         sellAmount: toWei(100),
         minBidAmount: toWei(0.0001),
         fixedPrice: toWei(0.6),
-        priceRangeStart: toWei(0.1),
-        priceRangeEnd: toWei(0.5),
+        priceRangeStart: toWei(1.0),
+        priceRangeEnd: toWei(3.0),
         reserve: toWei(0),
         incrementBidPrice: toWei(0.0001),
         bidTokenGroupId: 0,
@@ -118,7 +116,7 @@ export function suite() {
         ).revertedWithCustomError(trancheBond, 'NotSortedPlots');
       });
 
-      it('should mint tranche nft when creating tranche', async () => {
+      it('create tranches and receive pods with 2 plots', async () => {
         /// buy beans and pods
         const beanMetaPool = await getBeanMetapool();
         await usdc.approve(beanMetaPool.address, ethers.constants.MaxUint256);
@@ -396,7 +394,7 @@ export function suite() {
         trNftBalance = await trancheCollection.balanceOf(rootAddress, trancheId);
         await auctionContract
           .connect(owner)
-          .placeBid(lastAuctionId, trNftBalance, 0, toWei(2), false);
+          .placeBid(lastAuctionId, trNftBalance, 0, toWei(2), toWei(3));
         const daiBalanceAfteBidding = await dai.balanceOf(owner.address);
         expect(daiBalanceAfteBidding).to.be.eq(
           daiBalance.sub(trNftBalance.mul(2).mul(toD6(10 ** 6))),
@@ -671,7 +669,6 @@ export function suite() {
         await trancheBond.connect(tester).receivePodsForTranche(14);
         await trancheBond.connect(tester).receivePodsForTranche(15);
         await trancheBond.connect(tester).receivePodsForTranche(13);
-        console.log(starts);
         const pods1 = await beanstalk.plot(tester.address, holdPlots[0].index);
         const pods2 = await beanstalk.plot(tester.address, holdPlots[0].index.add(pods1));
         const pods3 = starts[0].eq(toD6(0))

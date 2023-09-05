@@ -272,7 +272,7 @@ contract AuctionUpgradeable is EIP2535Initializable, ReentrancyGuardUpgradeable 
         uint128 bidAmount,
         uint16 bidTokenId,
         uint128 bidPrice,
-        bool bCheckEndPrice
+        uint128 maxBidPrice
     ) external nonReentrant returns (uint256) {
         AuctionStorage.Layout storage auctionStorage = AuctionStorage.layout();
         AuctionData memory auction = auctionStorage.auctions[auctionId];
@@ -294,7 +294,7 @@ contract AuctionUpgradeable is EIP2535Initializable, ReentrancyGuardUpgradeable 
         // if incrementBidPrice is 0, can place bid with same price as last bid
         if (bidPrice == 0) bidPrice = availableBidPrice;
         else if (bidPrice < availableBidPrice) revert LowBid();
-        if (bCheckEndPrice && auction.s.priceRangeEnd < bidPrice) revert OverPriceBid();
+        if (bidPrice > maxBidPrice) revert OverPriceBid();
         uint128 _bidPrice = bidPrice;
         uint256 payAmount = getPayAmount(
             _purchaseToken,
