@@ -4,10 +4,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { dc, toWei, fromWei, toD6, toBN, mulDivRoundingUp } from '../../scripts/common';
 import { assert, expect, debuglog } from '../utils/debug';
 
-import {
-  AuctionUpgradeable,
-  IERC20Upgradeable,
-} from '../../typechain-types';
+import { AuctionUpgradeable, IERC20Upgradeable } from '../../typechain-types';
 import { AuctionType } from '../types';
 import { BigNumber } from 'ethers';
 import { CONTRACT_ADDRESSES } from '../../scripts/shared';
@@ -303,6 +300,17 @@ export function suite() {
             .connect(secondBidder)
             .placeBid(1, toWei(3), 0, toWei(0.21524), toWei(0.5)),
         ).to.be.revertedWithCustomError(auctionContract, 'SmallBidAmount');
+        // input bidPrice directly
+        await expect(
+          auctionContract.connect(secondBidder).placeBid(1, toWei(8), 0, toWei(0.6), toWei(0.5)),
+        ).to.be.revertedWithCustomError(auctionContract, 'OverPriceBid');
+        await auctionContract
+          .connect(secondBidder)
+          .placeBid(1, toWei(8), 0, toWei(0.5), toWei(0.5));
+        // not input bidPrice directly, slippage is 0
+        await expect(
+          auctionContract.connect(secondBidder).placeBid(1, toWei(8), 0, 0, toWei(0.5)),
+        ).to.be.revertedWithCustomError(auctionContract, 'OverPriceBid');
         await skipTime(86400 * 3 + 3601);
         await expect(
           auctionContract
@@ -315,16 +323,10 @@ export function suite() {
     describe('#close auction', async function () {
       it('Testing Auction close', async () => {
         let auction = await auctionContract.getAuction(1);
-        // console.log(fromWei(auction.reserve), fromWei(auction.totalBidAmount), Number(auction.curBidId));
         const reserveAmount = auction.s.reserve;
-        // console.log(await auctionContract.getBid(1,1));
         let updatedContractTokenBalance = await token1.balanceOf(auctionContract.address);
-        // console.log('contract balance:', fromWei(await token1.balanceOf(auctionContract.address)));
         await auctionContract.connect(sender).closeAuction(1);
         auction = await auctionContract.getAuction(1);
-        // console.log(auction.reserve, auction.totalBidAmount);
-        // console.log('contract balance', fromWei(await token1.balanceOf(auctionContract.address)));
-        // total reserve amount are settled.
         updatedContractTokenBalance = updatedContractTokenBalance.sub(
           await token1.balanceOf(auctionContract.address),
         );
