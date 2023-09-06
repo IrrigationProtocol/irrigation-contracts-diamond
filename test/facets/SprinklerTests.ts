@@ -1,7 +1,6 @@
 import { ethers } from 'hardhat';
 import { dc, toWei, toD6, fromD6, fromWei } from '../../scripts/common';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
-import { IrrigationDiamond } from '../../typechain-types/hardhat-diamond-abi/HardhatDiamondABI.sol';
 import {
   IERC20MetadataUpgradeable,
   IERC20Upgradeable,
@@ -19,7 +18,6 @@ export function suite() {
   describe('Irrigation Sprintkler Testing', async function () {
     let signers: SignerWithAddress[];
     let owner: SignerWithAddress;
-    const irrigationDiamond = dc.IrrigationDiamond as IrrigationDiamond;
     let token1: IERC20Upgradeable;
     let token2: IERC20Upgradeable;
     let sender: SignerWithAddress;
@@ -29,7 +27,8 @@ export function suite() {
     let waterToken: WaterUpgradeable;
     let priceOracle: PriceOracleUpgradeable;
     let usdt: IERC20MetadataUpgradeable;
-    const irrigationMainAddress: string = irrigationDiamond.address;
+    let gOHM: IERC20MetadataUpgradeable;
+    const irrigationMainAddress: string = dc.IrrigationDiamond.address;
 
     before(async () => {
       signers = await ethers.getSigners();
@@ -39,6 +38,7 @@ export function suite() {
       receiver = signers[3];
       token1 = await ethers.getContractAt('IERC20Upgradeable', CONTRACT_ADDRESSES.DAI);
       token2 = await ethers.getContractAt('IERC20Upgradeable', CONTRACT_ADDRESSES.BEAN);
+      gOHM = await ethers.getContractAt('IERC20MetadataUpgradeable', CONTRACT_ADDRESSES.gOHM);
       sprinkler = await ethers.getContractAt('SprinklerUpgradeable', irrigationMainAddress);
       waterToken = await ethers.getContractAt('WaterUpgradeable', irrigationMainAddress);
       priceOracle = await ethers.getContractAt('PriceOracleUpgradeable', irrigationMainAddress);
@@ -195,6 +195,22 @@ export function suite() {
 
     it('Multiplier of usdt should be 18-6', async () => {
       expect(await sprinkler.tokenMultiplier(usdt.address)).to.be.eq(10 ** 12);
+    });
+    
+    it('Test exchange gOHM for WATER', async () => {
+      const amount = await sprinkler.getWaterAmount(gOHM.address, toWei(0.1));
+      const gOHMPrice = await priceOracle.getPrice(gOHM.address);
+      const waterPrice = await priceOracle.getWaterPrice();
+      const token1Multiplier = await sprinkler.tokenMultiplier(gOHM.address);
+      assert(
+        token1Multiplier.eq(BigNumber.from(1)),
+        `expected token multiplier is ${1}, but ${token1Multiplier}`,
+      );
+      const expectedWaterAmount = toWei(0.1).mul(gOHMPrice).mul(token1Multiplier).div(waterPrice);
+      assert(
+        expectedWaterAmount.eq(amount),
+        `expected water is ${ fromWei(expectedWaterAmount)}, received water amount is ${fromWei(amount)}`,
+      );
     });
   });
 }
