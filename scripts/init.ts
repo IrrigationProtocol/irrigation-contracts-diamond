@@ -25,7 +25,8 @@ export const whitelist = [
   CONTRACT_ADDRESSES.SPOT,
   CONTRACT_ADDRESSES.PAXG,
   CONTRACT_ADDRESSES.CNHT,
-  CONTRACT_ADDRESSES.ETHER
+  CONTRACT_ADDRESSES.ETHER,
+  CONTRACT_ADDRESSES.gOHM,
 ];
 export const auctionSellTokens = [
   CONTRACT_ADDRESSES.BEAN,
@@ -126,6 +127,13 @@ export async function initPriceOracles(priceOracle: PriceOracleUpgradeable) {
       base: CONTRACT_ADDRESSES.ETHER,
       oType: OracleType.UNISWAP_V3,
     },
+    {
+      symbol: 'gOHM',
+      asset: CONTRACT_ADDRESSES.gOHM,
+      oracle: CONTRACT_ADDRESSES.UNIV3_POOL_GOHM,
+      base: CONTRACT_ADDRESSES.ETHER,
+      oType: OracleType.UNISWAP_V3,
+    },
   ];
   for (const o of defaultOracleData) {
     await priceOracle.setOracle(o.asset, o.oracle, o.base, o.oType);
@@ -158,18 +166,33 @@ export async function initWaterTower(waterTower: WaterTowerUpgradeable) {
 
 export async function initAuction(adminControl: IrrigationControlUpgradeable) {
   const signers = await ethers.getSigners();
-  await adminControl.AddBidTokenGroup({ name: ethers.utils.formatBytes32String('Stables (USDC, USDT, DAI)'), bidTokens: purchaseTokens, basePriceToken: purchaseTokens[0] });
+  await adminControl.AddBidTokenGroup({
+    name: ethers.utils.formatBytes32String('Stables (USDC, USDT, DAI)'),
+    bidTokens: purchaseTokens,
+    basePriceToken: purchaseTokens[0],
+  });
   // 1.5% auction fee
   await adminControl.setAuctionFee(15, signers[2]?.address || process.env.REWARD_ADDRESS);
   const tokens = [...auctionSellTokens, adminControl.address];
-  await adminControl.setSellTokens(tokens, tokens.map(e => true));
+  await adminControl.setSellTokens(
+    tokens,
+    tokens.map((e) => true),
+  );
   await adminControl.updatePeriods([86400, 86400 * 3, 86400 * 7, 86400 * 30]);
 }
 
 export async function initTrancheBond(contractAddress: string) {
-  const erc1155whitelist = await ethers.getContractAt('ERC1155WhitelistUpgradeable', contractAddress);
-  await erc1155whitelist.addProxySpender(contractAddress, ethers.utils.formatBytes32String('Irrigation'));
-  await erc1155whitelist.setTokenBaseURI(process.env.TRANCHE_NFT_METADATA_BASE_URL || 'http://localhost/');
+  const erc1155whitelist = await ethers.getContractAt(
+    'ERC1155WhitelistUpgradeable',
+    contractAddress,
+  );
+  await erc1155whitelist.addProxySpender(
+    contractAddress,
+    ethers.utils.formatBytes32String('Irrigation'),
+  );
+  await erc1155whitelist.setTokenBaseURI(
+    process.env.TRANCHE_NFT_METADATA_BASE_URL || 'http://localhost/',
+  );
   const trancheBond = await ethers.getContractAt('TrancheBondUpgradeable', contractAddress);
   await trancheBond.setMaturityPeriods([180 * 86400]);
 }
@@ -178,7 +201,10 @@ export async function initAll(contractAddress: string) {
   const waterTower = await ethers.getContractAt('WaterTowerUpgradeable', contractAddress);
   const priceOracle = await ethers.getContractAt('PriceOracleUpgradeable', contractAddress);
   const sprinkler = await ethers.getContractAt('SprinklerUpgradeable', contractAddress);
-  const irrigationControl = await ethers.getContractAt('IrrigationControlUpgradeable', contractAddress);
+  const irrigationControl = await ethers.getContractAt(
+    'IrrigationControlUpgradeable',
+    contractAddress,
+  );
   await initPriceOracles(priceOracle);
   await initSprinkler(sprinkler);
   await initWaterTower(waterTower);
