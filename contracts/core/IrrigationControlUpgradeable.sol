@@ -5,14 +5,15 @@ import "./AuctionStorage.sol";
 
 import "../utils/EIP2535Initializable.sol";
 import "../utils/IrrigationAccessControl.sol";
+import "@gnus.ai/contracts-upgradeable-diamond/contracts/security/PausableUpgradeable.sol";
 
 /// @title Admin Facet
-
 contract IrrigationControlUpgradeable is
     EIP2535Initializable,
-    IrrigationAccessControl
+    IrrigationAccessControl,
+    PausableUpgradeable
 {
-    using AuctionStorage for AuctionStorage.Layout;    
+    using AuctionStorage for AuctionStorage.Layout;
     /// @dev auctions
     event UpdateBidTokenGroup(uint indexed id, BidTokenGroup bidTokenGroup);
     event UpdateSellTokens(address[] sellTokens, bool[] bEnables);
@@ -69,5 +70,14 @@ contract IrrigationControlUpgradeable is
     function updatePeriods(uint48[] memory periods) external onlySuperAdminRole {
         AuctionStorage.layout().periods = periods;
         emit UpdateAuctionPeriods(periods);
+    }
+
+    /// @dev pausable
+    function pause() external onlySuperAdminRole {
+        _pause();
+    }
+
+    function unpause() external onlySuperAdminRole {
+        _unpause();
     }
 }
