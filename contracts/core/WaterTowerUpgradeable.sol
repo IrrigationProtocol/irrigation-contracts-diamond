@@ -3,6 +3,7 @@ pragma solidity 0.8.17;
 
 import "@gnus.ai/contracts-upgradeable-diamond/contracts/token/ERC20/IERC20Upgradeable.sol";
 import "@gnus.ai/contracts-upgradeable-diamond/contracts/security/ReentrancyGuardUpgradeable.sol";
+import "@gnus.ai/contracts-upgradeable-diamond/contracts/security/PausableUpgradeable.sol";
 
 import "./WaterTowerStorage.sol";
 import "../utils/EIP2535Initializable.sol";
@@ -26,7 +27,8 @@ contract WaterTowerUpgradeable is
     EIP2535Initializable,
     IrrigationAccessControl,
     ReentrancyGuardUpgradeable,
-    IWaterTowerUpgradeable
+    IWaterTowerUpgradeable,
+    PausableUpgradeable
 {
     using WaterTowerStorage for WaterTowerStorage.Layout;
 
@@ -48,20 +50,20 @@ contract WaterTowerUpgradeable is
     }
 
     /// @notice deposit water token
-    function deposit(uint256 amount, bool bAutoIrrigate) external {
+    function deposit(uint256 amount, bool bAutoIrrigate) external whenNotPaused {
         IERC20Upgradeable(address(this)).transferFrom(msg.sender, address(this), amount);
         setAutoIrrigate(bAutoIrrigate);
         _deposit(msg.sender, amount);
     }
 
     // withdraw water token
-    function withdraw(uint256 amount) external nonReentrant {
+    function withdraw(uint256 amount) external nonReentrant whenNotPaused {
         _withdraw(msg.sender, amount);
         IERC20Upgradeable(address(this)).transfer(msg.sender, amount);
     }
 
     /// @notice claim ETH rewards
-    function claim(uint256 amount) external nonReentrant {
+    function claim(uint256 amount) external nonReentrant whenNotPaused {
         uint256 claimAmount = _claimReward(msg.sender, amount);
         (bool success, ) = msg.sender.call{value: claimAmount}("");
         if (!success) revert InsufficientBalance();
@@ -70,7 +72,7 @@ contract WaterTowerUpgradeable is
     /// @notice irrigate user reward
     /// @param amount user's ether reward
     /// @param minSwapAmount minimum middle asset amount swapped by irrigate
-    function irrigate(uint256 amount, uint256 minSwapAmount) external nonReentrant {
+    function irrigate(uint256 amount, uint256 minSwapAmount) external nonReentrant whenNotPaused {
         _irrigate(msg.sender, amount, minSwapAmount);
     }
 
