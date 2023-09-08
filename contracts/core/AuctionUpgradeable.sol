@@ -6,6 +6,7 @@ import "@gnus.ai/contracts-upgradeable-diamond/contracts/interfaces/IERC20Upgrad
 import "@gnus.ai/contracts-upgradeable-diamond/contracts/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@gnus.ai/contracts-upgradeable-diamond/contracts/interfaces/IERC1155Upgradeable.sol";
 import "@gnus.ai/contracts-upgradeable-diamond/contracts/security/ReentrancyGuardUpgradeable.sol";
+import "@gnus.ai/contracts-upgradeable-diamond/contracts/security/PausableUpgradeable.sol";
 
 import "./AuctionStorage.sol";
 
@@ -25,7 +26,11 @@ import "../interfaces/IWaterTowerUpgradeable.sol";
 ///     * buyer shuold have enough balance for bid tokens (price * buy amount)
 ///     4. anyone(buyer, seller, or any) close auction after end time
 
-contract AuctionUpgradeable is EIP2535Initializable, ReentrancyGuardUpgradeable {
+contract AuctionUpgradeable is
+    EIP2535Initializable,
+    ReentrancyGuardUpgradeable,
+    PausableUpgradeable
+{
     using AuctionStorage for AuctionStorage.Layout;
     using SafeERC20Upgradeable for IERC20Upgradeable;
     /// @dev errors
@@ -105,7 +110,10 @@ contract AuctionUpgradeable is EIP2535Initializable, ReentrancyGuardUpgradeable 
     uint256 internal constant MINBID_FACTOR = 100;
     uint256 internal constant INCREMENTBID_FACTOR = 2;
 
-    function createAuction(AuctionSetting memory auctionSetting, uint8 periodId) external payable {
+    function createAuction(
+        AuctionSetting memory auctionSetting,
+        uint8 periodId
+    ) external payable whenNotPaused {
         AuctionStorage.Layout storage auctionStorage = AuctionStorage.layout();
         if (!auctionStorage.supportedSellTokens[auctionSetting.sellToken])
             revert InvalidSellToken();
@@ -187,7 +195,7 @@ contract AuctionUpgradeable is EIP2535Initializable, ReentrancyGuardUpgradeable 
         uint128 minBidAmount,
         uint128 priceRangeStart,
         uint128 incrementBidPrice
-    ) external {
+    ) external whenNotPaused {
         AuctionStorage.Layout storage auctionStorage = AuctionStorage.layout();
         AuctionData memory auction = auctionStorage.auctions[auctionId];
         if (auction.seller != msg.sender) revert NoAuctioneer();
@@ -223,7 +231,7 @@ contract AuctionUpgradeable is EIP2535Initializable, ReentrancyGuardUpgradeable 
         uint256 auctionId,
         uint128 purchaseAmount,
         uint16 buyTokenId
-    ) external nonReentrant {
+    ) external nonReentrant whenNotPaused {
         AuctionStorage.Layout storage auctionStorage = AuctionStorage.layout();
         AuctionData memory auction = auctionStorage.auctions[auctionId];
         // Check auction.seller if address(0) auction hasn't been initialized/created and then check the auction type.
@@ -273,7 +281,7 @@ contract AuctionUpgradeable is EIP2535Initializable, ReentrancyGuardUpgradeable 
         uint16 bidTokenId,
         uint128 bidPrice,
         uint128 maxBidPrice
-    ) external nonReentrant returns (uint256) {
+    ) external nonReentrant whenNotPaused returns (uint256) {
         AuctionStorage.Layout storage auctionStorage = AuctionStorage.layout();
         AuctionData memory auction = auctionStorage.auctions[auctionId];
         if (auction.seller == address(0) || auction.s.auctionType == AuctionType.FixedPrice)
@@ -354,7 +362,7 @@ contract AuctionUpgradeable is EIP2535Initializable, ReentrancyGuardUpgradeable 
         return currentBidId;
     }
 
-    function closeAuction(uint256 auctionId) external nonReentrant {
+    function closeAuction(uint256 auctionId) external nonReentrant whenNotPaused {
         AuctionData memory auction = AuctionStorage.layout().auctions[auctionId];
         require(
             block.timestamp >= auction.s.endTime && auction.status != AuctionStatus.Closed,
@@ -381,7 +389,7 @@ contract AuctionUpgradeable is EIP2535Initializable, ReentrancyGuardUpgradeable 
 
     /// @notice claim bid for winner or canceled bid after auction is closed
     /// @dev anyone can claim bid
-    function claimBid(uint256 auctionId, uint256 bidId) external nonReentrant {
+    function claimBid(uint256 auctionId, uint256 bidId) external nonReentrant whenNotPaused {
         AuctionStorage.Layout storage auctionStorage = AuctionStorage.layout();
         AuctionData memory auction = auctionStorage.auctions[auctionId];
         Bid memory bid = auctionStorage.bids[auctionId][bidId];

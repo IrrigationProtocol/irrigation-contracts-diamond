@@ -3,6 +3,7 @@ pragma solidity ^0.8.17;
 
 import "@gnus.ai/contracts-upgradeable-diamond/contracts/interfaces/IERC1155Upgradeable.sol";
 import "@gnus.ai/contracts-upgradeable-diamond/contracts/security/ReentrancyGuardUpgradeable.sol";
+import "@gnus.ai/contracts-upgradeable-diamond/contracts/security/PausableUpgradeable.sol";
 
 import "./TrancheBondStorage.sol";
 import "./WaterCommonStorage.sol";
@@ -27,7 +28,8 @@ import "../interfaces/IBeanstalkPrice.sol";
 contract TrancheBondUpgradeable is
     EIP2535Initializable,
     IrrigationAccessControl,
-    ReentrancyGuardUpgradeable
+    ReentrancyGuardUpgradeable,
+    PausableUpgradeable
 {
     using TrancheBondStorage for TrancheBondStorage.Layout;
     using WaterTowerStorage for WaterTowerStorage.Layout;
@@ -84,7 +86,7 @@ contract TrancheBondUpgradeable is
         uint256[] calldata starts,
         uint256[] calldata ends,
         uint8 periodId
-    ) external onlyWaterHolder nonReentrant {
+    ) external onlyWaterHolder nonReentrant whenNotPaused {
         if (indexes.length != starts.length || indexes.length != ends.length) revert InvalidPods();
         uint256[] memory podIndexes = new uint256[](indexes.length);
         uint256[] memory amounts = new uint256[](indexes.length);
@@ -153,7 +155,9 @@ contract TrancheBondUpgradeable is
     }
 
     /// @dev receive pods with tranches after maturity date is over
-    function receivePodsForTranche(uint256 trancheId) external onlyWaterHolder nonReentrant {
+    function receivePodsForTranche(
+        uint256 trancheId
+    ) external onlyWaterHolder nonReentrant whenNotPaused {
         TrancheBondStorage.Layout storage tancheBondStorage = TrancheBondStorage.layout();
         (uint256 depositId, uint8 trancheLevel) = getTrancheInfo(trancheId);
         DepositPods memory depositPlots = tancheBondStorage.depositedPods[depositId];
