@@ -86,7 +86,7 @@ contract TrancheBondUpgradeable is
         uint256[] calldata starts,
         uint256[] calldata ends,
         uint8 periodId
-    ) external onlyWaterHolder nonReentrant whenNotPaused {
+    ) external whenNotPaused onlyWaterHolder nonReentrant {
         if (indexes.length != starts.length || indexes.length != ends.length) revert InvalidPods();
         uint256[] memory podIndexes = new uint256[](indexes.length);
         uint256[] memory amounts = new uint256[](indexes.length);
@@ -157,7 +157,7 @@ contract TrancheBondUpgradeable is
     /// @dev receive pods with tranches after maturity date is over
     function receivePodsForTranche(
         uint256 trancheId
-    ) external onlyWaterHolder nonReentrant whenNotPaused {
+    ) external whenNotPaused onlyWaterHolder nonReentrant {
         TrancheBondStorage.Layout storage tancheBondStorage = TrancheBondStorage.layout();
         (uint256 depositId, uint8 trancheLevel) = getTrancheInfo(trancheId);
         DepositPods memory depositPlots = tancheBondStorage.depositedPods[depositId];
