@@ -15,6 +15,7 @@ import { CONTRACT_ADDRESSES } from './scripts/shared';
 import { getPriceOfPods } from './test/utils/price';
 import { deployments } from './scripts/deployments';
 import { fromWei, toBN, toWei } from './scripts/common';
+import { restorePlots } from './test/utils/restorePlot';
 
 dotenv.config();
 
@@ -114,6 +115,9 @@ task('sync-devchain', 'Syncing dev chain', async (taskArgs, hre) => {
   }
 });
 
+task('sync-plots-beta', 'Testers get own plots on devchain', async (taskArgs, hre) => {
+  await restorePlots(hre);
+});
 const elementSeenSet = new Set<string>();
 // filter out duplicate function signatures
 function genSignature(name: string, inputs: Array<any>, type: string): string {

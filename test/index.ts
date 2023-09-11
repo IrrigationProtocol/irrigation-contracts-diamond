@@ -27,6 +27,7 @@ import * as ZscTests from './facets/ZscTests';
 import * as PodsOracleTests from './PodsOracleTests';
 import * as TrancheTests from './facets/TrancheTests';
 import * as PriceOracleTests from './facets/PriceOracleTests';
+import * as IrrigationControlTests from './IrrigationControlTests';
 import { mintAllTokensForTesting } from './utils/mint';
 import { initAll } from '../scripts/init';
 
@@ -127,6 +128,8 @@ describe.only('Irrigation Diamond DApp Testing', async function () {
     });
 
     after(() => {
+      // admin control
+      IrrigationControlTests.suite();
       /// oracle facet
       PriceOracleTests.suite(networkDeployedInfo);
       PodsOracleTests.suite();

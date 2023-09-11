@@ -6,6 +6,7 @@ import "@gnus.ai/contracts-upgradeable-diamond/contracts/interfaces/IERC20Metada
 import "@gnus.ai/contracts-upgradeable-diamond/contracts/security/ReentrancyGuardUpgradeable.sol";
 import "@gnus.ai/contracts-upgradeable-diamond/contracts/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@gnus.ai/contracts-upgradeable-diamond/contracts/interfaces/IERC20Upgradeable.sol";
+import "@gnus.ai/contracts-upgradeable-diamond/contracts/security/PausableUpgradeable.sol";
 
 import "../interfaces/ICustomOracle.sol";
 import {IBeanstalkUpgradeable} from "../beanstalk/IBeanstalkUpgradeable.sol";
@@ -21,7 +22,8 @@ contract SprinklerUpgradeable is
     EIP2535Initializable,
     IrrigationAccessControl,
     ISprinklerUpgradeable,
-    ReentrancyGuardUpgradeable
+    ReentrancyGuardUpgradeable,
+    PausableUpgradeable
 {
     using SprinklerStorage for SprinklerStorage.Layout;
     using SafeERC20Upgradeable for IERC20Upgradeable;
@@ -85,7 +87,7 @@ contract SprinklerUpgradeable is
     function exchangeTokenToWater(
         address token,
         uint256 amount
-    ) external onlyListedAsset(token) nonReentrant returns (uint256 waterAmount) {
+    ) external onlyListedAsset(token) nonReentrant whenNotPaused returns (uint256 waterAmount) {
         if (token == address(this) || token == Constants.ETHER) revert InvalidSwapToken();
         if (amount == 0) revert InvalidAmount();
 
@@ -108,6 +110,7 @@ contract SprinklerUpgradeable is
         payable
         onlyListedAsset(Constants.ETHER)
         nonReentrant
+        whenNotPaused
         returns (uint256 waterAmount)
     {
         if (msg.value == 0) revert InvalidAmount();
