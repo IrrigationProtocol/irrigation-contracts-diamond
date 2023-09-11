@@ -11,7 +11,25 @@ import { CONTRACT_ADDRESSES } from '../../scripts/shared';
 import { skipTime } from '../utils/time';
 import { AuctionSetting, Bid } from '../utils/interface';
 import { getCurrentTime } from '../utils';
-
+export const getDefaultAuctionSetting = (): AuctionSetting => {
+  const defaultAuctionSetting: AuctionSetting = {
+    startTime: 0,
+    endTime: 0, // duration mode
+    sellToken: CONTRACT_ADDRESSES.BEAN,
+    trancheIndex: toWei(0),
+    sellAmount: toWei(100),
+    minBidAmount: toWei(1),
+    fixedPrice: toWei(1),
+    priceRangeStart: toWei(1),
+    priceRangeEnd: toWei(2),
+    reserve: toWei(0),
+    incrementBidPrice: toWei(0.00001),
+    bidTokenGroupId: 0,
+    auctionType: AuctionType.TimedAndFixed,
+    periodId: 1,
+  };
+  return defaultAuctionSetting;
+};
 export function suite() {
   describe('Irrigation Auction Testing', async function () {
     let signers: SignerWithAddress[];

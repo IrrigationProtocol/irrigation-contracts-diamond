@@ -1,46 +1,46 @@
 {
     "gasLimits": [
         {
-            "buyNow": "120743"
+            "buyNow": "122825"
         },
         {
-            "claimBid": "697133"
+            "claimBid": "699249"
         },
         {
-            "closeAuction": "919557"
+            "closeAuction": "921299"
         },
         {
-            "createAuction": "311737"
+            "createAuction": "313887"
         },
         {
-            "placeBid": "581226"
+            "placeBid": "582621"
         },
         {
-            "updateAuction": "53753"
+            "updateAuction": "55903"
         },
         {
-            "exchangeETHToWater": "120794"
+            "exchangeETHToWater": "122966"
         },
         {
-            "exchangeTokenToWater": "300682"
+            "exchangeTokenToWater": "306471"
         },
         {
-            "createTranchesWithPods": "892343"
+            "createTranchesWithPods": "898137"
         },
         {
-            "receivePodsForTranche": "287045"
+            "receivePodsForTranche": "273930"
         },
         {
-            "claim": "88797"
+            "claim": "90517"
         },
         {
-            "deposit": "178852"
+            "deposit": "181002"
         },
         {
-            "irrigate": "882524"
+            "irrigate": "884155"
         },
         {
-            "withdraw": "88943"
+            "withdraw": "91093"
         }
     ]
 }
