@@ -9,8 +9,8 @@ contract WaterCommonUpgradeable is EIP2535Initializable, IrrigationAccessControl
     using WaterCommonStorage for WaterCommonStorage.Layout;
 
     /// @dev There should be only one initialize functon in all facets. So there is the initialize function in Water facet
-    
-    function WaterCommon_Initialize(address _beanstalk, address _fertilizer) public  onlySuperAdminRole {
+
+    function WaterCommon_Initialize(address _beanstalk, address _fertilizer) public  onlyAdminRole {
         __WaterCommon_init(_beanstalk, _fertilizer);
     }
 

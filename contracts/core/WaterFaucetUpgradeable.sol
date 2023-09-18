@@ -22,7 +22,7 @@ contract WaterFaucetUpgradeable is EIP2535Initializable, IrrigationAccessControl
     uint256 public constant STALK_MIN_AMOUNT = 1e18;
     uint256 public constant PODS_MIN_AMOUNT = 1e18;
 
-    function startEpoch(uint256 amountPerUser, uint256 totalAmount) external onlySuperAdminRole {
+    function startEpoch(uint256 amountPerUser, uint256 totalAmount) external onlyAdminRole {
         require(totalAmount != 0 && amountPerUser != 0, "zero amount");
         require(totalAmount % amountPerUser == 0, "invalid amount");
         uint256 epoch = WaterFaucetStorage.layout().epochs.length;

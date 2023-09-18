@@ -24,7 +24,7 @@ contract IrrigationControlUpgradeable is
     function setSellTokens(
         address[] memory tokens,
         bool[] memory bEnables
-    ) external onlySuperAdminRole {
+    ) external onlyAdminRole {
         AuctionStorage.Layout storage auctionStorage = AuctionStorage.layout();
         for (uint256 i; i < tokens.length; ) {
             auctionStorage.supportedSellTokens[tokens[i]] = bEnables[i];
@@ -38,7 +38,7 @@ contract IrrigationControlUpgradeable is
     function setAuctionFee(
         uint256 _newFeeNumerator,
         address _newfeeReceiver
-    ) external onlySuperAdminRole {
+    ) external onlyAdminRole {
         AuctionStorage.Layout storage auctionStorage = AuctionStorage.layout();
         if (_newFeeNumerator > 25) revert(); // "Fee higher than 2.5%");
         // caution: for currently running auctions, the feeReceiver is changing as well.
@@ -46,7 +46,7 @@ contract IrrigationControlUpgradeable is
         auctionStorage.feeNumerator = _newFeeNumerator;
     }
 
-    function AddBidTokenGroup(BidTokenGroup memory bidTokenGroup) external onlySuperAdminRole {
+    function AddBidTokenGroup(BidTokenGroup memory bidTokenGroup) external onlyAdminRole {
         AuctionStorage.Layout storage auctionStorage = AuctionStorage.layout();
         uint256 count = auctionStorage.countOfTokenGroups;
         _updateTokenGroup(count, bidTokenGroup);
@@ -58,7 +58,7 @@ contract IrrigationControlUpgradeable is
     function updateTokenGroup(
         uint256 tokenGroupId,
         BidTokenGroup memory bidTokenGroup
-    ) external onlySuperAdminRole {
+    ) external onlyAdminRole {
         _updateTokenGroup(tokenGroupId, bidTokenGroup);
     }
 
@@ -67,7 +67,7 @@ contract IrrigationControlUpgradeable is
         emit UpdateBidTokenGroup(tokenGroupId, bidTokenGroup);
     }
 
-    function updatePeriods(uint48[] memory periods) external onlySuperAdminRole {
+    function updatePeriods(uint48[] memory periods) external onlyAdminRole {
         AuctionStorage.layout().periods = periods;
         emit UpdateAuctionPeriods(periods);
     }

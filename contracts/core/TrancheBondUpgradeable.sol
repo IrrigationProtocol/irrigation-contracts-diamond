@@ -372,7 +372,7 @@ contract TrancheBondUpgradeable is
         return (trancheId >> 2, uint8(trancheId & 3) - 1);
     }
 
-    function setMaturityPeriods(uint48[] calldata periods) external onlySuperAdminRole {
+    function setMaturityPeriods(uint48[] calldata periods) external onlyAdminRole {
         TrancheBondStorage.layout().periods = periods;
         emit SetMaturityPeriods(periods);
     }
