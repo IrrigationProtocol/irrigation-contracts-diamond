@@ -44,7 +44,7 @@ contract WaterTowerUpgradeable is
     uint256 internal constant AUTOIRRIGATE_GASLIMIT = 877100;
     uint256 internal constant POOL_PERIOD = 30 days;
 
-    function initWaterTower() external EIP2535Initializer onlySuperAdminRole {
+    function initWaterTower() external EIP2535Initializer onlyAdminRole {
         __IrrigationAccessControl_init();
         __ReentrancyGuard_init();
     }
@@ -285,7 +285,7 @@ contract WaterTowerUpgradeable is
         emit AddETHReward(msg.value);
     }
 
-    function updateMonthlyReward(uint256 monthlyRewards) internal onlySuperAdminRole {
+    function updateMonthlyReward(uint256 monthlyRewards) internal onlyAdminRole {
         uint256 totalRewards = WaterTowerStorage.layout().totalRewards;
         if (monthlyRewards > totalRewards) revert InsufficientReward();
         unchecked {
@@ -296,15 +296,15 @@ contract WaterTowerUpgradeable is
     }
 
     /// @dev admin setters
-    function setMiddleAsset(address middleAsset) external onlySuperAdminRole {
+    function setMiddleAsset(address middleAsset) external onlyAdminRole {
         WaterTowerStorage.layout().middleAssetForIrrigate = middleAsset;
     }
 
-    function setIrrigateBonusRate(uint256 bonusRate) external onlySuperAdminRole {
+    function setIrrigateBonusRate(uint256 bonusRate) external onlyAdminRole {
         WaterTowerStorage.layout().irrigateBonusRate = bonusRate;
     }
 
-    function setPool(uint256 endTime, uint256 monthlyRewards) external payable onlySuperAdminRole {
+    function setPool(uint256 endTime, uint256 monthlyRewards) external payable onlyAdminRole {
         if ((endTime != 0 && endTime < block.timestamp)) revert InvalidTime();
         updateMonthlyReward(monthlyRewards);
         /// @dev default period is 30 days

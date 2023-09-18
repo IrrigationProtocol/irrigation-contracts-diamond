@@ -8,11 +8,11 @@ import "../libraries/TransferHelper.sol";
 abstract contract BanTransferor is IrrigationAccessControl {
     using BannedTransferorList for BannedTransferorList.Layout;
 
-    function banTransferor(address _transferor) public onlySuperAdminRole {
+    function banTransferor(address _transferor) public onlyAdminRole {
         BannedTransferorList.layout().bannedTransferors[_transferor] = true;
     }
 
-    function allowTransferor(address _transferor) public onlySuperAdminRole {
+    function allowTransferor(address _transferor) public onlyAdminRole {
         delete BannedTransferorList.layout().bannedTransferors[_transferor];
     }
 

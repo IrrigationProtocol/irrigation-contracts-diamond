@@ -76,7 +76,7 @@ contract PriceOracleUpgradeable is EIP2535Initializable, IrrigationAccessControl
 
     /// @dev admin setters
     /// @dev direct price
-    function setDirectPrice(address asset, uint256 price) external onlySuperAdminRole {
+    function setDirectPrice(address asset, uint256 price) external onlyAdminRole {
         PriceOracleStorage.layout().oracleItems[asset].price = price;
         emit UpdateAssetPrice(asset, PriceOracleStorage.layout().oracleItems[asset].price, price);
     }
@@ -87,7 +87,7 @@ contract PriceOracleUpgradeable is EIP2535Initializable, IrrigationAccessControl
         address oracle,
         address base,
         OracleType oType
-    ) external onlySuperAdminRole {
+    ) external onlyAdminRole {
         uint256 multiplier = Constants.D18;
         if (oType == OracleType.CHAINLINK) {
             multiplier = 10 ** (uint256(18) - AggregatorV2V3Interface(oracle).decimals());
