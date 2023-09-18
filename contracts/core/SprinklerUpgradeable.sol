@@ -43,7 +43,7 @@ contract SprinklerUpgradeable is
      * @param _token underlying token address
      * @param _multiplier price oracle address
      */
-    function setTokenMultiplier(address _token, uint256 _multiplier) external onlySuperAdminRole {
+    function setTokenMultiplier(address _token, uint256 _multiplier) external onlyAdminRole {
         SprinklerStorage.layout().whitelistAssets[_token].tokenMultiplier = _multiplier;
     }
 
@@ -52,7 +52,7 @@ contract SprinklerUpgradeable is
      * @param _token underlying token address
      * @param _multiplier token multiplier, if this is 0, multiplier is calculated from decimals of token
      */
-    function addAssetToWhiteList(address _token, uint256 _multiplier) external onlySuperAdminRole {
+    function addAssetToWhiteList(address _token, uint256 _multiplier) external onlyAdminRole {
         if (SprinklerStorage.layout().whitelistAssets[_token].tokenMultiplier != 0)
             revert ExistingAsset();
 
@@ -73,7 +73,7 @@ contract SprinklerUpgradeable is
      * @notice pause exchanging
      */
 
-    function unListAsset(address _token) external onlySuperAdminRole {
+    function unListAsset(address _token) external onlyAdminRole {
         SprinklerStorage.layout().whitelistAssets[_token].isListed = false;
         emit UnListAsset(_token);
     }
@@ -141,7 +141,7 @@ contract SprinklerUpgradeable is
     /// @param token token address
     /// @param to destination address
     /// @param amount token amount
-    function withdrawToken(address token, address to, uint256 amount) external onlySuperAdminRole {
+    function withdrawToken(address token, address to, uint256 amount) external onlyAdminRole {
         /// @dev can't withdraw water token
         if (token == address(this)) revert NoWaterWithdraw();
         if (token == Constants.ETHER) {

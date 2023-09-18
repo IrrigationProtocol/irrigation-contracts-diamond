@@ -156,13 +156,13 @@ contract ERC1155WhitelistUpgradeable is
     /// @notice Add proxy contract into whitelist
     /// @param contractAddress spender contract address
     /// @param name spender name
-    function addProxySpender(address contractAddress, bytes32 name) external onlySuperAdminRole {
+    function addProxySpender(address contractAddress, bytes32 name) external onlyAdminRole {
         ERC1155WhitelistStorage.layout().proxySpenders[contractAddress].name = name;
     }
 
     /// @notice Remove proxy contract into whitelist
     /// @param contractAddress spender contract addres
-    function removeProxySpender(address contractAddress) external onlySuperAdminRole {
+    function removeProxySpender(address contractAddress) external onlyAdminRole {
         ERC1155WhitelistStorage.layout().proxySpenders[contractAddress].name = 0;
     }
 
@@ -174,7 +174,7 @@ contract ERC1155WhitelistUpgradeable is
         address proxyAddress,
         uint256[] memory tokenIds,
         bool bBlacklisted
-    ) external onlySuperAdminRole {
+    ) external onlyAdminRole {
         uint256 length = tokenIds.length;
         for (uint256 i = 0; i < length; ) {
             ERC1155WhitelistStorage.layout().proxySpenders[proxyAddress].blacklisted[
@@ -187,7 +187,7 @@ contract ERC1155WhitelistUpgradeable is
     }
 
     /// @notice Add token id list into blacklist for compliance with government regulations)
-    function addTokenIntoBlacklist(uint256[] memory tokenIds) external onlySuperAdminRole {
+    function addTokenIntoBlacklist(uint256[] memory tokenIds) external onlyAdminRole {
         uint256 length = tokenIds.length;
         for (uint256 i = 0; i < length; ) {
             ERC1155WhitelistStorage.layout().blacklistForCompliance[i] = true;
@@ -197,11 +197,11 @@ contract ERC1155WhitelistUpgradeable is
         }
     }
 
-    function setTokenBaseURI(string calldata _uri) external onlySuperAdminRole {
+    function setTokenBaseURI(string calldata _uri) external onlyAdminRole {
         ERC1155WhitelistStorage.layout().baseURI = _uri;
     }
 
-    function setContractURI(string calldata contractUri) external onlySuperAdminRole {
+    function setContractURI(string calldata contractUri) external onlyAdminRole {
         ERC1155WhitelistStorage.layout().contractURI = contractUri;
     }
 }

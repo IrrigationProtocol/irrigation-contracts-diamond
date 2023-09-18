@@ -22,7 +22,7 @@ contract ZSCUpgradeable is EIP2535Initializable, IrrigationAccessControl, BanTra
 
     // arg is still necessary for transfers---not even so much to know when you received a transfer, as to know when you got rolled over.
 
-    function init(address _token, uint256 _epochLength) external onlySuperAdminRole {
+    function init(address _token, uint256 _epochLength) external onlyAdminRole {
         // epoch length, like block.time, is in _seconds_. 4 is the minimum!!! (To allow a withdrawal to go through.)
         ZSCStorage.layout().epochLength = _epochLength;
         ZSCStorage.layout().fee = ZetherVerifier.fee;
@@ -234,7 +234,7 @@ contract ZSCUpgradeable is EIP2535Initializable, IrrigationAccessControl, BanTra
         TransferHelper.safeTransfer(ZSCStorage.layout().tokenAddress, msg.sender, bTransfer);
     }
 
-    function setMaxKeys(uint32 maxPublicKeys) external onlySuperAdminRole {
+    function setMaxKeys(uint32 maxPublicKeys) external onlyAdminRole {
         libEncryption.setMaxKeys(maxPublicKeys);
     }
 
@@ -242,7 +242,7 @@ contract ZSCUpgradeable is EIP2535Initializable, IrrigationAccessControl, BanTra
         uint32 numKeys,
         uint32 offset,
         Utils.G1Point[] memory publicKeysIn
-    ) external onlySuperAdminRole {
+    ) external onlyAdminRole {
         libEncryption.setPublicKeys(numKeys, offset, publicKeysIn);
     }
 
