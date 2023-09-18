@@ -162,6 +162,8 @@ export async function initWaterTower(waterTower: WaterTowerUpgradeable) {
   date.setMonth(date.getMonth() + 1);
   date.setDate(0);
   await waterTower.setPool(Math.floor(date.getTime() / 1000), 0);
+  const autoIrrigateAdmin = (await ethers.getSigners())[5];
+  await waterTower.grantRole(waterTower.AUTO_IRRIGATE_ADMIN_ROLE(), autoIrrigateAdmin.address);
 }
 
 export async function initAuction(adminControl: IrrigationControlUpgradeable) {
@@ -210,4 +212,8 @@ export async function initAll(contractAddress: string) {
   await initWaterTower(waterTower);
   await initAuction(irrigationControl);
   await initTrancheBond(contractAddress);
+  debuglog(
+    `Owner ETH Balance after initialization`,
+    fromWei(await ethers.provider.getBalance((await ethers.getSigners())[0].address)),
+  );
 }

@@ -664,6 +664,32 @@ export function suite() {
           toWei(300),
         );
       });
+
+      it('buyNow with ohm token', async () => {
+        const ohmToken = await ethers.getContractAt('IERC20Upgradeable', CONTRACT_ADDRESSES.OHM);
+        const ohmTester = (await ethers.getSigners())[5];
+        await ohmToken.transfer(ohmTester.address, toD6(12000));        
+        await ohmToken.connect(ohmTester).approve(diamondRootAddress, toD6(12000));
+        await auctionContract.connect(ohmTester).createAuction(
+          {
+            ...defaultAuctionSetting,
+            sellAmount: toD6(10000),
+            minBidAmount: toD6(100),
+            sellToken: ohmToken.address,
+            auctionType: AuctionType.TimedAndFixed,
+          },
+          0,
+        );
+        const auctionId = await auctionContract.getAuctionsCount();
+        await auctionContract.placeBid(
+          auctionId,
+          toD6(100),
+          0,
+          0,
+          defaultAuctionSetting.priceRangeEnd,
+        );
+        await auctionContract.buyNow(auctionId, toD6(100), 0);
+      });
     });
   });
 }
