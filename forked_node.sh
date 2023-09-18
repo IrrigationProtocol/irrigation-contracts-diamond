@@ -1,3 +1,2 @@
 source .env
-anvil --fork-url $FORK_URL --chain-id 31337 --timeout 100000000 --fork-block-number $FORK_BLOCK_NUMBER
-# anvil --fork-url $FORK_URL --chain-id 31337
+anvil --fork-url $FORK_URL --chain-id 20239 --timeout 100000000 --fork-block-number $FORK_BLOCK_NUMBER
