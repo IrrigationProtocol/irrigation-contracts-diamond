@@ -178,7 +178,7 @@ const config: HardhatUserConfig = {
     },
     local: {
       url: 'http://127.0.0.1:8545',
-      chainId: 31337,
+      chainId: 20239,
     },
     dev: {
       url: process.env.DEV_RPC || '',

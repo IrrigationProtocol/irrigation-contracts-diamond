@@ -35,7 +35,10 @@ export function suite() {
       expect(totalRewardRate).to.be.eq(0);
       expect(monthlyRewards).to.be.eq(0);
       const endAt = new Date(Number(endTime) * 1000);
-      assert(endAt.getDate() === 30 || endAt.getDate() === 31, `pool should be exited at month end, but end date is ${endAt}`);
+      assert(
+        endAt.getDate() === 30 || endAt.getDate() === 31,
+        `pool should be exited at month end, but end date is ${endAt}`,
+      );
     });
 
     it('Test WaterTower deposit and setAutoIrrigate', async () => {
@@ -48,9 +51,7 @@ export function suite() {
       updatedBalance = (await water.balanceOf(irrigationDiamond.address)).sub(updatedBalance);
       assert(
         updatedBalance.eq(toWei(100)),
-        `updated water balance of contract should be 100, but is ${fromWei(
-          updatedBalance,
-        )}`,
+        `updated water balance of contract should be 100, but is ${fromWei(updatedBalance)}`,
       );
       let userInfo = await waterTower.userInfo(sender.address);
       assert(
@@ -73,9 +74,7 @@ export function suite() {
       updatedBalance = updatedBalance.sub(await water.balanceOf(irrigationDiamond.address));
       assert(
         updatedBalance.eq(toWei(100)),
-        `updated water balance of contract should be 100, but is ${fromWei(
-          updatedBalance,
-        )}`,
+        `updated water balance of contract should be 100, but is ${fromWei(updatedBalance)}`,
       );
       const userInfo = await waterTower.userInfo(sender.address);
       assert(
@@ -99,7 +98,9 @@ export function suite() {
       let txReceipt = await tx.wait();
       updatedEthOfClaimer = (await provider.getBalance(sender.address)).sub(updatedEthOfClaimer);
       assert(
-        updatedEthOfClaimer.eq(toWei(claimValue).sub(txReceipt.gasUsed.mul(txReceipt.effectiveGasPrice))),
+        updatedEthOfClaimer.eq(
+          toWei(claimValue).sub(txReceipt.gasUsed.mul(txReceipt.effectiveGasPrice)),
+        ),
         `updated eth balance of sender should be ${fromWei(
           toWei(claimValue).sub(txReceipt.gasUsed.mul(txReceipt.effectiveGasPrice)),
         )}, but is ${fromWei(updatedEthOfClaimer)}`,
@@ -121,7 +122,9 @@ export function suite() {
       let txReceipt = await tx.wait();
       updatedEthOfClaimer = (await provider.getBalance(sender.address)).sub(updatedEthOfClaimer);
       assert(
-        updatedEthOfClaimer.eq(toWei(claimValue).sub(txReceipt.gasUsed.mul(txReceipt.effectiveGasPrice))),
+        updatedEthOfClaimer.eq(
+          toWei(claimValue).sub(txReceipt.gasUsed.mul(txReceipt.effectiveGasPrice)),
+        ),
         `updated eth balance of sender should be ${fromWei(
           toWei(claimValue).sub(txReceipt.gasUsed.mul(txReceipt.effectiveGasPrice)),
         )}, but is ${fromWei(updatedEthOfClaimer)}`,
@@ -144,16 +147,36 @@ export function suite() {
         await sprinkler.addAssetToWhiteList(CONTRACT_ADDRESSES.BEAN, 0);
       }
       let originalAmount = (await waterTower.userInfo(sender.address)).amount;
-      const { waterAmount, bonusAmount, swapAmount } = await waterTower.getBonusForIrrigate(irrigateValue);
+      const { waterAmount, bonusAmount, swapAmount } = await waterTower.getBonusForIrrigate(
+        irrigateValue,
+      );
       /// slippage 5%
-      let tx = await waterTower.connect(sender).irrigate(irrigateValue, swapAmount.mul(95).div(100));
+      let tx = await waterTower
+        .connect(sender)
+        .irrigate(irrigateValue, swapAmount.mul(95).div(100));
 
-      await expect(tx).to.emit(irrigationDiamond, 'Claimed').withArgs(sender.address, irrigateValue);
-      const addedWaterAmount = (await waterTower.userInfo(sender.address)).amount.sub(originalAmount);
+      await expect(tx)
+        .to.emit(irrigationDiamond, 'Claimed')
+        .withArgs(sender.address, irrigateValue);
+      const addedWaterAmount = (await waterTower.userInfo(sender.address)).amount.sub(
+        originalAmount,
+      );
       // diff between calculated value and real value should be small than 0.1 %
-      expect(addedWaterAmount.sub(bonusAmount.add(waterAmount)).abs().mul(1000)).to.be.lte(addedWaterAmount);
-      await expect(tx).to.emit(irrigationDiamond, 'Deposited').withArgs(sender.address, addedWaterAmount);
-      await expect(tx).to.emit(irrigationDiamond, 'Irrigate').withArgs(sender.address, CONTRACT_ADDRESSES.BEAN, irrigateValue, addedWaterAmount, addedWaterAmount.mul(5).div(105));
+      expect(addedWaterAmount.sub(bonusAmount.add(waterAmount)).abs().mul(1000)).to.be.lte(
+        addedWaterAmount,
+      );
+      await expect(tx)
+        .to.emit(irrigationDiamond, 'Deposited')
+        .withArgs(sender.address, addedWaterAmount);
+      await expect(tx)
+        .to.emit(irrigationDiamond, 'Irrigate')
+        .withArgs(
+          sender.address,
+          CONTRACT_ADDRESSES.BEAN,
+          irrigateValue,
+          addedWaterAmount,
+          addedWaterAmount.mul(5).div(105),
+        );
 
       updatedEthInContract = updatedEthInContract.sub(
         await provider.getBalance(waterTower.address),
@@ -174,7 +197,10 @@ export function suite() {
       let tx = await waterTower.connect(tester).deposit(toWei(50), true);
       expect((await waterTower.userInfo(tester.address)).amount).to.be.eq(toWei(50));
       const ethRewardForTester = await waterTower.userETHReward(tester.address);
-      assert(((await waterTower.userInfo(tester.address)).isAutoIrrigate), 'but not set auto irrigate')
+      assert(
+        (await waterTower.userInfo(tester.address)).isAutoIrrigate,
+        'but not set auto irrigate',
+      );
       expect(ethRewardForTester).to.be.eq(0);
     });
 
@@ -186,8 +212,12 @@ export function suite() {
       let originalAmount = (await waterTower.userInfo(sender.address)).amount;
       const { waterAmount, bonusAmount } = await waterTower.getBonusForIrrigate(irrigateValue);
       let tx = await waterTower.connect(sender).irrigate(0, 0);
-      const addedWaterAmount = (await waterTower.userInfo(sender.address)).amount.sub(originalAmount);
-      expect(addedWaterAmount.sub(bonusAmount.add(waterAmount)).abs().mul(1000)).to.be.lte(addedWaterAmount);
+      const addedWaterAmount = (await waterTower.userInfo(sender.address)).amount.sub(
+        originalAmount,
+      );
+      expect(addedWaterAmount.sub(bonusAmount.add(waterAmount)).abs().mul(1000)).to.be.lte(
+        addedWaterAmount,
+      );
       updatedEthInContract = updatedEthInContract.sub(
         await provider.getBalance(waterTower.address),
       );
@@ -207,17 +237,32 @@ export function suite() {
       await waterTower.setPool(0, toWei(0.5));
       let testerReward = await waterTower.userETHReward(tester.address);
       const oldDepositAmount = (await waterTower.userInfo(tester.address)).amount;
-      const { waterAmount, bonusAmount, swapAmount } = await waterTower.getBonusForIrrigate(testerReward);
-      let ownerEthBalance = await ethers.provider.getBalance(owner.address);
+      const { waterAmount, bonusAmount, swapAmount } = await waterTower.getBonusForIrrigate(
+        testerReward,
+      );
+      const autoIrrigateAdmin = signers[5];
+      let autoIrrigatorEthBalance = await ethers.provider.getBalance(autoIrrigateAdmin.address);
       // slippage 10% doesn't work for small amount, so we set 20%
-      const tx = await waterTower.autoIrrigate(tester.address, testerReward.sub(toWei(0.001)), swapAmount.mul(80).div(100));
+      const tx = await waterTower
+        .connect(autoIrrigateAdmin)
+        .autoIrrigate(tester.address, testerReward.sub(toWei(0.001)), swapAmount.mul(80).div(100));
       let txReceipt = await tx.wait();
       const subractedGasFee = BigNumber.from('877100').mul(txReceipt.effectiveGasPrice);
       testerReward = await waterTower.userETHReward(tester.address);
-      expect(ownerEthBalance.sub(await ethers.provider.getBalance(owner.address))).to.be.eq((txReceipt.gasUsed.sub(BigNumber.from('877100'))).mul(txReceipt.effectiveGasPrice));
+      expect(
+        autoIrrigatorEthBalance.sub(await ethers.provider.getBalance(autoIrrigateAdmin.address)),
+      ).to.be.eq(txReceipt.gasUsed.sub(BigNumber.from('877100')).mul(txReceipt.effectiveGasPrice));
       expect(testerReward).to.be.eq(toWei(0.001).sub(subractedGasFee));
-      expect((await waterTower.userInfo(tester.address)).amount.sub(oldDepositAmount)).to.be.gt(bonusAmount);
+      expect((await waterTower.userInfo(tester.address)).amount.sub(oldDepositAmount)).to.be.gt(
+        bonusAmount,
+      );
       expect(bonusAmount).to.be.gt(toD6(0.01));
+    });
+
+    it('AutoIrrigating by signer not admin or autoIrrigateAdmin role should be failed', async () => {
+      await expect(
+        waterTower.connect(signers[1]).autoIrrigate(tester.address, 0, 0),
+      ).to.be.rejectedWith('Only Admin or AutoIrrigate Admin allowed');
     });
 
     it('totalReward should be same as rewards of total users in same pool', async () => {
@@ -248,25 +293,34 @@ export function suite() {
       let tester2Reward = await waterTower.userETHReward(tester2.address);
       const testerAmount = (await waterTower.userInfo(tester.address)).amount;
       const tester2Amount = (await waterTower.userInfo(tester2.address)).amount;
-      const { waterAmount, bonusAmount, swapAmount } = await waterTower.getBonusForIrrigate(testerReward);
-      const { waterAmount: waterAmount2, bonusAmount: bonusAmount2, swapAmount: swapAmount2 } = await waterTower.getBonusForIrrigate(testerReward);
+      const { waterAmount, bonusAmount, swapAmount } = await waterTower.getBonusForIrrigate(
+        testerReward,
+      );
+      const {
+        waterAmount: waterAmount2,
+        bonusAmount: bonusAmount2,
+        swapAmount: swapAmount2,
+      } = await waterTower.getBonusForIrrigate(testerReward);
       const tx = await waterTower.batchAutoIrrigate(
         [tester.address, tester2.address],
         [testerReward.sub(toWei(0.001)), tester2Reward.sub(toWei(0.001))],
-        [swapAmount.mul(80).div(100), swapAmount2.mul(80).div(100)]
+        [swapAmount.mul(80).div(100), swapAmount2.mul(80).div(100)],
       );
       let txReceipt = await tx.wait();
       const subractedGasFee = BigNumber.from('877100').mul(txReceipt.effectiveGasPrice);
       testerReward = await waterTower.userETHReward(tester.address);
       expect(testerReward).to.be.eq(toWei(0.001).sub(subractedGasFee));
-      expect((await waterTower.userInfo(tester.address)).amount.sub(testerAmount)).to.be.gt(bonusAmount);
+      expect((await waterTower.userInfo(tester.address)).amount.sub(testerAmount)).to.be.gt(
+        bonusAmount,
+      );
       expect(bonusAmount).to.be.gt(toD6(0.01));
 
       tester2Reward = await waterTower.userETHReward(tester2.address);
       expect(tester2Reward).to.be.eq(toWei(0.001).sub(subractedGasFee));
-      expect((await waterTower.userInfo(tester2.address)).amount.sub(tester2Amount)).to.be.gt(bonusAmount2);
+      expect((await waterTower.userInfo(tester2.address)).amount.sub(tester2Amount)).to.be.gt(
+        bonusAmount2,
+      );
       expect(bonusAmount2).to.be.gt(toD6(0.01));
-
     });
   });
 }
