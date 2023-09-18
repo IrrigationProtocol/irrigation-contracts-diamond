@@ -6,8 +6,8 @@ import "@gnus.ai/contracts-upgradeable-diamond/contracts/proxy/utils/Initializab
 import "../libraries/LibDiamond.sol";
 
 abstract contract IrrigationAccessControl is Initializable, AccessControlEnumerableUpgradeable {
-    bytes32 constant public ADMIN_ROLE = keccak256("ADMIN_ROLE");
-    bytes32 constant public AUTO_IRRIGATION_ADMIN_ROLE = keccak256("IRRIGATION_ADMIN_ROLE");
+    bytes32 public constant AUTO_IRRIGATE_ADMIN_ROLE = keccak256("AUTO_IRRIGATE_ADMIN_ROLE");
+    bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
 
     function __IrrigationAccessControl_init() internal onlyInitializing onlySuperAdminRole {
         __AccessControlEnumerable_init_unchained();
@@ -21,9 +21,9 @@ abstract contract IrrigationAccessControl is Initializable, AccessControlEnumera
         // set SuperAdmin as ADMIN_ROLE also, no need to setRoleAdmin() as it will use DEFAULT_ADMIN_ROLE
         _grantRole(ADMIN_ROLE, superAdmin);
         // all non-superAdmin can also grant/revoke roles of IRRIGATION_ADMIN_ROLE
-        _setRoleAdmin(AUTO_IRRIGATION_ADMIN_ROLE, ADMIN_ROLE);
+        _setRoleAdmin(AUTO_IRRIGATE_ADMIN_ROLE, ADMIN_ROLE);
         // make superAdmin have the IRRIGATION_ADMIN_ROLE too.
-        _grantRole(AUTO_IRRIGATION_ADMIN_ROLE, superAdmin);
+        _grantRole(AUTO_IRRIGATE_ADMIN_ROLE, superAdmin);
     }
 
     function grantRole(bytes32 role, address account) public override(IAccessControlUpgradeable, AccessControlUpgradeable) {
@@ -54,7 +54,7 @@ abstract contract IrrigationAccessControl is Initializable, AccessControlEnumera
     }
 
     modifier onlyAutoIrrigationAdminRole {
-        require(hasRole(AUTO_IRRIGATION_ADMIN_ROLE, msg.sender), "Account doesn't have auto irrigation admin role");
+        require(hasRole(AUTO_IRRIGATE_ADMIN_ROLE, msg.sender), "Account doesn't have auto irrigate admin role");
         _;
     }
 
