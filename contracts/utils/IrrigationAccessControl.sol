@@ -53,13 +53,9 @@ abstract contract IrrigationAccessControl is Initializable, AccessControlEnumera
         _;
     }
 
-    modifier onlyAutoIrrigationAdminRole {
+    modifier onlyAutoIrrigateAdminRole {
         require(hasRole(AUTO_IRRIGATE_ADMIN_ROLE, msg.sender), "Account doesn't have auto irrigate admin role");
         _;
     }
 
-    modifier onlyAdminRole() {
-        require(hasRole(ADMIN_ROLE, msg.sender), "Only Admin allowed");
-        _;
-    }
 }
