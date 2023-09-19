@@ -56,7 +56,7 @@ export async function deployIrrigationDiamond(networkDeployInfo: INetworkDeployI
     if (ethBalance.lt(BigNumber.from(toWei(0.05)))) {
       await contractOwner.sendTransaction({
         to: contractDeployer.address,
-        value: ethers.utils.parseEther('100'),
+        value: ethers.utils.parseEther('0.1'),
         gasLimit: 21000,
       });
     }
@@ -238,7 +238,8 @@ export async function deployFuncSelectors(
   log('Diamond Cut:', cut);
   let diamondCut = dc.IrrigationDiamond as IDiamondCut;
   // when upgrading, gets DiamondCutFacet interface from address
-  if(!diamondCut) diamondCut = await ethers.getContractAt('DiamondCutFacet', networkDeployInfo.DiamondAddress);
+  if (!diamondCut)
+    diamondCut = await ethers.getContractAt('DiamondCutFacet', networkDeployInfo.DiamondAddress);
 
   for (const facetCutInfo of cut) {
     const contract = dc[facetCutInfo.name]!;
@@ -329,7 +330,7 @@ export async function deployExternalLibraries(networkDeployedInfo: INetworkDeplo
   networkDeployedInfo.ExternalLibraries['UniswapV3Twap'] = uniswapV3Twap.address;
   /**
    * @dev we don't deploy zk utility contracts in version 1.0
-   */  
+   */
   // const innerVerifierContract = await ethers.getContractFactory('InnerVerifier');
   // const innerVerifier = await innerVerifierContract.deploy();
   // const burnVerifierContract = await ethers.getContractFactory('BurnVerifier', {
