@@ -262,7 +262,7 @@ export function suite() {
     it('AutoIrrigating by signer not admin or autoIrrigateAdmin role should be failed', async () => {
       await expect(
         waterTower.connect(signers[1]).autoIrrigate(tester.address, 0, 0),
-      ).to.be.rejectedWith('Only Admin or AutoIrrigate Admin allowed');
+      ).to.be.rejectedWith("Account doesn't have auto irrigate admin role");
     });
 
     it('totalReward should be same as rewards of total users in same pool', async () => {

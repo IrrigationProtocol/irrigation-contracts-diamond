@@ -44,7 +44,7 @@ contract WaterTowerUpgradeable is
     uint256 internal constant AUTOIRRIGATE_GASLIMIT = 877100;
     uint256 internal constant POOL_PERIOD = 30 days;
 
-    function initWaterTower() external EIP2535Initializer onlyAdminRole {
+    function initWaterTower() external EIP2535Initializer onlySuperAdminRole {
         __IrrigationAccessControl_init();
         __ReentrancyGuard_init();
     }
