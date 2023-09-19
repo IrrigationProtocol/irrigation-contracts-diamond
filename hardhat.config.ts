@@ -233,7 +233,14 @@ const config: HardhatUserConfig = {
   diamondAbi: {
     name: 'IrrigationDiamond',
     strict: false,
-    exclude: ['hardhat-diamond-abi/.*'],
+    exclude: [
+      'hardhat-diamond-abi/.*',
+      'beanstalk/.*',
+      'interfaces/.*',
+      'curve/.*',
+      'deployer/.*',
+      'mock/.*',
+    ],
     filter: filterDuplicateFunctions,
   },
   mocha: {
