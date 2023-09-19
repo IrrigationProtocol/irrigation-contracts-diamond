@@ -119,10 +119,13 @@ describe.only('Irrigation Diamond DApp Testing', async function () {
       let selectors = getSelectors(dc.DiamondCutFacet);
       result = await irrigationDiamond.facetFunctionSelectors(addresses[0]);
       assert.sameMembers(result, selectors.values);
-      selectors = getSelectors(dc.DiamondLoupeFacet);
+      const registeredSelectors = new Set<string>();
+      result.forEach((e: string) => registeredSelectors.add(e));
+      selectors = getSelectors(dc.DiamondLoupeFacet, registeredSelectors);
       result = await irrigationDiamond.facetFunctionSelectors(addresses[1]);
       assert.sameMembers(result, selectors.values);
-      selectors = getSelectors(dc.OwnershipFacet);
+      result.forEach((e: string) => registeredSelectors.add(e));
+      selectors = getSelectors(dc.OwnershipFacet, registeredSelectors);
       result = await irrigationDiamond.facetFunctionSelectors(addresses[2]);
       assert.sameMembers(result, selectors.values);
     });
