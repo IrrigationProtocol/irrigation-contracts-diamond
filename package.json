@@ -11,7 +11,8 @@
     "clear:dev": "ts-node scripts/clear.dev.ts",
     "deploy": "npx hardhat run scripts/deploy.ts",
     "postinstall": "patch-package",
-    "node:local": "./forked_node.sh"
+    "node:local": "./forked_node.sh",
+    "clean": "npx hardhat clean"
   },
   "author": "",
   "license": "ISC",
