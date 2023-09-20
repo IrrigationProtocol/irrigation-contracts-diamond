@@ -3,7 +3,7 @@ import { glob } from 'glob';
 import { afterDeploy } from './facetdeployments/WaterCommonFacet';
 
 export const Facets: FacetToDeployInfo = {
-  DiamondCutFacet: { priority: 10 },
+  DiamondCutFacet: { priority: 10, versions: { 0.0: { init: 'initDiamondCut' } } },
   DiamondLoupeFacet: { priority: 20 },
   OwnershipFacet: { priority: 30 },
   SprinklerUpgradeable: { priority: 40 },
@@ -24,7 +24,10 @@ export const Facets: FacetToDeployInfo = {
   TrancheBondUpgradeable: { priority: 120 },
   ERC1155WhitelistUpgradeable: { priority: 130 },
   PriceOracleUpgradeable: { priority: 140, libraries: ['UniswapV3Twap'] },
-  IrrigationControlUpgradeable: { priority: 150 },
+  IrrigationControlUpgradeable: {
+    priority: 150,
+    versions: { 0.0: { init: 'initIrrigationControl' } },
+  },
 };
 
 export async function LoadFacetDeployments() {

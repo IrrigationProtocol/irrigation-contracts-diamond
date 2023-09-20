@@ -26,19 +26,34 @@ abstract contract IrrigationAccessControl is Initializable, AccessControlEnumera
         _grantRole(AUTO_IRRIGATE_ADMIN_ROLE, superAdmin);
     }
 
-    function grantRole(bytes32 role, address account) public override(IAccessControlUpgradeable, AccessControlUpgradeable) {
+    function grantRole(
+        bytes32 role,
+        address account
+    ) public override(IAccessControlUpgradeable, AccessControlUpgradeable) {
         // this checks the admin role that can do this.
         super.grantRole(role, account);
     }
 
     // renounce role is only for yourself, so no modifier should have been added to this
-    function renounceRole(bytes32 role, address account) public override(IAccessControlUpgradeable, AccessControlUpgradeable) {
-        require(LibDiamond.diamondStorage().contractOwner != account, "Cannot renounce superAdmin from any Roles");
+    function renounceRole(
+        bytes32 role,
+        address account
+    ) public override(IAccessControlUpgradeable, AccessControlUpgradeable) {
+        require(
+            LibDiamond.diamondStorage().contractOwner != account,
+            "Cannot renounce superAdmin from any Roles"
+        );
         super.renounceRole(role, account);
     }
 
-    function revokeRole(bytes32 role, address account) public override(IAccessControlUpgradeable, AccessControlUpgradeable) {
-        require(LibDiamond.diamondStorage().contractOwner != account, "Cannot revoke superAdmin from any Roles");
+    function revokeRole(
+        bytes32 role,
+        address account
+    ) public override(IAccessControlUpgradeable, AccessControlUpgradeable) {
+        require(
+            LibDiamond.diamondStorage().contractOwner != account,
+            "Cannot revoke superAdmin from any Roles"
+        );
         // this checks that only the admin(s) of the Role can revoke a Role
         super.revokeRole(role, account);
     }
@@ -48,14 +63,16 @@ abstract contract IrrigationAccessControl is Initializable, AccessControlEnumera
         _;
     }
 
-    modifier onlyAdminRole {
+    modifier onlyAdminRole() {
         require(hasRole(ADMIN_ROLE, msg.sender), "Account doesn't have admin role");
         _;
     }
 
-    modifier onlyAutoIrrigateAdminRole {
-        require(hasRole(AUTO_IRRIGATE_ADMIN_ROLE, msg.sender), "Account doesn't have auto irrigate admin role");
+    modifier onlyAutoIrrigateAdminRole() {
+        require(
+            hasRole(AUTO_IRRIGATE_ADMIN_ROLE, msg.sender),
+            "Account doesn't have auto irrigate admin role"
+        );
         _;
     }
-
 }

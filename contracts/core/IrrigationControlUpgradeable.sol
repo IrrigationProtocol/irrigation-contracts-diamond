@@ -19,12 +19,16 @@ contract IrrigationControlUpgradeable is
     event UpdateSellTokens(address[] sellTokens, bool[] bEnables);
     event UpdateAuctionPeriods(uint48[] periods);
 
+    function initIrrigationControl() external initializer onlySuperAdminRole {
+        AuctionStorage.Layout storage auctionStorage = AuctionStorage.layout();
+        // set default auction fee 1.5%
+        auctionStorage.feeReceiver = msg.sender;
+        auctionStorage.feeNumerator = 15;
+    }
+
     // admin setters
     // enable or disable sell tokens
-    function setSellTokens(
-        address[] memory tokens,
-        bool[] memory bEnables
-    ) external onlyAdminRole {
+    function setSellTokens(address[] memory tokens, bool[] memory bEnables) external onlyAdminRole {
         AuctionStorage.Layout storage auctionStorage = AuctionStorage.layout();
         for (uint256 i; i < tokens.length; ) {
             auctionStorage.supportedSellTokens[tokens[i]] = bEnables[i];
@@ -46,7 +50,7 @@ contract IrrigationControlUpgradeable is
         auctionStorage.feeNumerator = _newFeeNumerator;
     }
 
-    function AddBidTokenGroup(BidTokenGroup memory bidTokenGroup) external onlyAdminRole {
+    function AddBidTokenGroup(BidTokenGroup memory bidTokenGroup) public onlyAdminRole {
         AuctionStorage.Layout storage auctionStorage = AuctionStorage.layout();
         uint256 count = auctionStorage.countOfTokenGroups;
         _updateTokenGroup(count, bidTokenGroup);

@@ -2,7 +2,7 @@
  * this script initializes each facet contracts
  */
 import { debug } from 'debug';
-import { ethers } from 'hardhat';
+import { ethers, network } from 'hardhat';
 import { CONTRACT_ADDRESSES, OracleType } from './shared';
 import {
   IrrigationControlUpgradeable,
@@ -147,34 +147,33 @@ export async function initSprinkler(sprinkler: SprinklerUpgradeable) {
   for (const address of whitelist) {
     await sprinkler.addAssetToWhiteList(address, 0);
   }
-  const waterToken = await ethers.getContractAt('WaterUpgradeable', sprinkler.address);
-  await waterToken.approve(sprinkler.address, toWei(10_000));
-  await sprinkler.depositWater(toWei(10_000));
+  if (network.name === 'hardhat') {
+    const waterToken = await ethers.getContractAt('WaterUpgradeable', sprinkler.address);
+    await waterToken.approve(sprinkler.address, toWei(10_000));
+    await sprinkler.depositWater(toWei(10_000));
+  }
 }
 
 export async function initWaterTower(waterTower: WaterTowerUpgradeable) {
-  await waterTower.setMiddleAsset(CONTRACT_ADDRESSES.BEAN);
-  // added bonus for irrigating is 5%
-  await waterTower.setIrrigateBonusRate(5);
   // calculate month end
   const curTimestamp = (await ethers.provider.getBlock('latest')).timestamp;
   let date = new Date(curTimestamp * 1000);
   date.setMonth(date.getMonth() + 1);
   date.setDate(0);
   await waterTower.setPool(Math.floor(date.getTime() / 1000), 0);
-  const autoIrrigateAdmin = (await ethers.getSigners())[5];
-  await waterTower.grantRole(waterTower.AUTO_IRRIGATE_ADMIN_ROLE(), autoIrrigateAdmin.address);
+  if (network.name === 'hardhat') {
+    const autoIrrigateAdmin = (await ethers.getSigners())[5];
+    await waterTower.grantRole(waterTower.AUTO_IRRIGATE_ADMIN_ROLE(), autoIrrigateAdmin.address);
+  }
 }
 
 export async function initAuction(adminControl: IrrigationControlUpgradeable) {
-  const signers = await ethers.getSigners();
   await adminControl.AddBidTokenGroup({
     name: ethers.utils.formatBytes32String('Stables (USDC, USDT, DAI)'),
     bidTokens: purchaseTokens,
     basePriceToken: purchaseTokens[0],
   });
-  // 1.5% auction fee
-  await adminControl.setAuctionFee(15, signers[2]?.address || process.env.REWARD_ADDRESS);
+
   const tokens = [...auctionSellTokens, adminControl.address];
   await adminControl.setSellTokens(
     tokens,

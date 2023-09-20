@@ -6,14 +6,15 @@ pragma solidity ^0.8.17;
 * EIP-2535 Diamonds: https://eips.ethereum.org/EIPS/eip-2535
 /******************************************************************************/
 
-import { IDiamondCut } from "../interfaces/IDiamondCut.sol";
-import { LibDiamond } from "../libraries/LibDiamond.sol";
-import { IrrigationAccessControl } from "./IrrigationAccessControl.sol";
+import {IDiamondCut} from "../interfaces/IDiamondCut.sol";
+import {LibDiamond} from "../libraries/LibDiamond.sol";
+import {IrrigationAccessControl} from "./IrrigationAccessControl.sol";
+import "../utils/EIP2535Initializable.sol";
 
 // Remember to add the loupe functions from DiamondLoupeFacet to the diamond.
 // The loupe functions are required by the EIP2535 Diamonds standard
 
-contract DiamondCutFacet is IDiamondCut, IrrigationAccessControl {
+contract DiamondCutFacet is IDiamondCut, EIP2535Initializable, IrrigationAccessControl {
     /// @notice Add/replace/remove any number of functions and optionally execute
     ///         a function with delegatecall
     /// @param _diamondCut Contains the facet addresses and function selectors
@@ -25,7 +26,7 @@ contract DiamondCutFacet is IDiamondCut, IrrigationAccessControl {
         address _init,
         bytes calldata _calldata
     ) external override {
-        if (( msg.sender != LibDiamond.contractOwner()) && !hasRole(ADMIN_ROLE, msg.sender))
+        if ((msg.sender != LibDiamond.contractOwner()) && !hasRole(ADMIN_ROLE, msg.sender))
             revert("Only SuperAdmin or Admin can deploy or update contract");
         LibDiamond.DiamondStorage storage ds = LibDiamond.diamondStorage();
         uint256 originalSelectorCount = ds.selectorCount;
@@ -59,5 +60,9 @@ contract DiamondCutFacet is IDiamondCut, IrrigationAccessControl {
         }
         emit DiamondCut(_diamondCut, _init, _calldata);
         LibDiamond.initializeDiamondCut(_init, _calldata);
+    }
+
+    function initDiamondCut() external EIP2535Initializer onlySuperAdminRole {
+        __IrrigationAccessControl_init();
     }
 }
