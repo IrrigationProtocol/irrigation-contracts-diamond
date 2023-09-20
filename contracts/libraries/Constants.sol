@@ -11,6 +11,7 @@ library Constants {
     address internal constant CURVE_BEAN_METAPOOL = 0xc9C32cd16Bf7eFB85Ff14e0c8603cc90F6F2eE49;
     address internal constant BEANSTALK_PRICE = 0xF2C2b7eabcB353bF6f2128a7f8e1e32Eeb112530;
     address internal constant USDC = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
+    address internal constant DAI = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
     address internal constant WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
     address internal constant ZERO = 0x0000000000000000000000000000000000000000;
     address internal constant BEANSTALK = 0xC1E088fC1323b20BCBee9bd1B9fC9546db5624C5;

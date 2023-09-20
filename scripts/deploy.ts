@@ -177,11 +177,7 @@ export async function deployFuncSelectors(
     }
 
     if (newFuncSelectors.length) {
-      const initFunc = facetNeedsUpgrade
-        ? deployedVersion === facetDeployInfo.fromVersion
-          ? facetDeployInfo.upgradeInit
-          : facetDeployInfo.init
-        : null;
+      const initFunc = facetDeployInfo.init;
       deployedFacets[name].funcSelectors = newFuncSelectors;
       const replaceFuncSelectors: string[] = [];
       const addFuncSelectors = newFuncSelectors.filter((v) => {
