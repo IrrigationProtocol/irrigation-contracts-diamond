@@ -94,12 +94,15 @@ export async function deployIrrigationDiamond(networkDeployInfo: INetworkDeployI
   ).attach(irrigationDiamond.address);
 
   // update deployed info for DiamondCutFacet since Diamond contract constructor already adds DiamondCutFacet::diamondCut
-  const funcSelectors = getSelectors(diamondCutFacet);
   networkDeployInfo.FacetDeployedInfo.DiamondCutFacet = {
     address: diamondCutFacet.address,
     tx_hash: diamondCutFacet.deployTransaction.hash,
     version: 0.0,
-    funcSelectors: funcSelectors.values,
+    funcSelectors: [
+      diamondCutFacet.interface.getSighash(
+        'diamondCut((address,uint8,bytes4[])[],address,bytes)',
+      ),
+    ],
   };
 
   log(`Diamond deployed ${irrigationDiamond.address}`);
