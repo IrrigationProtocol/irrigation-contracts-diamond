@@ -45,8 +45,12 @@ contract WaterTowerUpgradeable is
     uint256 internal constant POOL_PERIOD = 30 days;
 
     function initWaterTower() external EIP2535Initializer onlySuperAdminRole {
-        __IrrigationAccessControl_init();
         __ReentrancyGuard_init();
+        WaterTowerStorage.Layout storage l = WaterTowerStorage.layout();
+        // middle asset for irrigate is BEAN
+        l.middleAssetForIrrigate = Constants.BEAN;
+        // added bonus for irrigating is 5%
+        l.irrigateBonusRate = 5;
     }
 
     /// @notice deposit water token
