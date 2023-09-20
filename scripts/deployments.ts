@@ -337,9 +337,9 @@ export const deployments: { [key: string]: INetworkDeployInfo } = {
     DeployerAddress: '0x9249E360Dc6f4D2871187acDE4Fe38D4e13a7703',
     FacetDeployedInfo: {
       DiamondCutFacet: {
-        address: '0x35ea7aa2b9706A05CC932a7350a5E5A7D80619BF',
-        tx_hash: '0xad41bb9559c2d26ed2797ffbb15dfc84fec543fdd9ba0de961f354d3c0464c38',
-        version: 0,
+        address: '0x2F1f9A7b95675B3e702B16B551fE67c94751428E',
+        tx_hash: '0xc251af75761b586edd7c5ab3191b88edb90b80d5637ae8eed99fcc61d713ef3d',
+        version: 0.1,
         funcSelectors: [
           '0x75b238fc', '0x5effdd20',
           '0xa217fddf', '0x1f931c1c',
@@ -347,8 +347,7 @@ export const deployments: { [key: string]: INetworkDeployInfo } = {
           '0xca15c873', '0x2f2ff15d',
           '0x91d14854', '0x36568abe',
           '0xd547741f', '0x01ffc9a7'
-        ],
-        verified: true
+        ]
       },
       DiamondLoupeFacet: {
         address: '0xf255AB88e6b4C825D465DA5eBB13c6A27e89367C',
