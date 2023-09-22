@@ -139,7 +139,7 @@ export async function initPriceOracles(priceOracle: PriceOracleUpgradeable) {
     await priceOracle.setOracle(o.asset, o.oracle, o.base, o.oType);
     debuglog(`${o.symbol} price: ${formatFixed(fromWei(await priceOracle.getPrice(o.asset)))}`);
   }
-  await priceOracle.setDirectPrice(priceOracle.address, toWei(0.5));
+  await priceOracle.setDirectPrice(priceOracle.address, toWei(5));
   debuglog(`WATER price: ${formatFixed(fromWei(await priceOracle.getPrice(priceOracle.address)))}`);
 }
 
