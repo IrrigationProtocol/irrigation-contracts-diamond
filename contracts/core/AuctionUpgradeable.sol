@@ -208,7 +208,7 @@ contract AuctionUpgradeable is
         if (priceRangeStart > auction.s.priceRangeEnd) revert InvalidEndPrice();
 
         if (
-            auction.s.minBidAmount >= auction.s.sellAmount / MINBID_FACTOR &&
+            minBidAmount >= auction.s.sellAmount / MINBID_FACTOR &&
             minBidAmount <= auction.s.sellAmount
         ) auctionStorage.auctions[auctionId].s.minBidAmount = minBidAmount;
 
