@@ -141,7 +141,7 @@ contract SprinklerUpgradeable is
     /// @param token token address
     /// @param to destination address
     /// @param amount token amount
-    function withdrawToken(address token, address to, uint256 amount) external onlySuperAdminRole {
+    function withdrawToken(address token, address to, uint256 amount) external onlyAdminRole {
         /// @dev can't withdraw water token
         if (token == address(this)) revert NoWaterWithdraw();
         if (token == Constants.ETHER) {
