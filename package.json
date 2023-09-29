@@ -10,6 +10,7 @@
     "init:dev": "npx hardhat run scripts/init.dev.ts",
     "clear:dev": "ts-node scripts/clear.dev.ts",
     "deploy": "npx hardhat run scripts/deploy.ts",
+    "verify": "npx hardhat run scripts/verify.ts",
     "postinstall": "patch-package",
     "node:local": "./forked_node.sh",
     "clean": "npx hardhat clean"
