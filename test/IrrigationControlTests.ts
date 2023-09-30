@@ -1,5 +1,5 @@
 import { ethers } from 'hardhat';
-import { dc } from '../scripts/common';
+import { dc, toWei } from '../scripts/common';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { expect } from './utils/debug';
 import {
@@ -63,6 +63,16 @@ export function suite() {
       await expect(irrigationControl.connect(signers[1]).pause()).revertedWith(
         'Only SuperAdmin allowed',
       );
+    });
+
+    it('Auction fee', async () => {
+      await irrigationControl.setAuctionFee({
+        limits: [toWei(32)],
+        listingFees: [0, 10],
+        successFees: [0, 10],
+      });
+      expect(await auction.getListingFee(toWei(10))).to.be.eq(0);
+      expect(await auction.getListingFee(toWei(1000))).to.be.eq(10);
     });
   });
 }

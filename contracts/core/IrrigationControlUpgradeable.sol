@@ -39,15 +39,8 @@ contract IrrigationControlUpgradeable is
         emit UpdateSellTokens(tokens, bEnables);
     }
 
-    function setAuctionFee(
-        uint256 _newFeeNumerator,
-        address _newfeeReceiver
-    ) external onlyAdminRole {
-        AuctionStorage.Layout storage auctionStorage = AuctionStorage.layout();
-        if (_newFeeNumerator > 25) revert(); // "Fee higher than 2.5%");
-        // caution: for currently running auctions, the feeReceiver is changing as well.
-        auctionStorage.feeReceiver = _newfeeReceiver;
-        auctionStorage.feeNumerator = _newFeeNumerator;
+    function setAuctionFee(AuctionFee calldata fee) external onlyAdminRole {
+        AuctionStorage.layout().fee = fee;
     }
 
     function AddBidTokenGroup(BidTokenGroup memory bidTokenGroup) public onlyAdminRole {

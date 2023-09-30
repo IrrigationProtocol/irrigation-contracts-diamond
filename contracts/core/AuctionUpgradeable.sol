@@ -9,6 +9,7 @@ import "@gnus.ai/contracts-upgradeable-diamond/contracts/security/ReentrancyGuar
 import "@gnus.ai/contracts-upgradeable-diamond/contracts/security/PausableUpgradeable.sol";
 
 import "./AuctionStorage.sol";
+import "./WaterTowerStorage.sol";
 
 import "../utils/EIP2535Initializable.sol";
 import "../libraries/FullMath.sol";
@@ -53,6 +54,7 @@ contract AuctionUpgradeable is
     error NoIdleAuction();
     error InvalidPurchaseAmount();
     error InvalidIncrementBidPrice();
+    error NoStoreWater();
     // bid and buy
     error LowBid();
     error OverPriceBid();
@@ -106,9 +108,9 @@ contract AuctionUpgradeable is
     uint256 internal constant FEE_DENOMINATOR = 1000;
     uint256 internal constant BID_GAS_LIMIT = 470000;
     uint256 internal constant CLOSE_GAS_LIMIT = 180000;
-    uint256 internal constant D30 = 1e30;
+    uint256 internal constant D12 = 1e12;
     uint256 internal constant MINBID_FACTOR = 100;
-    uint256 internal constant INCREMENTBID_FACTOR = 2;
+    uint256 internal constant INCREMENTBID_FACTOR = 2;    
 
     function createAuction(
         AuctionSetting memory auctionSetting,
@@ -130,7 +132,7 @@ contract AuctionUpgradeable is
                 auctionSetting.auctionType == AuctionType.TimedAndFixed) &&
             auctionSetting.fixedPrice == 0
         ) revert InvalidFixedPrice();
-
+        uint256 priceForFee;
         if (auctionSetting.auctionType != AuctionType.FixedPrice) {
             if (auctionSetting.priceRangeStart > auctionSetting.priceRangeEnd)
                 revert InvalidEndPrice();
@@ -139,6 +141,9 @@ contract AuctionUpgradeable is
                 auctionSetting.incrementBidPrice * INCREMENTBID_FACTOR >
                 auctionSetting.priceRangeStart
             ) revert InvalidIncrementBidPrice();
+            priceForFee = auctionSetting.priceRangeStart;
+        } else {
+            priceForFee = auctionSetting.fixedPrice;
         }
 
         if (auctionSetting.startTime == 0) auctionSetting.startTime = uint48(block.timestamp);
@@ -148,14 +153,22 @@ contract AuctionUpgradeable is
         ) revert InvalidStartTime();
         auctionSetting.endTime = auctionSetting.startTime + auctionStorage.periods[periodId];
         uint256 auctionId = auctionStorage.currentAuctionId + 1;
+        /// @dev fee is calculated from usd value, and notation amount is BDV
+        uint256 ethPrice = IPriceOracleUpgradeable(address(this)).getUnderlyingPriceETH();
+        uint256 storedWater = WaterTowerStorage.userInfo(msg.sender).amount;
+        if (storedWater == 0) revert NoStoreWater();
+        uint256 feeAmount = (auctionSetting.sellAmount * getListingFee(storedWater) * priceForFee) /
+            ethPrice /
+            FEE_DENOMINATOR;
+
         // receive auction asset
         if (auctionSetting.trancheIndex == 0) {
             IERC20Upgradeable(auctionSetting.sellToken).safeTransferFrom(
                 msg.sender,
                 address(this),
-                (auctionSetting.sellAmount * (FEE_DENOMINATOR + auctionStorage.feeNumerator)) /
-                    FEE_DENOMINATOR
+                auctionSetting.sellAmount
             );
+            feeAmount *= ((18 - IERC20MetadataUpgradeable(auctionSetting.sellToken).decimals()));
         } else {
             if (auctionSetting.trancheIndex & 3 == 3) revert NoListTrancheZ();
             if (auctionSetting.sellToken != address(this)) revert InvalidTrancheAuction();
@@ -166,18 +179,17 @@ contract AuctionUpgradeable is
                 auctionSetting.sellAmount,
                 Constants.EMPTY
             );
-            /// @dev fee is calculated from usd value, and notation amount is BDV
-            uint256 ethPrice = IPriceOracleUpgradeable(address(this)).getUnderlyingPriceETH();
             // tranche nft decimals is 6 and price decimals 18, so calculated factor = 10 ** (18+18-6)
-            uint256 feeAmount = (((auctionSetting.sellAmount * D30) / ethPrice) *
-                auctionStorage.feeNumerator) / FEE_DENOMINATOR;
-            if (msg.value < feeAmount) revert InsufficientFee();
-            else if (msg.value > feeAmount) {
-                (bool success, ) = msg.sender.call{value: msg.value - feeAmount}("");
-                if (!success) revert NoTransferEther();
-            }
-            auctionStorage.auctions[auctionId].feeAmount = feeAmount;
+            feeAmount *= D12;
         }
+
+        if (msg.value < feeAmount) revert InsufficientFee();
+        else if (msg.value > feeAmount) {
+            (bool success, ) = msg.sender.call{value: msg.value - feeAmount}("");
+            if (!success) revert NoTransferEther();
+        }
+        // auctionStorage.auctions[auctionId].feeAmount = feeAmount;
+
         auctionStorage.currentAuctionId = auctionId;
         auctionSetting.reserve = auctionSetting.sellAmount;
         auctionStorage.auctions[auctionId].s = auctionSetting;
@@ -649,5 +661,16 @@ contract AuctionUpgradeable is
     function checkAuctionInProgress(uint256 endTime, uint256 startTime) internal view {
         if (startTime > block.timestamp || (endTime > 0 && endTime <= block.timestamp))
             revert InactiveAuction();
+    }
+
+    function getListingFee(uint256 waterAmount) public view returns (uint256 listingFee) {
+        AuctionFee memory fee = AuctionStorage.layout().fee;
+        for (uint256 i; i < fee.limits.length; ) {
+            if (waterAmount < fee.limits[i]) return fee.listingFees[i];
+            unchecked {
+                ++i;
+            }
+        }
+        return fee.listingFees[fee.listingFees.length - 1];
     }
 }

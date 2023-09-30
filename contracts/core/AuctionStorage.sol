@@ -75,6 +75,12 @@ struct AuctionData {
     uint256 feeAmount;
 }
 
+struct AuctionFee {
+    uint256[] listingFees;
+    uint256[] successFees;    
+    uint256[] limits;
+}
+
 library AuctionStorage {
     struct Layout {
         // count of auctions and current auction id
@@ -89,13 +95,14 @@ library AuctionStorage {
         mapping(uint256 => BidTokenGroup) bidTokenGroups;
         // count of bid token groups
         uint256 countOfTokenGroups;
-        // fee amount and fee receiver address        
+        // fee amount and fee receiver address // deprecated
         uint256 feeNumerator;
         address feeReceiver;
         // deprecated
         uint96 maxIncrementRate;
         // available auction periods like 1 day, 3 days,
         uint48[] periods;
+        AuctionFee fee;
     }
 
     bytes32 internal constant STORAGE_SLOT = keccak256("irrigation.contracts.storage.Auction");
