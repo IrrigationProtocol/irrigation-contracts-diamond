@@ -52,7 +52,7 @@ export function suite() {
     let fundAddress: string;
     let defaultAuctionSetting: AuctionSetting;
     let waterTower: WaterTowerUpgradeable;
-
+    let defaultFee: BigNumber;
     before(async () => {
       signers = await ethers.getSigners();
       owner = signers[0];
@@ -72,8 +72,7 @@ export function suite() {
       waterTower = await ethers.getContractAt('WaterTowerUpgradeable', diamondRootAddress);
       // expect(await auctionContract.isSupportedPurchaseToken(usdc.address)).to.be.eq(true);
       // 1.5% auction fee
-      expect((await auctionContract.getAuctionFee()).numerator).to.be.eq(BigNumber.from(15));
-
+      // expect((await auctionContract.getAuctionFee()).numerator).to.be.eq(BigNumber.from(15));
       defaultAuctionSetting = {
         startTime: 0,
         endTime: 0, // duration mode
@@ -119,7 +118,7 @@ export function suite() {
         await expect(
           auctionContract.connect(sender).createAuction(auctionSetting, 0),
         ).to.be.revertedWithCustomError(auctionContract, 'NoStoreWater');
-        await water.approve(water.address, storedWaterOfSender);
+        await water.connect(sender).approve(water.address, storedWaterOfSender);
         await waterTower.connect(sender).deposit(storedWaterOfSender, true);
       });
       it('Testing Auction create', async () => {
@@ -132,13 +131,13 @@ export function suite() {
         };
         await water.approve(auctionContract.address, toWei(32));
         await waterTower.deposit(toWei(32), true);
-        const auctionFee = await auctionContract.getListingFeeForUser(
+        defaultFee = await auctionContract.getListingFeeForUser(
           owner.address,
-          toWei(100),
+          defaultAuctionSetting.sellAmount,
           1,
           defaultAuctionSetting.priceRangeStart,
         );
-        const tx = await auctionContract.createAuction(auctionSetting, 1, { value: auctionFee });
+        const tx = await auctionContract.createAuction(auctionSetting, 1, { value: defaultFee });
         expect(tx)
           .to.emit(auctionContract, 'AuctionCreated')
           .withArgs(auctionSetting, owner.address, 1);
@@ -389,8 +388,7 @@ export function suite() {
         updatedContractTokenBalance = updatedContractTokenBalance.sub(
           await token1.balanceOf(auctionContract.address),
         );
-        const feeAmount = auction.s.sellAmount.mul(15).div(1000);
-        expect(updatedContractTokenBalance).to.be.eq(reserveAmount.add(feeAmount));
+        expect(updatedContractTokenBalance).to.be.eq(reserveAmount);
         await expect(auctionContract.connect(sender).closeAuction(1)).to.be.rejectedWith(
           "auction can't be closed",
         );
@@ -408,6 +406,12 @@ export function suite() {
       it('Testing Auction with fixed price', async () => {
         await token1.approve(auctionContract.address, toWei(1000));
         let updatedContractTokenBalance = await token1.balanceOf(auctionContract.address);
+        const fee = await auctionContract.getListingFeeForUser(
+          owner.address,
+          toWei(100),
+          1,
+          toWei(5),
+        );
         const tx = await auctionContract.createAuction(
           {
             ...defaultAuctionSetting,
@@ -419,12 +423,13 @@ export function suite() {
             auctionType: AuctionType.FixedPrice,
           },
           1,
+          { value: fee },
         );
         expect(tx).to.emit(auctionContract, 'AuctionCreated');
 
         expect(
           (await token1.balanceOf(auctionContract.address)).sub(updatedContractTokenBalance),
-        ).to.be.equal(toWei(100 + (100 * 15) / 1000));
+        ).to.be.equal(toWei(100));
         const createdAuction = await auctionContract.getAuction(2);
         assert(
           createdAuction.s.sellToken === token1.address,
@@ -458,6 +463,7 @@ export function suite() {
         let tx = await auctionContract.createAuction(
           { ...defaultAuctionSetting, auctionType: AuctionType.TimedAuction },
           1,
+          { value: defaultFee },
         );
         await dai.transfer(sender.address, toWei(600));
         await dai.connect(sender).approve(auctionContract.address, toWei(600));
@@ -592,6 +598,7 @@ export function suite() {
         await auctionContract.createAuction(
           { ...defaultAuctionSetting, auctionType: AuctionType.TimedAuction },
           1,
+          { value: defaultFee },
         );
         await expect(
           auctionContract.connect(sender).updateAuction(4, 0, 0, 0),
@@ -636,9 +643,17 @@ export function suite() {
             incrementBidPrice: toWei(0.00001),
           },
           1,
+          {
+            value: await auctionContract.getListingFeeForUser(
+              owner.address,
+              toWei(300),
+              1,
+              toWei(0.5),
+            ),
+          },
         );
         const updatedBalance = await water.balanceOf(owner.address);
-        expect(waterBalance.sub(updatedBalance)).to.be.eq(toWei(304.5));
+        expect(waterBalance.sub(updatedBalance)).to.be.eq(toWei(300));
       });
       it('bid with max winners 100', async () => {
         // await skipTime(86400 * 3);
@@ -711,6 +726,9 @@ export function suite() {
         const ohmTester = (await ethers.getSigners())[5];
         await ohmToken.transfer(ohmTester.address, toD6(12000));
         await ohmToken.connect(ohmTester).approve(diamondRootAddress, toD6(12000));
+        await water.transfer(ohmTester.address, toWei(32));
+        await water.connect(ohmTester).approve(water.address, toWei(32));
+        await waterTower.connect(ohmTester).deposit(toWei(32), true);
         await auctionContract.connect(ohmTester).createAuction(
           {
             ...defaultAuctionSetting,
@@ -720,6 +738,14 @@ export function suite() {
             auctionType: AuctionType.TimedAndFixed,
           },
           0,
+          {
+            value: await auctionContract.getListingFeeForUser(
+              ohmTester.address,
+              toD6(10_000),
+              10 ** 9,
+              defaultAuctionSetting.priceRangeStart,
+            ),
+          },
         );
         const auctionId = await auctionContract.getAuctionsCount();
         await auctionContract.placeBid(

@@ -310,9 +310,11 @@ export function suite() {
         );
         // console.log(updateContractBalance);
         const expectedFeeAmount = trNftBalance
+          .mul(defaultAuctionSetting.priceRangeStart)
+          .div(toWei(1))
           .mul(toWei(10 ** 12))
           .div(await priceOracle.getUnderlyingPriceETH())
-          .mul(15)
+          .mul(10)
           .div(1000);
         expect(updateOwnerBalance).to.be.eq(updateContractBalance);
         expect(updateContractBalance).to.be.eq(expectedFeeAmount);
