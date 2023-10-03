@@ -110,7 +110,7 @@ contract AuctionUpgradeable is
     uint256 internal constant CLOSE_GAS_LIMIT = 180000;
     uint256 internal constant D12 = 1e12;
     uint256 internal constant MINBID_FACTOR = 100;
-    uint256 internal constant INCREMENTBID_FACTOR = 2;    
+    uint256 internal constant INCREMENTBID_FACTOR = 2;
 
     function createAuction(
         AuctionSetting memory auctionSetting,
@@ -153,14 +153,7 @@ contract AuctionUpgradeable is
         ) revert InvalidStartTime();
         auctionSetting.endTime = auctionSetting.startTime + auctionStorage.periods[periodId];
         uint256 auctionId = auctionStorage.currentAuctionId + 1;
-        /// @dev fee is calculated from usd value, and notation amount is BDV
-        uint256 ethPrice = IPriceOracleUpgradeable(address(this)).getUnderlyingPriceETH();
-        uint256 storedWater = WaterTowerStorage.userInfo(msg.sender).amount;
-        if (storedWater == 0) revert NoStoreWater();
-        uint256 feeAmount = (auctionSetting.sellAmount * getListingFee(storedWater) * priceForFee) /
-            ethPrice /
-            FEE_DENOMINATOR;
-
+        uint256 tokenMultiplier;
         // receive auction asset
         if (auctionSetting.trancheIndex == 0) {
             IERC20Upgradeable(auctionSetting.sellToken).safeTransferFrom(
@@ -168,7 +161,8 @@ contract AuctionUpgradeable is
                 address(this),
                 auctionSetting.sellAmount
             );
-            feeAmount *= ((18 - IERC20MetadataUpgradeable(auctionSetting.sellToken).decimals()));
+            tokenMultiplier = (10 **
+                (18 - IERC20MetadataUpgradeable(auctionSetting.sellToken).decimals()));
         } else {
             if (auctionSetting.trancheIndex & 3 == 3) revert NoListTrancheZ();
             if (auctionSetting.sellToken != address(this)) revert InvalidTrancheAuction();
@@ -179,16 +173,22 @@ contract AuctionUpgradeable is
                 auctionSetting.sellAmount,
                 Constants.EMPTY
             );
-            // tranche nft decimals is 6 and price decimals 18, so calculated factor = 10 ** (18+18-6)
-            feeAmount *= D12;
+            // tranche nft decimals is 6 and ether decimals is 18, so calculated factor = 10 ** (18-6)
+            tokenMultiplier = D12;
         }
 
+        uint256 feeAmount = getListingFeeForUser(
+            msg.sender,
+            auctionSetting.sellAmount,
+            tokenMultiplier,
+            priceForFee
+        );
+        if (feeAmount == 0) revert NoStoreWater();
         if (msg.value < feeAmount) revert InsufficientFee();
         else if (msg.value > feeAmount) {
             (bool success, ) = msg.sender.call{value: msg.value - feeAmount}("");
             if (!success) revert NoTransferEther();
         }
-        // auctionStorage.auctions[auctionId].feeAmount = feeAmount;
 
         auctionStorage.currentAuctionId = auctionId;
         auctionSetting.reserve = auctionSetting.sellAmount;
@@ -491,45 +491,41 @@ contract AuctionUpgradeable is
             }
         }
         /// transfer auction fee
-        if (auction.s.sellAmount > reserve) {
-            uint256 totalSettledAmount;
-            unchecked {
-                totalSettledAmount = auction.s.sellAmount - reserve;
-            }
-            if (auction.s.trancheIndex == 0) {
-                IERC20Upgradeable(auction.s.sellToken).safeTransfer(
-                    auctionStorage.feeReceiver,
-                    (totalSettledAmount * auctionStorage.feeNumerator) / FEE_DENOMINATOR
-                );
-            } else {
-                IWaterTowerUpgradeable(address(this)).addETHReward{
-                    value: (auction.feeAmount * totalSettledAmount) / auction.s.sellAmount
-                }();
-            }
-        }
-        if (reserve > 0) {
-            unchecked {
-                availableAmount -= reserve;
-            }
-            if (auction.s.trancheIndex == 0) {
-                IERC20Upgradeable(auction.s.sellToken).safeTransfer(
-                    auction.seller,
-                    (reserve * (FEE_DENOMINATOR + auctionStorage.feeNumerator)) / FEE_DENOMINATOR
-                );
-            } else {
-                IERC1155Upgradeable(address(this)).safeTransferFrom(
-                    address(this),
-                    auction.seller,
-                    auction.s.trancheIndex,
-                    reserve,
-                    Constants.EMPTY
-                );
-                (bool sent, ) = payable(auction.seller).call{
-                    value: ((reserve * auction.feeAmount) / auction.s.sellAmount) / FEE_DENOMINATOR
-                }("");
-                require(sent, "failed to send ether");
-            }
-        }
+        // if (auction.s.sellAmount > reserve) {
+        //     uint256 totalSettledAmount;
+        //     unchecked {
+        //         totalSettledAmount = auction.s.sellAmount - reserve;
+        //     }
+        //     if (auction.s.trancheIndex == 0) {
+        //         IERC20Upgradeable(auction.s.sellToken).safeTransfer(
+        //             auctionStorage.feeReceiver,
+        //             (totalSettledAmount * auctionStorage.feeNumerator) / FEE_DENOMINATOR
+        //         );
+        //     } else {
+        //         IWaterTowerUpgradeable(address(this)).addETHReward{
+        //             value: (auction.feeAmount * totalSettledAmount) / auction.s.sellAmount
+        //         }();
+        //     }
+        // }
+        // refund fee
+        // if (reserve > 0) {
+        //     unchecked {
+        //         availableAmount -= reserve;
+        //     }
+        //     if (auction.s.trancheIndex == 0) {
+        //         IERC20Upgradeable(auction.s.sellToken).safeTransfer(auction.seller, reserve);
+        //     } else {
+        //         IERC1155Upgradeable(address(this)).safeTransferFrom(
+        //             address(this),
+        //             auction.seller,
+        //             auction.s.trancheIndex,
+        //             reserve,
+        //             Constants.EMPTY
+        //         );
+        //         (bool sent, ) = payable(auction.seller).call{value: reserve}("");
+        //         require(sent, "failed to send ether");
+        //     }
+        // }
         auctionStorage.auctions[auctionId].s.reserve = availableAmount;
         auctionStorage.auctions[auctionId].status = AuctionStatus.Closed;
 
@@ -672,5 +668,22 @@ contract AuctionUpgradeable is
             }
         }
         return fee.listingFees[fee.listingFees.length - 1];
+    }
+
+    function getListingFeeForUser(
+        address user,
+        uint256 auctionAmount,
+        uint256 multiplier,
+        uint256 tokenPrice
+    ) public view returns (uint256 feeEthAmount) {
+        /// @dev fee is calulated with ether price, auction price, and auction amount
+        uint256 ethPrice = IPriceOracleUpgradeable(address(this)).getUnderlyingPriceETH();
+        return
+            (
+                ((auctionAmount *
+                    multiplier *
+                    getListingFee(WaterTowerStorage.userInfo(user).amount) *
+                    tokenPrice) / ethPrice)
+            ) / FEE_DENOMINATOR;
     }
 }

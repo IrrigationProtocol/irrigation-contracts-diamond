@@ -4,7 +4,12 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { dc, toWei, fromWei, toD6, toBN, mulDivRoundingUp } from '../../scripts/common';
 import { assert, expect, debuglog } from '../utils/debug';
 
-import { AuctionUpgradeable, IERC20Upgradeable } from '../../typechain-types';
+import {
+  AuctionUpgradeable,
+  IERC20MetadataUpgradeable,
+  IERC20Upgradeable,
+  WaterTowerUpgradeable,
+} from '../../typechain-types';
 import { AuctionType } from '../types';
 import { BigNumber } from 'ethers';
 import { CONTRACT_ADDRESSES } from '../../scripts/shared';
@@ -35,7 +40,7 @@ export function suite() {
     let signers: SignerWithAddress[];
     let owner: SignerWithAddress;
     const diamondRootAddress = dc.IrrigationDiamond.address;
-    let token1: IERC20Upgradeable;
+    let token1: IERC20MetadataUpgradeable;
     let token2: IERC20Upgradeable;
     let dai: IERC20Upgradeable;
     let usdc: IERC20Upgradeable;
@@ -46,15 +51,15 @@ export function suite() {
     let auctionContract: AuctionUpgradeable;
     let fundAddress: string;
     let defaultAuctionSetting: AuctionSetting;
+    let waterTower: WaterTowerUpgradeable;
 
     before(async () => {
       signers = await ethers.getSigners();
       owner = signers[0];
       sender = signers[1];
-      token1 = await ethers.getContractAt('IERC20Upgradeable', CONTRACT_ADDRESSES.frxETH);
+      token1 = await ethers.getContractAt('IERC20MetadataUpgradeable', CONTRACT_ADDRESSES.frxETH);
       token2 = await ethers.getContractAt('IERC20Upgradeable', CONTRACT_ADDRESSES.SPOT);
       water = await ethers.getContractAt('IERC20Upgradeable', diamondRootAddress);
-
 
       // get stable tokens
       dai = await ethers.getContractAt('IERC20Upgradeable', CONTRACT_ADDRESSES.DAI);
@@ -64,6 +69,7 @@ export function suite() {
       sender = signers[1];
       secondBidder = signers[2];
       auctionContract = await ethers.getContractAt('AuctionUpgradeable', diamondRootAddress);
+      waterTower = await ethers.getContractAt('WaterTowerUpgradeable', diamondRootAddress);
       // expect(await auctionContract.isSupportedPurchaseToken(usdc.address)).to.be.eq(true);
       // 1.5% auction fee
       expect((await auctionContract.getAuctionFee()).numerator).to.be.eq(BigNumber.from(15));
@@ -87,21 +93,56 @@ export function suite() {
     });
 
     describe('#create auction', async function () {
-      it('Testing Auction create', async () => {
-        await token1.approve(auctionContract.address, toWei(1000));
-        await skipTime(3600);
+      it('Creating auction by user with water stored less than 32 should fail', async () => {
+        let storedWaterOfSender = (await waterTower.userInfo(sender.address)).amount;
+        if (storedWaterOfSender.gt(toWei(32))) {
+          const tx = await waterTower.connect(sender).withdraw(storedWaterOfSender);
+          await tx.wait(1);
+          storedWaterOfSender = (await waterTower.userInfo(sender.address)).amount;
+          expect(storedWaterOfSender).to.be.eq(0);
+        }
+        const fee = await auctionContract.getListingFeeForUser(
+          sender.address,
+          toWei(100),
+          10 ** (18 - (await token1.decimals())),
+          toWei(0.1),
+        );
+        expect(fee).to.be.eq(0);
+        await token1.connect(sender).approve(auctionContract.address, toWei(100));
+        await token1.transfer(sender.address, toWei(100));
         const auctionSetting: AuctionSetting = {
           ...defaultAuctionSetting,
           minBidAmount: toWei(8),
+          sellAmount: toWei(100),
           auctionType: AuctionType.TimedAndFixed,
         };
-        const tx = await auctionContract.createAuction(auctionSetting, 1);
+        await expect(
+          auctionContract.connect(sender).createAuction(auctionSetting, 0),
+        ).to.be.revertedWithCustomError(auctionContract, 'NoStoreWater');
+        await water.approve(water.address, storedWaterOfSender);
+        await waterTower.connect(sender).deposit(storedWaterOfSender, true);
+      });
+      it('Testing Auction create', async () => {
+        await token1.approve(auctionContract.address, toWei(1000));
+        const auctionSetting: AuctionSetting = {
+          ...defaultAuctionSetting,
+          minBidAmount: toWei(8),
+          sellAmount: toWei(100),
+          auctionType: AuctionType.TimedAndFixed,
+        };
+        await water.approve(auctionContract.address, toWei(32));
+        await waterTower.deposit(toWei(32), true);
+        const auctionFee = await auctionContract.getListingFeeForUser(
+          owner.address,
+          toWei(100),
+          1,
+          defaultAuctionSetting.priceRangeStart,
+        );
+        const tx = await auctionContract.createAuction(auctionSetting, 1, { value: auctionFee });
         expect(tx)
           .to.emit(auctionContract, 'AuctionCreated')
           .withArgs(auctionSetting, owner.address, 1);
-        expect(await token1.balanceOf(auctionContract.address)).to.be.equal(
-          toWei(100 + (100 * 15) / 1000),
-        );
+        expect(await token1.balanceOf(auctionContract.address)).to.be.equal(toWei(100));
         const createdAuction = await auctionContract.getAuction(1);
         assert(
           createdAuction.s.sellToken === token1.address,
@@ -301,7 +342,7 @@ export function suite() {
           toWei(100 - 40 - 8.155 - 8.151).toString(),
         );
         expect((await token1.balanceOf(auctionContract.address)).toString()).to.be.equal(
-          toWei(101.5 - 40 - 8.155 - 8.151).toString(),
+          toWei(100 - 40 - 8.155 - 8.151).toString(),
         );
       });
       it('Invalid bids', async () => {
@@ -668,7 +709,7 @@ export function suite() {
       it('buyNow with ohm token', async () => {
         const ohmToken = await ethers.getContractAt('IERC20Upgradeable', CONTRACT_ADDRESSES.OHM);
         const ohmTester = (await ethers.getSigners())[5];
-        await ohmToken.transfer(ohmTester.address, toD6(12000));        
+        await ohmToken.transfer(ohmTester.address, toD6(12000));
         await ohmToken.connect(ohmTester).approve(diamondRootAddress, toD6(12000));
         await auctionContract.connect(ohmTester).createAuction(
           {

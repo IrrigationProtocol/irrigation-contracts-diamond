@@ -71,7 +71,9 @@ export function suite() {
         listingFees: [0, 10],
         successFees: [0, 10],
       });
+      expect(await auction.getListingFee(0)).to.be.eq(0);
       expect(await auction.getListingFee(toWei(10))).to.be.eq(0);
+      expect(await auction.getListingFee(toWei(32))).to.be.eq(10);
       expect(await auction.getListingFee(toWei(1000))).to.be.eq(10);
     });
   });
