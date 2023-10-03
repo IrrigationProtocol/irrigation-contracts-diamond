@@ -6,6 +6,9 @@ import "./AuctionStorage.sol";
 import "../utils/EIP2535Initializable.sol";
 import "../utils/IrrigationAccessControl.sol";
 import "@gnus.ai/contracts-upgradeable-diamond/contracts/security/PausableUpgradeable.sol";
+import "../libraries/Constants.sol";
+import "@gnus.ai/contracts-upgradeable-diamond/contracts/interfaces/IERC20Upgradeable.sol";
+import "@gnus.ai/contracts-upgradeable-diamond/contracts/token/ERC20/utils/SafeERC20Upgradeable.sol";
 
 /// @title Admin Facet
 contract IrrigationControlUpgradeable is
@@ -14,10 +17,16 @@ contract IrrigationControlUpgradeable is
     PausableUpgradeable
 {
     using AuctionStorage for AuctionStorage.Layout;
+    using SafeERC20Upgradeable for IERC20Upgradeable;
+
     /// @dev auctions
     event UpdateBidTokenGroup(uint indexed id, BidTokenGroup bidTokenGroup);
     event UpdateSellTokens(address[] sellTokens, bool[] bEnables);
     event UpdateAuctionPeriods(uint48[] periods);
+    event WithdrawAuctionFee(address indexed token, address to, uint256 fee);
+
+    /// @dev errors
+    error NoWithdrawEtherFee();
 
     function initIrrigationControl() external initializer onlySuperAdminRole {
         AuctionStorage.Layout storage auctionStorage = AuctionStorage.layout();
@@ -41,6 +50,10 @@ contract IrrigationControlUpgradeable is
 
     function setAuctionFee(AuctionFee calldata fee) external onlyAdminRole {
         AuctionStorage.layout().fee = fee;
+    }
+
+    function setFeeForWaterTower(uint256 fee) external onlyAdminRole {
+        AuctionStorage.layout().feeForTower = fee;
     }
 
     function AddBidTokenGroup(BidTokenGroup memory bidTokenGroup) public onlyAdminRole {
@@ -76,5 +89,20 @@ contract IrrigationControlUpgradeable is
 
     function unpause() external onlySuperAdminRole {
         _unpause();
+    }
+
+    function withdrawAuctionFee(
+        address token,
+        address to,
+        uint256 amount
+    ) external onlySuperAdminRole {
+        AuctionStorage.layout().reserveFees[token] -= amount;
+        if (token == Constants.ETHER) {
+            (bool success, ) = to.call{value: amount}(new bytes(0));
+            if (!success) revert NoWithdrawEtherFee();
+        } else {
+            IERC20Upgradeable(token).safeTransfer(to, amount);
+        }
+        emit WithdrawAuctionFee(token, to, amount);
     }
 }

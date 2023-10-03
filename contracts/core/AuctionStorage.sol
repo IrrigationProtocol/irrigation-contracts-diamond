@@ -77,7 +77,7 @@ struct AuctionData {
 
 struct AuctionFee {
     uint256[] listingFees;
-    uint256[] successFees;    
+    uint256[] successFees;
     uint256[] limits;
 }
 
@@ -102,7 +102,13 @@ library AuctionStorage {
         uint96 maxIncrementRate;
         // available auction periods like 1 day, 3 days,
         uint48[] periods;
+        // added from version 1.0.1
+        // listing fees and success fees
         AuctionFee fee;
+        // reserve auction fees in contract
+        mapping(address => uint256) reserveFees;
+        // factor fee to add water tower eth reward
+        uint256 feeForTower;
     }
 
     bytes32 internal constant STORAGE_SLOT = keccak256("irrigation.contracts.storage.Auction");

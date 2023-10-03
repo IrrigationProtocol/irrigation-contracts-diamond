@@ -1,16 +1,16 @@
 {
     "gasLimits": [
         {
-            "buyNow": "122825"
+            "buyNow": "195919"
         },
         {
-            "claimBid": "699249"
+            "claimBid": "699263"
         },
         {
-            "closeAuction": "921299"
+            "closeAuction": "928690"
         },
         {
-            "createAuction": "313887"
+            "createAuction": "337382"
         },
         {
             "placeBid": "582621"

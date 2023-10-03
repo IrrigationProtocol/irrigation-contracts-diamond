@@ -183,13 +183,14 @@ contract AuctionUpgradeable is
             tokenMultiplier,
             priceForFee
         );
-        if (feeAmount == 0) revert NoStoreWater();
         if (msg.value < feeAmount) revert InsufficientFee();
         else if (msg.value > feeAmount) {
             (bool success, ) = msg.sender.call{value: msg.value - feeAmount}("");
             if (!success) revert NoTransferEther();
         }
-
+        uint256 ethReward = (feeAmount * auctionStorage.feeForTower) / FEE_DENOMINATOR;
+        auctionStorage.reserveFees[Constants.ETHER] += (feeAmount - ethReward);
+        IWaterTowerUpgradeable(address(this)).addETHReward{value: ethReward}();
         auctionStorage.currentAuctionId = auctionId;
         auctionSetting.reserve = auctionSetting.sellAmount;
         auctionStorage.auctions[auctionId].s = auctionSetting;
@@ -282,8 +283,15 @@ contract AuctionUpgradeable is
             auction.s.fixedPrice,
             sellTokenDecimals
         );
-        IERC20Upgradeable(_purchaseToken).safeTransferFrom(msg.sender, auction.seller, payAmount);
-
+        (, uint256 successFee) = getAuctionFee(WaterTowerStorage.userInfo(auction.seller).amount);
+        uint256 fee = (payAmount * successFee) / FEE_DENOMINATOR;
+        IERC20Upgradeable(_purchaseToken).safeTransferFrom(
+            msg.sender,
+            auction.seller,
+            payAmount - fee
+        );
+        IERC20Upgradeable(_purchaseToken).safeTransferFrom(msg.sender, address(this), fee);
+        auctionStorage.reserveFees[_purchaseToken] += fee;
         emit AuctionBuy(msg.sender, payAmount, purchaseAmount, _purchaseToken, auctionId);
     }
 
@@ -311,7 +319,6 @@ contract AuctionUpgradeable is
             : auctionStorage.bids[auctionId][auction.curBidId].bidPrice +
                 auction.s.incrementBidPrice;
         // if bidPrice is 0, place bid in increment way
-        // if incrementBidPrice is 0, can place bid with same price as last bid
         if (bidPrice == 0) bidPrice = availableBidPrice;
         else if (bidPrice < availableBidPrice) revert LowBid();
         if (bidPrice > maxBidPrice) revert OverPriceBid();
@@ -481,10 +488,15 @@ contract AuctionUpgradeable is
             }
         }
         /// transfer paid tokens from contract to seller
+        (, uint256 successFee) = getAuctionFee(WaterTowerStorage.userInfo(auction.seller).amount);
         for (uint256 i; i < bidTokens.length; ) {
             uint256 payoutAmount = payoutAmounts[i];
             if (payoutAmount > 0) {
-                IERC20Upgradeable(bidTokens[i]).safeTransfer(auction.seller, payoutAmount);
+                address _purchaseToken = bidTokens[i];
+                uint256 realPayAmount = (payoutAmount * (FEE_DENOMINATOR - successFee)) /
+                    FEE_DENOMINATOR;
+                IERC20Upgradeable(bidTokens[i]).safeTransfer(auction.seller, realPayAmount);
+                auctionStorage.reserveFees[_purchaseToken] += (payoutAmount - realPayAmount);
             }
             unchecked {
                 ++i;
@@ -611,11 +623,6 @@ contract AuctionUpgradeable is
     // admin setters are implemented in IrrigationControl
 
     // getters
-    function getAuctionFee() external view returns (uint256 numerator, uint256 dominator) {
-        numerator = AuctionStorage.layout().feeNumerator;
-        dominator = FEE_DENOMINATOR;
-    }
-
     function getPayAmount(
         address purchaseToken,
         uint128 purchaseAmount,
@@ -659,15 +666,20 @@ contract AuctionUpgradeable is
             revert InactiveAuction();
     }
 
-    function getListingFee(uint256 waterAmount) public view returns (uint256 listingFee) {
+    function getAuctionFee(
+        uint256 waterAmount
+    ) public view returns (uint256 listingFee, uint256 successFee) {        
         AuctionFee memory fee = AuctionStorage.layout().fee;
         for (uint256 i; i < fee.limits.length; ) {
-            if (waterAmount < fee.limits[i]) return fee.listingFees[i];
+            if (waterAmount < fee.limits[i]) return (fee.listingFees[i], fee.successFees[i]);
             unchecked {
                 ++i;
             }
         }
-        return fee.listingFees[fee.listingFees.length - 1];
+        return (
+            fee.listingFees[fee.listingFees.length - 1],
+            fee.successFees[fee.listingFees.length - 1]
+        );
     }
 
     function getListingFeeForUser(
@@ -678,12 +690,12 @@ contract AuctionUpgradeable is
     ) public view returns (uint256 feeEthAmount) {
         /// @dev fee is calulated with ether price, auction price, and auction amount
         uint256 ethPrice = IPriceOracleUpgradeable(address(this)).getUnderlyingPriceETH();
+        (uint256 listingFee, ) = getAuctionFee(WaterTowerStorage.userInfo(user).amount);
         return
-            (
-                ((auctionAmount *
-                    multiplier *
-                    getListingFee(WaterTowerStorage.userInfo(user).amount) *
-                    tokenPrice) / ethPrice)
-            ) / FEE_DENOMINATOR;
+            (((auctionAmount * multiplier * listingFee * tokenPrice) / ethPrice)) / FEE_DENOMINATOR;
+    }
+
+    function getReserveFee(address token) external view returns (uint256 fee) {
+        return AuctionStorage.layout().reserveFees[token];
     }
 }

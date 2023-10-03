@@ -67,14 +67,15 @@ export function suite() {
 
     it('Auction fee', async () => {
       await irrigationControl.setAuctionFee({
-        limits: [toWei(32)],
-        listingFees: [0, 10],
-        successFees: [0, 10],
+        limits: [toWei(100_000_000)],
+        listingFees: [10],
+        successFees: [15],
       });
-      expect(await auction.getListingFee(0)).to.be.eq(0);
-      expect(await auction.getListingFee(toWei(10))).to.be.eq(0);
-      expect(await auction.getListingFee(toWei(32))).to.be.eq(10);
-      expect(await auction.getListingFee(toWei(1000))).to.be.eq(10);
+      await irrigationControl.setFeeForWaterTower(250);
+      expect((await auction.getAuctionFee(0)).listingFee).to.be.eq(10);
+      expect((await auction.getAuctionFee(toWei(10))).listingFee).to.be.eq(10);
+      expect((await auction.getAuctionFee(toWei(32))).listingFee).to.be.eq(10);
+      expect((await auction.getAuctionFee(toWei(1000))).listingFee).to.be.eq(10);
     });
   });
 }

@@ -8,6 +8,7 @@ import {
   AuctionUpgradeable,
   IERC20MetadataUpgradeable,
   IERC20Upgradeable,
+  IrrigationControlUpgradeable,
   WaterTowerUpgradeable,
 } from '../../typechain-types';
 import { AuctionType } from '../types';
@@ -53,6 +54,7 @@ export function suite() {
     let defaultAuctionSetting: AuctionSetting;
     let waterTower: WaterTowerUpgradeable;
     let defaultFee: BigNumber;
+    let irrigationControl: IrrigationControlUpgradeable;
     before(async () => {
       signers = await ethers.getSigners();
       owner = signers[0];
@@ -70,6 +72,10 @@ export function suite() {
       secondBidder = signers[2];
       auctionContract = await ethers.getContractAt('AuctionUpgradeable', diamondRootAddress);
       waterTower = await ethers.getContractAt('WaterTowerUpgradeable', diamondRootAddress);
+      irrigationControl = await ethers.getContractAt(
+        'IrrigationControlUpgradeable',
+        diamondRootAddress,
+      );
       // expect(await auctionContract.isSupportedPurchaseToken(usdc.address)).to.be.eq(true);
       // 1.5% auction fee
       // expect((await auctionContract.getAuctionFee()).numerator).to.be.eq(BigNumber.from(15));
@@ -92,21 +98,7 @@ export function suite() {
     });
 
     describe('#create auction', async function () {
-      it('Creating auction by user with water stored less than 32 should fail', async () => {
-        let storedWaterOfSender = (await waterTower.userInfo(sender.address)).amount;
-        if (storedWaterOfSender.gt(toWei(32))) {
-          const tx = await waterTower.connect(sender).withdraw(storedWaterOfSender);
-          await tx.wait(1);
-          storedWaterOfSender = (await waterTower.userInfo(sender.address)).amount;
-          expect(storedWaterOfSender).to.be.eq(0);
-        }
-        const fee = await auctionContract.getListingFeeForUser(
-          sender.address,
-          toWei(100),
-          10 ** (18 - (await token1.decimals())),
-          toWei(0.1),
-        );
-        expect(fee).to.be.eq(0);
+      it('Creating auction without ether fee should fail', async () => {
         await token1.connect(sender).approve(auctionContract.address, toWei(100));
         await token1.transfer(sender.address, toWei(100));
         const auctionSetting: AuctionSetting = {
@@ -117,9 +109,7 @@ export function suite() {
         };
         await expect(
           auctionContract.connect(sender).createAuction(auctionSetting, 0),
-        ).to.be.revertedWithCustomError(auctionContract, 'NoStoreWater');
-        await water.connect(sender).approve(water.address, storedWaterOfSender);
-        await waterTower.connect(sender).deposit(storedWaterOfSender, true);
+        ).to.be.revertedWithCustomError(auctionContract, 'InsufficientFee');
       });
       it('Testing Auction create', async () => {
         await token1.approve(auctionContract.address, toWei(1000));
@@ -268,9 +258,8 @@ export function suite() {
         await usdc.connect(sender).approve(auctionContract.address, toD6(10));
         const buyAmount = 8.151;
         await auctionContract.connect(sender).buyNow(1, toWei(buyAmount), 1);
-        let expectedUSDCBalance = toD6(10).sub(
-          mulDivRoundingUp(toWei(buyAmount), toWei(0.9574), toBN(10).pow(18 - 6 + 18)),
-        );
+        let paidUSDC = mulDivRoundingUp(toWei(buyAmount), toWei(0.9574), toBN(10).pow(18 - 6 + 18));
+        let expectedUSDCBalance = toD6(10).sub(paidUSDC);
         expect((await usdc.balanceOf(sender.address)).toString()).to.be.equal(
           expectedUSDCBalance.toString(),
         );
@@ -398,7 +387,24 @@ export function suite() {
     describe('#claim bid', async function () {
       it('Testing Auction claim canceled bid', async () => {
         // bids with usdc are all canceled
-        expect(await usdc.balanceOf(auctionContract.address)).to.be.equal(0);
+        // remains auction fee
+        let usdcPaidForBuy = mulDivRoundingUp(
+          toWei(8.151),
+          toWei(0.9574),
+          toBN(10).pow(18 - 6 + 18),
+        )
+          .mul(15)
+          .div(1000);
+        let usdcForSettledBid = mulDivRoundingUp(
+          toWei(10),
+          toWei(0.2101),
+          toBN(10).pow(18 - 6 + 18),
+        )
+          .mul(15)
+          .div(1000);
+        const contractUSDC = await usdc.balanceOf(auctionContract.address);
+        expect(contractUSDC).to.be.eq(usdcPaidForBuy.add(usdcForSettledBid));
+        expect(await auctionContract.getReserveFee(usdc.address)).to.be.eq(contractUSDC);
       });
     });
 
@@ -508,7 +514,7 @@ export function suite() {
         }
         expect(
           updatedDaiContractBalance.sub(await dai.balanceOf(auctionContract.address)),
-        ).to.be.eq(sum);
+        ).to.be.eq(sum.mul(985).div(1000));
         let bidId = 502;
         let bid = await auctionContract.getBid(3, bidId);
         while (bid.bCleared) {
@@ -693,7 +699,9 @@ export function suite() {
         expect(auction.s.reserve).to.be.eq(toWei(300));
         let updatedSellTokenBalance = await water.balanceOf(sender.address);
         await auctionContract.closeAuction(5);
-        expect((await dai.balanceOf(owner.address)).sub(updatedBalance)).to.be.eq(toWei(151.3485));
+        expect((await dai.balanceOf(owner.address)).sub(updatedBalance)).to.be.eq(
+          toWei(151.3485).mul(985).div(1000),
+        );
         auction = await auctionContract.getAuction(5);
         // 10 top bids are settled when closing auction, so 30 sellToken are paid
         expect(auction.s.reserve).to.be.eq(toWei(270));
@@ -756,6 +764,15 @@ export function suite() {
           defaultAuctionSetting.priceRangeEnd,
         );
         await auctionContract.buyNow(auctionId, toD6(100), 0);
+      });
+
+      it('withdraw auction fee', async () => {
+        const usdcFee = await auctionContract.getReserveFee(usdc.address);
+        fundAddress = sender.address;
+        const updatedUSDCBalance = await usdc.balanceOf(fundAddress);
+        await irrigationControl.withdrawAuctionFee(usdc.address, fundAddress, usdcFee);
+        expect((await usdc.balanceOf(fundAddress)).sub(updatedUSDCBalance)).to.be.eq(usdcFee);
+        expect(await auctionContract.getReserveFee(usdc.address)).to.be.eq(0);
       });
     });
   });
