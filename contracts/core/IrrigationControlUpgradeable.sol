@@ -28,11 +28,14 @@ contract IrrigationControlUpgradeable is
     /// @dev errors
     error NoWithdrawEtherFee();
 
-    function initIrrigationControl() external initializer onlySuperAdminRole {
+    function initAuctionFee() external onlySuperAdminRole {
         AuctionStorage.Layout storage auctionStorage = AuctionStorage.layout();
-        // set default auction fee 1.5%
-        auctionStorage.feeReceiver = msg.sender;
-        auctionStorage.feeNumerator = 15;
+        // set default auction listing fee 1% and success fee 1.5%
+        auctionStorage.fee.limits =[1e26];
+        auctionStorage.fee.listingFees =[10];
+        auctionStorage.fee.successFees =[15];
+        // 25% of listing fee is added to water tower as reward
+        auctionStorage.feeForTower = 250;
     }
 
     // admin setters

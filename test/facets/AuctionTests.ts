@@ -633,7 +633,7 @@ export function suite() {
       });
     });
 
-    describe('auction with water token and max winners 100', async function () {
+    describe('#auction with water token and max winners 100', async function () {
       it('create auction with water as sell token', async function () {
         await water.approve(water.address, toWei(310));
         const waterBalance = await water.balanceOf(owner.address);
@@ -728,8 +728,10 @@ export function suite() {
           toWei(300),
         );
       });
+    });
 
-      it('buyNow with ohm token', async () => {
+    describe('#refund unsold tokens when closing auction', async function () {
+      it('buyNow with ohm token and refund', async () => {
         const ohmToken = await ethers.getContractAt('IERC20Upgradeable', CONTRACT_ADDRESSES.OHM);
         const ohmTester = (await ethers.getSigners())[5];
         await ohmToken.transfer(ohmTester.address, toD6(12000));
@@ -764,6 +766,13 @@ export function suite() {
           defaultAuctionSetting.priceRangeEnd,
         );
         await auctionContract.buyNow(auctionId, toD6(100), 0);
+        await skipTime(86400 * 3);
+        let auction = await auctionContract.getAuction(auctionId);        
+        expect(await ohmToken.balanceOf(auctionContract.address)).to.be.eq(auction.s.reserve);
+        let updatedOhmBalance = await ohmToken.balanceOf(ohmTester.address);
+        await auctionContract.closeAuction(auctionId);        
+        updatedOhmBalance = (await ohmToken.balanceOf(ohmTester.address)).sub(updatedOhmBalance);
+        expect(updatedOhmBalance).to.be.eq(auction.s.reserve.sub(toD6(100)));        
       });
 
       it('withdraw auction fee', async () => {
@@ -773,6 +782,13 @@ export function suite() {
         await irrigationControl.withdrawAuctionFee(usdc.address, fundAddress, usdcFee);
         expect((await usdc.balanceOf(fundAddress)).sub(updatedUSDCBalance)).to.be.eq(usdcFee);
         expect(await auctionContract.getReserveFee(usdc.address)).to.be.eq(0);
+        const etherFee = await auctionContract.getReserveFee(CONTRACT_ADDRESSES.ETHER);
+        const updatedEthBalance = await ethers.provider.getBalance(fundAddress);
+        await irrigationControl.withdrawAuctionFee(CONTRACT_ADDRESSES.ETHER, fundAddress, etherFee);
+        expect((await ethers.provider.getBalance(fundAddress)).sub(updatedEthBalance)).to.be.eq(
+          etherFee,
+        );
+        expect(await auctionContract.getReserveFee(CONTRACT_ADDRESSES.ETHER)).to.be.eq(0);
       });
     });
   });

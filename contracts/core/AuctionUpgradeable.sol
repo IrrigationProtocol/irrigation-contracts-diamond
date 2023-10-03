@@ -441,7 +441,6 @@ contract AuctionUpgradeable is
 
     function _settleAuction(uint256 auctionId, AuctionData memory auction) internal {
         uint256 gasLimit = gasleft();
-        // uint256 trancheIndex = auction.s.trancheIndex;
         uint128 availableAmount = auction.s.reserve;
         uint256 settledBidCount;
         uint256 curBidId = auction.curBidId;
@@ -502,42 +501,25 @@ contract AuctionUpgradeable is
                 ++i;
             }
         }
-        /// transfer auction fee
-        // if (auction.s.sellAmount > reserve) {
-        //     uint256 totalSettledAmount;
-        //     unchecked {
-        //         totalSettledAmount = auction.s.sellAmount - reserve;
-        //     }
-        //     if (auction.s.trancheIndex == 0) {
-        //         IERC20Upgradeable(auction.s.sellToken).safeTransfer(
-        //             auctionStorage.feeReceiver,
-        //             (totalSettledAmount * auctionStorage.feeNumerator) / FEE_DENOMINATOR
-        //         );
-        //     } else {
-        //         IWaterTowerUpgradeable(address(this)).addETHReward{
-        //             value: (auction.feeAmount * totalSettledAmount) / auction.s.sellAmount
-        //         }();
-        //     }
-        // }
-        // refund fee
-        // if (reserve > 0) {
-        //     unchecked {
-        //         availableAmount -= reserve;
-        //     }
-        //     if (auction.s.trancheIndex == 0) {
-        //         IERC20Upgradeable(auction.s.sellToken).safeTransfer(auction.seller, reserve);
-        //     } else {
-        //         IERC1155Upgradeable(address(this)).safeTransferFrom(
-        //             address(this),
-        //             auction.seller,
-        //             auction.s.trancheIndex,
-        //             reserve,
-        //             Constants.EMPTY
-        //         );
-        //         (bool sent, ) = payable(auction.seller).call{value: reserve}("");
-        //         require(sent, "failed to send ether");
-        //     }
-        // }
+
+        // refund unsold tokens
+        if (reserve > 0) {
+            unchecked {
+                availableAmount -= reserve;
+            }
+            if (auction.s.trancheIndex == 0) {
+                IERC20Upgradeable(auction.s.sellToken).safeTransfer(auction.seller, reserve);
+            } else {
+                IERC1155Upgradeable(address(this)).safeTransferFrom(
+                    address(this),
+                    auction.seller,
+                    auction.s.trancheIndex,
+                    reserve,
+                    Constants.EMPTY
+                );
+            }
+        }
+
         auctionStorage.auctions[auctionId].s.reserve = availableAmount;
         auctionStorage.auctions[auctionId].status = AuctionStatus.Closed;
 

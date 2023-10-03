@@ -71,13 +71,16 @@ struct AuctionData {
     uint8 availableBidDepth;
     // auction status
     AuctionStatus status;
-    // fee amount used for refunded fee calculation
+    // deprecated
     uint256 feeAmount;
 }
-
+/// @dev Auction Fee
 struct AuctionFee {
+    // fee when creating auction. 1 => 0.1%
     uint256[] listingFees;
+    // fee percentage for buying and settled bids when closing auction
     uint256[] successFees;
+    // stored water amount list
     uint256[] limits;
 }
 
