@@ -13,7 +13,7 @@ import { CONTRACT_ADDRESSES } from '../scripts/shared';
 import { getDefaultAuctionSetting } from './facets/AuctionTests';
 
 export function suite() {
-  describe('Irrigation Pausable Testing', async function () {
+  describe('Irrigation Protocol Control Testing', async function () {
     let signers: SignerWithAddress[];
     let owner: SignerWithAddress;
     let rootAddress: string;
@@ -70,6 +70,17 @@ export function suite() {
       expect((await auction.getAuctionFee(toWei(10))).listingFee).to.be.eq(10);
       expect((await auction.getAuctionFee(toWei(32))).listingFee).to.be.eq(10);
       expect((await auction.getAuctionFee(toWei(99_000_000))).listingFee).to.be.eq(10);
+      // listing fee and closing fee is 0 when user stored more than 3200 water
+      await irrigationControl.setAuctionFee({
+        limits: [toWei(3200)],
+        listingFees: [10, 0],
+        successFees: [15, 0],
+      });
+      expect((await auction.getAuctionFee(toWei(32))).listingFee).to.be.eq(10);
+      expect((await auction.getAuctionFee(toWei(3200))).listingFee).to.be.eq(0);
+      expect((await auction.getAuctionFee(toWei(99_000_000))).listingFee).to.be.eq(0);
+      // initialize auction fee as default 1.5%, 1% for everyone
+      await irrigationControl.initAuctionFee();
     });
   });
 }
