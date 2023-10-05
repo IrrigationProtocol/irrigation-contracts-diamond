@@ -329,11 +329,10 @@ export function suite() {
           auction.s.trancheIndex.eq(trancheId),
           `expected trancheIndex ${trancheId} but ${auction.s.trancheIndex}`,
         );
-        // assert(auction.assetType == 1, `expected assetType Tranche but ${auction.assetType}`);
-        await dai.transfer(sender.address, toWei(50));
-        await dai.connect(sender).approve(auctionContract.address, toWei(50));
+        await usdc.transfer(sender.address, toD6(50));
+        await usdc.connect(sender).approve(auctionContract.address, toD6(50));
         const trNftBalance = await trancheCollection.balanceOf(rootAddress, trancheId);
-        await auctionContract.connect(sender).buyNow(lastAuctionId, trNftBalance, 0);
+        await auctionContract.connect(sender).buyNow(lastAuctionId, trNftBalance, 1);
         const senderBalance = await trancheCollection.balanceOf(sender.address, trancheId);
         assert(
           senderBalance.eq(trNftBalance),
@@ -344,6 +343,7 @@ export function suite() {
           auction.s.reserve.eq(0),
           `expected reserve amount is 0 but ${fromWei(auction.s.reserve)}`,
         );
+
       });
 
       it('Test Tranche Auction bid', async () => {
