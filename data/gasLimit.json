@@ -1,16 +1,16 @@
 {
     "buyNow": "208995",
     "claimBid": "699263",
-    "closeAuction": "928690",
-    "createAuction": "351382",
-    "placeBid": "582621",
-    "updateAuction": "55903",
-    "exchangeETHToWater": "122966",
-    "exchangeTokenToWater": "306471",
-    "createTranchesWithPods": "898137",
-    "receivePodsForTranche": "273930",
-    "claim": "90517",
-    "deposit": "181002",
-    "irrigate": "884155",
-    "withdraw": "91093"
+    "closeAuction": "928728",
+    "createAuction": "349096",
+    "placeBid": "582398",
+    "updateAuction": "55869",
+    "exchangeETHToWater": "122900",
+    "exchangeTokenToWater": "306428",
+    "createTranchesWithPods": "898160",
+    "receivePodsForTranche": "273952",
+    "claim": "90500",
+    "deposit": "181024",
+    "irrigate": "884112",
+    "withdraw": "75784"
 }

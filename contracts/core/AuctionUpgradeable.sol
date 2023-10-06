@@ -183,14 +183,16 @@ contract AuctionUpgradeable is
             tokenMultiplier,
             priceForFee
         );
-        if (msg.value < feeAmount) revert InsufficientFee();
-        else if (msg.value > feeAmount) {
-            (bool success, ) = msg.sender.call{value: msg.value - feeAmount}("");
-            if (!success) revert NoTransferEther();
+        if (feeAmount > 0) {
+            if (msg.value < feeAmount) revert InsufficientFee();
+            else if (msg.value > feeAmount) {
+                (bool success, ) = msg.sender.call{value: msg.value - feeAmount}("");
+                if (!success) revert NoTransferEther();
+            }
+            uint256 ethReward = (feeAmount * auctionStorage.feeForTower) / FEE_DENOMINATOR;
+            auctionStorage.reserveFees[Constants.ETHER] += (feeAmount - ethReward);
+            IWaterTowerUpgradeable(address(this)).addETHReward{value: ethReward}();
         }
-        uint256 ethReward = (feeAmount * auctionStorage.feeForTower) / FEE_DENOMINATOR;
-        auctionStorage.reserveFees[Constants.ETHER] += (feeAmount - ethReward);
-        IWaterTowerUpgradeable(address(this)).addETHReward{value: ethReward}();
         auctionStorage.currentAuctionId = auctionId;
         auctionSetting.reserve = auctionSetting.sellAmount;
         auctionStorage.auctions[auctionId].s = auctionSetting;
@@ -650,7 +652,7 @@ contract AuctionUpgradeable is
 
     function getAuctionFee(
         uint256 waterAmount
-    ) public view returns (uint256 listingFee, uint256 successFee) {        
+    ) public view returns (uint256 listingFee, uint256 successFee) {
         AuctionFee memory fee = AuctionStorage.layout().fee;
         for (uint256 i; i < fee.limits.length; ) {
             if (waterAmount < fee.limits[i]) return (fee.listingFees[i], fee.successFees[i]);

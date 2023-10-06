@@ -767,12 +767,12 @@ export function suite() {
         );
         await auctionContract.buyNow(auctionId, toD6(100), 0);
         await skipTime(86400 * 3);
-        let auction = await auctionContract.getAuction(auctionId);        
+        let auction = await auctionContract.getAuction(auctionId);
         expect(await ohmToken.balanceOf(auctionContract.address)).to.be.eq(auction.s.reserve);
         let updatedOhmBalance = await ohmToken.balanceOf(ohmTester.address);
-        await auctionContract.closeAuction(auctionId);        
+        await auctionContract.closeAuction(auctionId);
         updatedOhmBalance = (await ohmToken.balanceOf(ohmTester.address)).sub(updatedOhmBalance);
-        expect(updatedOhmBalance).to.be.eq(auction.s.reserve.sub(toD6(100)));        
+        expect(updatedOhmBalance).to.be.eq(auction.s.reserve.sub(toD6(100)));
       });
 
       it('withdraw auction fee', async () => {
@@ -789,6 +789,42 @@ export function suite() {
           etherFee,
         );
         expect(await auctionContract.getReserveFee(CONTRACT_ADDRESSES.ETHER)).to.be.eq(0);
+      });
+    });
+
+    describe('#auction without fee', async function () {
+      it('should create auction without paying ether', async () => {
+        await irrigationControl.setAuctionFee({
+          limits: [toWei(3200)],
+          listingFees: [10, 0],
+          successFees: [15, 0],
+        });
+        let stotedWater = (await waterTower.userInfo(owner.address)).amount;
+        if (stotedWater.lt(toWei(3200))) {
+          await water.approve(water.address, toWei(3200));
+          await waterTower.deposit(toWei(3200), true);
+          stotedWater = stotedWater.add(toWei(3200));
+        }
+        expect(
+          await auctionContract.getListingFeeForUser(
+            owner.address,
+            defaultAuctionSetting.sellAmount,
+            1,
+            defaultAuctionSetting.priceRangeStart,
+          ),
+        ).to.be.eq(0);
+        await auctionContract.createAuction({ ...defaultAuctionSetting }, 0);
+      });
+      it('creating auction without fee should fail', async () => {
+        let stotedWater = (await waterTower.userInfo(owner.address)).amount;
+        await waterTower.withdraw(stotedWater);
+        await expect(
+          auctionContract.createAuction({ ...defaultAuctionSetting }, 0),
+        ).to.be.revertedWithCustomError(auctionContract, 'InsufficientFee');
+        await irrigationControl.initAuctionFee();
+        await expect(
+          auctionContract.createAuction({ ...defaultAuctionSetting }, 0),
+        ).to.be.revertedWithCustomError(auctionContract, 'InsufficientFee');
       });
     });
   });
