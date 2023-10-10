@@ -25,8 +25,8 @@ struct PoolInfo {
 }
 
 struct UserPoolHistory {
-    uint256 totalTime;
     uint256 rewardRate;
+    uint256 averageStored;
 }
 
 library WaterTowerStorage {
@@ -48,7 +48,7 @@ library WaterTowerStorage {
         uint256 irrigateBonusRate;
         // Middle asset for irrigating ether reward
         address middleAssetForIrrigate;
-        // user => pool id => total time and reward rate that user staked in the pool
+        // user => pool id => average stored amount and reward rate for users in the pool
         mapping(address => mapping(uint256 => UserPoolHistory)) userPoolHistories;
     }
 

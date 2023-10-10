@@ -7,6 +7,7 @@ import { CONTRACT_ADDRESSES } from '../../scripts/shared';
 import { skipTime } from '../utils/time';
 import { BigNumber } from 'ethers';
 import { assert, expect } from '../utils/debug';
+import { expectWithTolerance } from '../utils';
 
 export function suite() {
   describe('Irrigation WaterTower Testing', async function () {
@@ -342,18 +343,38 @@ export function suite() {
       await waterTower.withdraw(user.amount);
       await skipTime(86400);
       await waterTower.setPool(0, 0);
+      await skipTime(86400 * 30);
+      await waterTower.setPool(0, 0);
       expect((await waterTower.userInfo(owner.address)).amount).to.be.eq(0);
       await waterTower.deposit(toWei(100), true);
       await skipTime(86400 * 30);
       await waterTower.setPool(0, 0);
       await waterTower.deposit(toWei(0), true);
-      expect(await waterTower.getAverageStoredWater(owner.address)).to.be.eq(toWei(100));      
+      expectWithTolerance(await waterTower.getAverageStoredWater(owner.address), toWei(100));
     });
-    it('average stored water in next month', async function () {      
+    it('average stored water in next month', async function () {
       await skipTime(86400 * 30);
       await waterTower.setPool(0, 0);
       await waterTower.deposit(toWei(0), true);
-      expect(await waterTower.getAverageStoredWater(owner.address)).to.be.eq(toWei(100));
+      expectWithTolerance(await waterTower.getAverageStoredWater(owner.address), toWei(100));
+    });
+    it('average stored water after withdraw', async function () {
+      await skipTime(86400 * 15);
+      await waterTower.withdraw(toWei(20));
+      await skipTime(86400 * 15);
+      await waterTower.setPool(0, 0);
+      // deposit 80 WATER after new pool
+      await waterTower.deposit(toWei(0), true);
+      expectWithTolerance(await waterTower.getAverageStoredWater(owner.address), toWei(90));
+    });
+    it('average stored water after second deposit', async function () {
+      await skipTime(86400 * 15);
+      await waterTower.deposit(toWei(20), true);
+      // deposit more 20 WATER after 15 days
+      await skipTime(86400 * 15);
+      await waterTower.setPool(0, 0);
+      await waterTower.deposit(toWei(0), true);      
+      expectWithTolerance(await waterTower.getAverageStoredWater(owner.address), toWei(90));
     });
   });
 }
