@@ -143,24 +143,24 @@ contract WaterTowerUpgradeable is
         PoolInfo memory poolInfo,
         uint256 curPoolIndex
     ) internal {
-        UserInfo storage _userInfo = WaterTowerStorage.userInfo(user);
+        WaterTowerStorage.Layout storage l = WaterTowerStorage.layout();
+        UserInfo storage _userInfo = l.users[user];
         if (_userInfo.lastPoolIndex != curPoolIndex) {
-            PoolInfo memory lastPoolInfo = WaterTowerStorage.layout().pools[
-                _userInfo.lastPoolIndex
-            ];
+            PoolInfo memory lastPoolInfo = l.pools[_userInfo.lastPoolIndex];
             if (_userInfo.rewardRate != 0) {
                 _userInfo.pending +=
                     (_userInfo.rewardRate * lastPoolInfo.monthlyRewards) /
                     lastPoolInfo.totalRewardRate;
+                l.userPoolHistories[user][curPoolIndex].rewardRate = _userInfo.rewardRate;
             }
-            uint256 userRewardRate = _userInfo.amount * (poolInfo.endTime - block.timestamp);
+            uint256 stakedTime = (poolInfo.endTime - block.timestamp);
+            uint256 userRewardRate = _userInfo.amount * stakedTime;
             _userInfo.lastPoolIndex = curPoolIndex;
             /// @dev if user deposit in last month, reward rate is increased
             ///      and if there is no deposit for user, reward rate start from 0
             _userInfo.rewardRate = userRewardRate;
-            WaterTowerStorage.layout().pools[curPoolIndex].totalRewardRate =
-                poolInfo.totalRewardRate +
-                userRewardRate;
+            l.pools[curPoolIndex].totalRewardRate = poolInfo.totalRewardRate + userRewardRate;
+            l.userPoolHistories[user][curPoolIndex].totalTime += stakedTime;
         }
     }
 
@@ -202,9 +202,11 @@ contract WaterTowerUpgradeable is
         PoolInfo memory poolInfo = l.pools[curPoolIndex];
         _updateUserPool(user, poolInfo, curPoolIndex);
         l.users[user].amount += amount;
-        uint256 rewardRate = amount * (poolInfo.endTime - block.timestamp);
+        uint256 stakedTime = (poolInfo.endTime - block.timestamp);
+        uint256 rewardRate = amount * stakedTime;
         l.users[user].rewardRate += rewardRate;
         l.pools[curPoolIndex].totalRewardRate += rewardRate;
+        l.userPoolHistories[user][curPoolIndex].totalTime += stakedTime;
         l.totalDeposits += amount;
         emit Deposited(user, amount);
     }
@@ -215,9 +217,11 @@ contract WaterTowerUpgradeable is
         PoolInfo memory poolInfo = l.pools[curPoolIndex];
         _updateUserPool(user, poolInfo, curPoolIndex);
         l.users[user].amount -= amount;
-        uint256 rewardRate = amount * (poolInfo.endTime - block.timestamp);
+        uint256 unstakedTime = (poolInfo.endTime - block.timestamp);
+        uint256 rewardRate = amount * unstakedTime;
         l.users[user].rewardRate -= rewardRate;
         l.pools[curPoolIndex].totalRewardRate -= rewardRate;
+        l.userPoolHistories[user][curPoolIndex].totalTime -= unstakedTime;
         l.totalDeposits -= amount;
         emit Withdrawn(user, amount);
     }
@@ -364,5 +368,15 @@ contract WaterTowerUpgradeable is
 
     function getTotalRewards() external view returns (uint256 totalRewards) {
         totalRewards = WaterTowerStorage.layout().totalRewards;
+    }
+
+    function getAverageStoredWater(address user) external view returns (uint256 amount) {
+        WaterTowerStorage.Layout storage l = WaterTowerStorage.layout();
+        uint256 curPoolIndex = l.curPoolIndex;
+        return
+            curPoolIndex == 0
+                ? l.users[user].rewardRate
+                : l.userPoolHistories[user][curPoolIndex - 1].rewardRate /
+                    l.userPoolHistories[user][curPoolIndex - 1].totalTime;
     }
 }

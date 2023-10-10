@@ -127,9 +127,10 @@ task('reserve', 'Get reserve tokens on sprinkler', async (taskArgs: any, hre) =>
   let token = taskArgs?.token;
   if (CONTRACT_ADDRESSES[taskArgs?.token?.toUpperCase()])
     token = CONTRACT_ADDRESSES[taskArgs?.token?.toUpperCase()];
-  const tokenDecimals = await (
-    await hre.ethers.getContractAt('IERC20MetadataUpgradeable', token)
-  ).decimals();
+  const tokenDecimals =
+    token === CONTRACT_ADDRESSES.ETHER
+      ? 18
+      : await (await hre.ethers.getContractAt('IERC20MetadataUpgradeable', token)).decimals();
   console.log(
     `reserve(${taskArgs?.token})`,
     Number(

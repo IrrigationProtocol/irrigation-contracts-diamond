@@ -24,6 +24,11 @@ struct PoolInfo {
     uint256 endTime;
 }
 
+struct UserPoolHistory {
+    uint256 totalTime;
+    uint256 rewardRate;
+}
+
 library WaterTowerStorage {
     struct Layout {
         // total ether reward received from other markets
@@ -38,12 +43,13 @@ library WaterTowerStorage {
         mapping(uint256 => PoolInfo) pools;
         // deposit amount, pending reward, and setting for user
         mapping(address => UserInfo) users;
-
         /// @dev config variables
         // bonus percent for irrigator
         uint256 irrigateBonusRate;
         // Middle asset for irrigating ether reward
         address middleAssetForIrrigate;
+        // user => pool id => total time and reward rate that user staked in the pool
+        mapping(address => mapping(uint256 => UserPoolHistory)) userPoolHistories;
     }
 
     bytes32 internal constant STORAGE_SLOT = keccak256("irrigation.contracts.storage.WaterTower");
