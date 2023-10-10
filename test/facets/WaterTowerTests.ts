@@ -15,11 +15,10 @@ export function suite() {
     let sender: SignerWithAddress;
     let tester: SignerWithAddress;
     let tester2: SignerWithAddress;
-    const irrigationDiamond = dc.IrrigationDiamond as IrrigationDiamond;
     let water: WaterUpgradeable;
     let waterTower: WaterTowerUpgradeable;
+    const irrigationDiamond = dc.IrrigationDiamond as IrrigationDiamond;
     const provider = irrigationDiamond.provider;
-
     before(async () => {
       signers = await ethers.getSigners();
       owner = signers[0];
@@ -321,6 +320,40 @@ export function suite() {
         bonusAmount2,
       );
       expect(bonusAmount2).to.be.gt(toD6(0.01));
+    });
+  });
+
+  describe('Average Stored Water', async function () {
+    let signers: SignerWithAddress[];
+    let owner: SignerWithAddress;
+    let water: WaterUpgradeable;
+    let waterTower: WaterTowerUpgradeable;
+    const irrigationDiamond = dc.IrrigationDiamond as IrrigationDiamond;
+
+    before(async () => {
+      signers = await ethers.getSigners();
+      owner = signers[0];
+      water = await ethers.getContractAt('WaterUpgradeable', irrigationDiamond.address);
+      waterTower = await ethers.getContractAt('WaterTowerUpgradeable', irrigationDiamond.address);
+    });
+    it('average stored water should be same as deposited amount, in the case of only one deposit', async function () {
+      await water.approve(water.address, ethers.constants.MaxUint256);
+      let user = await waterTower.userInfo(owner.address);
+      await waterTower.withdraw(user.amount);
+      await skipTime(86400);
+      await waterTower.setPool(0, 0);
+      expect((await waterTower.userInfo(owner.address)).amount).to.be.eq(0);
+      await waterTower.deposit(toWei(100), true);
+      await skipTime(86400 * 30);
+      await waterTower.setPool(0, 0);
+      await waterTower.deposit(toWei(0), true);
+      expect(await waterTower.getAverageStoredWater(owner.address)).to.be.eq(toWei(100));      
+    });
+    it('average stored water in next month', async function () {      
+      await skipTime(86400 * 30);
+      await waterTower.setPool(0, 0);
+      await waterTower.deposit(toWei(0), true);
+      expect(await waterTower.getAverageStoredWater(owner.address)).to.be.eq(toWei(100));
     });
   });
 }
