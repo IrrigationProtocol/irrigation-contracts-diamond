@@ -22,4 +22,6 @@ interface IWaterTowerUpgradeable {
     event UpdateRewardPeriod(uint poolIndex, uint endTime, uint monthlyRewards);
 
     function addETHReward() external payable;
+
+    function getAverageStoredWater(address user) external view returns (uint256);
 }

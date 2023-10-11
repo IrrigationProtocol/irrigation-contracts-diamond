@@ -4,9 +4,10 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { IrrigationDiamond } from '../../typechain-types/hardhat-diamond-abi/HardhatDiamondABI.sol';
 import { WaterTowerUpgradeable, WaterUpgradeable } from '../../typechain-types';
 import { CONTRACT_ADDRESSES } from '../../scripts/shared';
-import { skipTime } from '../utils/time';
+import { getCurrentBlockTime, skipTime } from '../utils/time';
 import { BigNumber } from 'ethers';
 import { assert, expect } from '../utils/debug';
+import { expectWithTolerance } from '../utils';
 
 export function suite() {
   describe('Irrigation WaterTower Testing', async function () {
@@ -15,11 +16,10 @@ export function suite() {
     let sender: SignerWithAddress;
     let tester: SignerWithAddress;
     let tester2: SignerWithAddress;
-    const irrigationDiamond = dc.IrrigationDiamond as IrrigationDiamond;
     let water: WaterUpgradeable;
     let waterTower: WaterTowerUpgradeable;
+    const irrigationDiamond = dc.IrrigationDiamond as IrrigationDiamond;
     const provider = irrigationDiamond.provider;
-
     before(async () => {
       signers = await ethers.getSigners();
       owner = signers[0];
@@ -321,6 +321,68 @@ export function suite() {
         bonusAmount2,
       );
       expect(bonusAmount2).to.be.gt(toD6(0.01));
+    });
+  });
+
+  describe('Average Stored Water', async function () {
+    let signers: SignerWithAddress[];
+    let owner: SignerWithAddress;
+    let water: WaterUpgradeable;
+    let waterTower: WaterTowerUpgradeable;
+    const irrigationDiamond = dc.IrrigationDiamond as IrrigationDiamond;
+
+    before(async () => {
+      signers = await ethers.getSigners();
+      owner = signers[0];
+      water = await ethers.getContractAt('WaterUpgradeable', irrigationDiamond.address);
+      waterTower = await ethers.getContractAt('WaterTowerUpgradeable', irrigationDiamond.address);
+    });
+    it('average stored water should be same as deposited amount, in the case of only one deposit', async function () {
+      await water.approve(water.address, ethers.constants.MaxUint256);
+      let user = await waterTower.userInfo(owner.address);
+      await waterTower.withdraw(user.amount);
+      await skipTime(86400);
+      await waterTower.setPool(0, 0);
+      await skipTime(86400 * 30);
+      await waterTower.setPool(0, 0);
+      expect((await waterTower.userInfo(owner.address)).amount).to.be.eq(0);
+      await waterTower.deposit(toWei(100), true);
+      await skipTime(86400 * 30);
+      await waterTower.setPool(0, 0);
+      await waterTower.deposit(toWei(0), true);
+      expectWithTolerance(await waterTower.getAverageStoredWater(owner.address), toWei(100));
+    });
+    it('average stored water in next month', async function () {
+      await skipTime(86400 * 30);
+      await waterTower.setPool(0, 0);
+      await waterTower.deposit(toWei(0), true);
+      expectWithTolerance(await waterTower.getAverageStoredWater(owner.address), toWei(100));
+    });
+    it('average stored water after withdraw', async function () {
+      const poolInfo = await waterTower.getPoolInfo(await waterTower.getPoolIndex());
+      const curTimestamp = await getCurrentBlockTime();
+      // withdraw 20 at middle of pool period
+      await skipTime(
+        poolInfo.startTime
+          .add(poolInfo.endTime.sub(poolInfo.startTime).div(2))
+          .sub(curTimestamp)
+          .toNumber(),
+      );
+      await waterTower.withdraw(toWei(20));
+      await skipTime(86400 * 15);
+      await waterTower.setPool(0, 0);
+      // deposit 80 WATER after new pool
+      await waterTower.deposit(toWei(0), true);
+      expect(await waterTower.getAverageStoredWater(owner.address)).to.be.eq(toWei(90));
+    });
+    it('average stored water after second deposit', async function () {
+      await skipTime(86400 * 15);
+      await waterTower.deposit(toWei(20), true);
+      // deposit more 20 WATER after 15 days
+      await skipTime(86400 * 15);
+      await waterTower.setPool(0, 0);
+      await waterTower.deposit(toWei(0), true);
+      expectWithTolerance(await waterTower.getAverageStoredWater(owner.address), toWei(90));
     });
   });
 }

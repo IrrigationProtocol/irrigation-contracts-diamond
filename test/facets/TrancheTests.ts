@@ -310,9 +310,11 @@ export function suite() {
         );
         // console.log(updateContractBalance);
         const expectedFeeAmount = trNftBalance
+          .mul(defaultAuctionSetting.priceRangeStart)
+          .div(toWei(1))
           .mul(toWei(10 ** 12))
           .div(await priceOracle.getUnderlyingPriceETH())
-          .mul(15)
+          .mul(10)
           .div(1000);
         expect(updateOwnerBalance).to.be.eq(updateContractBalance);
         expect(updateContractBalance).to.be.eq(expectedFeeAmount);
@@ -327,11 +329,10 @@ export function suite() {
           auction.s.trancheIndex.eq(trancheId),
           `expected trancheIndex ${trancheId} but ${auction.s.trancheIndex}`,
         );
-        // assert(auction.assetType == 1, `expected assetType Tranche but ${auction.assetType}`);
-        await dai.transfer(sender.address, toWei(50));
-        await dai.connect(sender).approve(auctionContract.address, toWei(50));
+        await usdc.transfer(sender.address, toD6(50));
+        await usdc.connect(sender).approve(auctionContract.address, toD6(50));
         const trNftBalance = await trancheCollection.balanceOf(rootAddress, trancheId);
-        await auctionContract.connect(sender).buyNow(lastAuctionId, trNftBalance, 0);
+        await auctionContract.connect(sender).buyNow(lastAuctionId, trNftBalance, 1);
         const senderBalance = await trancheCollection.balanceOf(sender.address, trancheId);
         assert(
           senderBalance.eq(trNftBalance),
@@ -342,6 +343,7 @@ export function suite() {
           auction.s.reserve.eq(0),
           `expected reserve amount is 0 but ${fromWei(auction.s.reserve)}`,
         );
+
       });
 
       it('Test Tranche Auction bid', async () => {

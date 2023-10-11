@@ -71,8 +71,17 @@ struct AuctionData {
     uint8 availableBidDepth;
     // auction status
     AuctionStatus status;
-    // fee amount used for refunded fee calculation
+    // deprecated
     uint256 feeAmount;
+}
+/// @dev Auction Fee
+struct AuctionFee {
+    // fee when creating auction. 1 => 0.1%
+    uint256[] listingFees;
+    // fee percentage for buying and settled bids when closing auction
+    uint256[] successFees;
+    // stored water amount list
+    uint256[] limits;
 }
 
 library AuctionStorage {
@@ -89,13 +98,20 @@ library AuctionStorage {
         mapping(uint256 => BidTokenGroup) bidTokenGroups;
         // count of bid token groups
         uint256 countOfTokenGroups;
-        // fee amount and fee receiver address        
+        // fee amount and fee receiver address // deprecated
         uint256 feeNumerator;
         address feeReceiver;
         // deprecated
         uint96 maxIncrementRate;
         // available auction periods like 1 day, 3 days,
         uint48[] periods;
+        // added from version 1.0.1
+        // listing fees and success fees
+        AuctionFee fee;
+        // reserve auction fees in contract
+        mapping(address => uint256) reserveFees;
+        // factor fee to add water tower eth reward
+        uint256 feeForTower;
     }
 
     bytes32 internal constant STORAGE_SLOT = keccak256("irrigation.contracts.storage.Auction");

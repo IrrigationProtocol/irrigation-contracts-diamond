@@ -118,6 +118,30 @@ task('sync-devchain', 'Syncing dev chain', async (taskArgs, hre) => {
 task('sync-plots-beta', 'Testers get own plots on devchain', async (taskArgs, hre) => {
   await restorePlots(hre);
 });
+
+task('reserve', 'Get reserve tokens on sprinkler', async (taskArgs: any, hre) => {
+  const sprinklerContract = await hre.ethers.getContractAt(
+    'SprinklerUpgradeable',
+    deployments[hre.network.name].DiamondAddress,
+  );
+  let token = taskArgs?.token;
+  if (CONTRACT_ADDRESSES[taskArgs?.token?.toUpperCase()])
+    token = CONTRACT_ADDRESSES[taskArgs?.token?.toUpperCase()];
+  const tokenDecimals =
+    token === CONTRACT_ADDRESSES.ETHER
+      ? 18
+      : await (await hre.ethers.getContractAt('IERC20MetadataUpgradeable', token)).decimals();
+  console.log(
+    `reserve(${taskArgs?.token})`,
+    Number(
+      hre.ethers.utils.formatUnits(
+        (await sprinklerContract.getReserveToken(token)).toString(),
+        tokenDecimals,
+      ),
+    ),
+  );
+}).addParam('token');
+
 const elementSeenSet = new Set<string>();
 // filter out duplicate function signatures
 function genSignature(name: string, inputs: Array<any>, type: string): string {

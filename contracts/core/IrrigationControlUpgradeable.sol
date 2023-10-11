@@ -6,6 +6,9 @@ import "./AuctionStorage.sol";
 import "../utils/EIP2535Initializable.sol";
 import "../utils/IrrigationAccessControl.sol";
 import "@gnus.ai/contracts-upgradeable-diamond/contracts/security/PausableUpgradeable.sol";
+import "../libraries/Constants.sol";
+import "@gnus.ai/contracts-upgradeable-diamond/contracts/interfaces/IERC20Upgradeable.sol";
+import "@gnus.ai/contracts-upgradeable-diamond/contracts/token/ERC20/utils/SafeERC20Upgradeable.sol";
 
 /// @title Admin Facet
 contract IrrigationControlUpgradeable is
@@ -14,16 +17,29 @@ contract IrrigationControlUpgradeable is
     PausableUpgradeable
 {
     using AuctionStorage for AuctionStorage.Layout;
+    using SafeERC20Upgradeable for IERC20Upgradeable;
+
     /// @dev auctions
     event UpdateBidTokenGroup(uint indexed id, BidTokenGroup bidTokenGroup);
     event UpdateSellTokens(address[] sellTokens, bool[] bEnables);
     event UpdateAuctionPeriods(uint48[] periods);
+    event WithdrawAuctionFee(address indexed token, address to, uint256 fee);
+    event UpdateAuctionFee(AuctionFee fee);
+    event UpdateFeeForWT(uint256 percentage);
 
-    function initIrrigationControl() external initializer onlySuperAdminRole {
+    /// @dev errors
+    error NoWithdrawEtherFee();
+
+    function initAuctionFee() external EIP2535Reinitializer(2) onlySuperAdminRole {
         AuctionStorage.Layout storage auctionStorage = AuctionStorage.layout();
-        // set default auction fee 1.5%
-        auctionStorage.feeReceiver = msg.sender;
-        auctionStorage.feeNumerator = 15;
+        // set default auction listing fee 1% and success fee 1.5%
+        auctionStorage.fee.limits = [1e26];
+        auctionStorage.fee.listingFees = [10];
+        auctionStorage.fee.successFees = [15];
+        emit UpdateAuctionFee(auctionStorage.fee);
+        // 25% of listing fee is added to water tower as reward
+        auctionStorage.feeForTower = 250;
+        emit UpdateFeeForWT(250);
     }
 
     // admin setters
@@ -39,15 +55,14 @@ contract IrrigationControlUpgradeable is
         emit UpdateSellTokens(tokens, bEnables);
     }
 
-    function setAuctionFee(
-        uint256 _newFeeNumerator,
-        address _newfeeReceiver
-    ) external onlyAdminRole {
-        AuctionStorage.Layout storage auctionStorage = AuctionStorage.layout();
-        if (_newFeeNumerator > 25) revert(); // "Fee higher than 2.5%");
-        // caution: for currently running auctions, the feeReceiver is changing as well.
-        auctionStorage.feeReceiver = _newfeeReceiver;
-        auctionStorage.feeNumerator = _newFeeNumerator;
+    function setAuctionFee(AuctionFee calldata fee) external onlyAdminRole {
+        AuctionStorage.layout().fee = fee;
+        emit UpdateAuctionFee(fee);
+    }
+
+    function setFeeForWaterTower(uint256 fee) external onlyAdminRole {
+        AuctionStorage.layout().feeForTower = fee;
+        emit UpdateFeeForWT(fee);
     }
 
     function AddBidTokenGroup(BidTokenGroup memory bidTokenGroup) public onlyAdminRole {
@@ -83,5 +98,20 @@ contract IrrigationControlUpgradeable is
 
     function unpause() external onlySuperAdminRole {
         _unpause();
+    }
+
+    function withdrawAuctionFee(
+        address token,
+        address to,
+        uint256 amount
+    ) external onlySuperAdminRole {
+        AuctionStorage.layout().reserveFees[token] -= amount;
+        if (token == Constants.ETHER) {
+            (bool success, ) = to.call{value: amount}(new bytes(0));
+            if (!success) revert NoWithdrawEtherFee();
+        } else {
+            IERC20Upgradeable(token).safeTransfer(to, amount);
+        }
+        emit WithdrawAuctionFee(token, to, amount);
     }
 }
