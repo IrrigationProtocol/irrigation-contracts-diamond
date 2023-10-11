@@ -163,7 +163,7 @@ contract WaterTowerUpgradeable is
                 _userInfo.rewardRate = 0;
                 return;
             }
-            /// @dev if user deposit in last month, reward rate is increased     
+            /// @dev if user deposit in last month, reward rate is increased
             uint256 userRewardRate = _userInfo.amount * (poolInfo.endTime - poolInfo.startTime);
             _userInfo.rewardRate = userRewardRate;
             l.pools[curPoolIndex].totalRewardRate = poolInfo.totalRewardRate + userRewardRate;
@@ -210,8 +210,7 @@ contract WaterTowerUpgradeable is
         // if amount is 0, update only pool info
         if (amount == 0) return;
         l.users[user].amount += amount;
-        uint256 stakedTime = (poolInfo.endTime - block.timestamp);
-        uint256 rewardRate = amount * stakedTime;
+        uint256 rewardRate = amount * (poolInfo.endTime - block.timestamp);
         l.users[user].rewardRate += rewardRate;
         l.pools[curPoolIndex].totalRewardRate += rewardRate;
         l.totalDeposits += amount;
@@ -226,8 +225,7 @@ contract WaterTowerUpgradeable is
         // if amount is 0, update only pool info
         if (amount == 0) return;
         l.users[user].amount -= amount;
-        uint256 unstakedTime = (poolInfo.endTime - block.timestamp);
-        uint256 rewardRate = amount * unstakedTime;
+        uint256 rewardRate = amount * (poolInfo.endTime - block.timestamp);
         l.users[user].rewardRate -= rewardRate;
         l.pools[curPoolIndex].totalRewardRate -= rewardRate;
         l.totalDeposits -= amount;
