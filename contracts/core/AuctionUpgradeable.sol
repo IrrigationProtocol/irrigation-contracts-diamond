@@ -489,13 +489,12 @@ contract AuctionUpgradeable is
             }
         }
         /// transfer paid tokens from contract to seller
-        (, uint256 successFee) = getAuctionFee(WaterTowerStorage.userInfo(auction.seller).amount);
+        uint256 realPayPecentage = FEE_DENOMINATOR - getSuccessFeeForUser(auction.seller);
         for (uint256 i; i < bidTokens.length; ) {
             uint256 payoutAmount = payoutAmounts[i];
             if (payoutAmount > 0) {
                 address _purchaseToken = bidTokens[i];
-                uint256 realPayAmount = (payoutAmount * (FEE_DENOMINATOR - successFee)) /
-                    FEE_DENOMINATOR;
+                uint256 realPayAmount = (payoutAmount * realPayPecentage) / FEE_DENOMINATOR;
                 IERC20Upgradeable(bidTokens[i]).safeTransfer(auction.seller, realPayAmount);
                 auctionStorage.reserveFees[_purchaseToken] += (payoutAmount - realPayAmount);
             }
@@ -666,6 +665,7 @@ contract AuctionUpgradeable is
         );
     }
 
+    /// @notice return ether amount for listing fee
     function getListingFeeForUser(
         address user,
         uint256 auctionAmount,
@@ -677,6 +677,14 @@ contract AuctionUpgradeable is
         (uint256 listingFee, ) = getAuctionFee(WaterTowerStorage.userInfo(user).amount);
         return
             (((auctionAmount * multiplier * listingFee * tokenPrice) / ethPrice)) / FEE_DENOMINATOR;
+    }
+
+    /// @notice return success fee percentage for listing fee
+    function getSuccessFeeForUser(address user) public view returns (uint256 feeEthAmount) {
+        /// @dev fee is calulated with ether price, auction price, and auction amount
+        uint256 averageAmount = IWaterTowerUpgradeable(address(this)).getAverageStoredWater(user);
+        (, uint256 successFee) = getAuctionFee(averageAmount);
+        return successFee;
     }
 
     function getReserveFee(address token) external view returns (uint256 fee) {
