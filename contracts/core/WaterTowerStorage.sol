@@ -22,11 +22,16 @@ struct PoolInfo {
     uint256 totalRewardRate;
     uint256 monthlyRewards;
     uint256 endTime;
+    uint256 startTime;
 }
 
 struct UserPoolHistory {
+    // total user reward rate = sum(staked time * staked amount)
     uint256 rewardRate;
+    // average water amount stored by user in each pool
     uint256 averageStored;
+    // reserve field
+    uint256 reserve;
 }
 
 library WaterTowerStorage {

@@ -153,15 +153,9 @@ contract WaterTowerUpgradeable is
                     lastPoolInfo.totalRewardRate;
                 l.userPoolHistories[user][_userInfo.lastPoolIndex].rewardRate = _userInfo
                     .rewardRate;
-                uint256 poolPeriod;
-                if (_userInfo.lastPoolIndex > 1)
-                    poolPeriod =
-                        lastPoolInfo.endTime -
-                        l.pools[_userInfo.lastPoolIndex - 1].endTime;
-                else poolPeriod = 30 days;
                 l.userPoolHistories[user][_userInfo.lastPoolIndex].averageStored =
                     _userInfo.rewardRate /
-                    poolPeriod;
+                    (lastPoolInfo.endTime - lastPoolInfo.startTime);
             }
             /// if there is no deposit for user, reward rate start from 0
             _userInfo.lastPoolIndex = curPoolIndex;
@@ -169,11 +163,10 @@ contract WaterTowerUpgradeable is
                 _userInfo.rewardRate = 0;
                 return;
             }
-            /// @dev if user deposit in last month, reward rate is increased
-            uint256 stakedTime = (poolInfo.endTime - block.timestamp);
-            uint256 userRewardRate = _userInfo.amount * stakedTime;
+            /// @dev if user deposit in last month, reward rate is increased     
+            uint256 userRewardRate = _userInfo.amount * (poolInfo.endTime - poolInfo.startTime);
             _userInfo.rewardRate = userRewardRate;
-            l.pools[curPoolIndex].totalRewardRate = poolInfo.totalRewardRate + userRewardRate;            
+            l.pools[curPoolIndex].totalRewardRate = poolInfo.totalRewardRate + userRewardRate;
         }
     }
 
@@ -236,7 +229,7 @@ contract WaterTowerUpgradeable is
         uint256 unstakedTime = (poolInfo.endTime - block.timestamp);
         uint256 rewardRate = amount * unstakedTime;
         l.users[user].rewardRate -= rewardRate;
-        l.pools[curPoolIndex].totalRewardRate -= rewardRate;        
+        l.pools[curPoolIndex].totalRewardRate -= rewardRate;
         l.totalDeposits -= amount;
         emit Withdrawn(user, amount);
     }
@@ -335,6 +328,7 @@ contract WaterTowerUpgradeable is
         uint256 poolIndex = WaterTowerStorage.layout().curPoolIndex;
         ++poolIndex;
         WaterTowerStorage.layout().pools[poolIndex].endTime = endTime;
+        WaterTowerStorage.layout().pools[poolIndex].startTime = block.timestamp;
         WaterTowerStorage.layout().curPoolIndex = poolIndex;
         emit UpdateRewardPeriod(poolIndex, endTime, monthlyRewards);
     }
