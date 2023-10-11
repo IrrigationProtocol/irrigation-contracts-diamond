@@ -21,8 +21,8 @@ struct PoolInfo {
     // sum of all user reward rate in this month
     uint256 totalRewardRate;
     uint256 monthlyRewards;
-    uint256 endTime;
-    uint256 startTime;
+    uint128 endTime;
+    uint128 startTime;
 }
 
 struct UserPoolHistory {

@@ -327,8 +327,8 @@ contract WaterTowerUpgradeable is
         if (endTime == 0) endTime = block.timestamp + POOL_PERIOD;
         uint256 poolIndex = WaterTowerStorage.layout().curPoolIndex;
         ++poolIndex;
-        WaterTowerStorage.layout().pools[poolIndex].endTime = endTime;
-        WaterTowerStorage.layout().pools[poolIndex].startTime = block.timestamp;
+        WaterTowerStorage.layout().pools[poolIndex].endTime = uint128(endTime);
+        WaterTowerStorage.layout().pools[poolIndex].startTime = uint128(block.timestamp);
         WaterTowerStorage.layout().curPoolIndex = poolIndex;
         emit UpdateRewardPeriod(poolIndex, endTime, monthlyRewards);
     }

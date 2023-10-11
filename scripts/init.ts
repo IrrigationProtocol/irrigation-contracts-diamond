@@ -155,6 +155,8 @@ export async function initSprinkler(sprinkler: SprinklerUpgradeable) {
 }
 
 export async function initWaterTower(waterTower: WaterTowerUpgradeable) {
+  await waterTower.setMiddleAsset(CONTRACT_ADDRESSES.BEAN);
+  await waterTower.setIrrigateBonusRate(5);
   // calculate month end
   const curTimestamp = (await ethers.provider.getBlock('latest')).timestamp;
   let date = new Date(curTimestamp * 1000);
