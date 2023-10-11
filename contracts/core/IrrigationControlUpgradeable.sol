@@ -24,6 +24,8 @@ contract IrrigationControlUpgradeable is
     event UpdateSellTokens(address[] sellTokens, bool[] bEnables);
     event UpdateAuctionPeriods(uint48[] periods);
     event WithdrawAuctionFee(address indexed token, address to, uint256 fee);
+    event UpdateAuctionFee(AuctionFee fee);
+    event UpdateFeeForWT(uint256 percentage);
 
     /// @dev errors
     error NoWithdrawEtherFee();
@@ -31,11 +33,13 @@ contract IrrigationControlUpgradeable is
     function initAuctionFee() external onlySuperAdminRole {
         AuctionStorage.Layout storage auctionStorage = AuctionStorage.layout();
         // set default auction listing fee 1% and success fee 1.5%
-        auctionStorage.fee.limits =[1e26];
-        auctionStorage.fee.listingFees =[10];
-        auctionStorage.fee.successFees =[15];
+        auctionStorage.fee.limits = [1e26];
+        auctionStorage.fee.listingFees = [10];
+        auctionStorage.fee.successFees = [15];
+        emit UpdateAuctionFee(auctionStorage.fee);
         // 25% of listing fee is added to water tower as reward
         auctionStorage.feeForTower = 250;
+        emit UpdateFeeForWT(250);
     }
 
     // admin setters
@@ -53,10 +57,12 @@ contract IrrigationControlUpgradeable is
 
     function setAuctionFee(AuctionFee calldata fee) external onlyAdminRole {
         AuctionStorage.layout().fee = fee;
+        emit UpdateAuctionFee(fee);
     }
 
     function setFeeForWaterTower(uint256 fee) external onlyAdminRole {
         AuctionStorage.layout().feeForTower = fee;
+        emit UpdateFeeForWT(fee);
     }
 
     function AddBidTokenGroup(BidTokenGroup memory bidTokenGroup) public onlyAdminRole {
