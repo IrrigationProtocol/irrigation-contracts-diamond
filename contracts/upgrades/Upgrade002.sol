@@ -15,6 +15,7 @@ contract Upgrade002 is EIP2535Initializable, IrrigationAccessControl {
         uint256 monthlyRewards;
         uint256 endTime;
     }
+    event Upgrade002PoolInfo(uint256 poolIndex, uint128 startTime, uint128 endTime);
 
     function init001() external reinitializer(2) onlyAdminRole {
         WaterTowerStorage.Layout storage l = WaterTowerStorage.layout();
@@ -28,6 +29,7 @@ contract Upgrade002 is EIP2535Initializable, IrrigationAccessControl {
             poolInfo.startTime = oldPoolInfo.endTime != 0
                 ? uint128(oldPoolInfo.endTime - 30 days)
                 : 0;
+            emit Upgrade002PoolInfo(i, poolInfo.startTime, poolInfo.endTime);
         }
     }
 }

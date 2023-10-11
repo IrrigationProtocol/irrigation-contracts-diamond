@@ -80,7 +80,11 @@ export function suite() {
       expect((await auction.getAuctionFee(toWei(3200))).listingFee).to.be.eq(0);
       expect((await auction.getAuctionFee(toWei(99_000_000))).listingFee).to.be.eq(0);
       // initialize auction fee as default 1.5%, 1% for everyone
-      await irrigationControl.initAuctionFee();
+      await irrigationControl.setAuctionFee({
+        limits: [toWei(100_000_000)],
+        listingFees: [10],
+        successFees: [15],
+      });
     });
   });
 }

@@ -821,7 +821,11 @@ export function suite() {
         await expect(
           auctionContract.createAuction({ ...defaultAuctionSetting }, 0),
         ).to.be.revertedWithCustomError(auctionContract, 'InsufficientFee');
-        await irrigationControl.initAuctionFee();
+        await irrigationControl.setAuctionFee({
+          limits: [toWei(100_000_000)],
+          listingFees: [10],
+          successFees: [15],
+        });
         await expect(
           auctionContract.createAuction({ ...defaultAuctionSetting }, 0),
         ).to.be.revertedWithCustomError(auctionContract, 'InsufficientFee');
