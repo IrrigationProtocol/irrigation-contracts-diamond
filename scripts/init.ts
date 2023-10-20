@@ -200,6 +200,17 @@ export async function initTrancheBond(contractAddress: string) {
   await trancheBond.setMaturityPeriods([180 * 86400]);
 }
 
+async function initWaterCommon(contractAddress: string) {
+  const waterCommon = await ethers.getContractAt(
+    'WaterCommonUpgradeable',
+    contractAddress,
+  );
+  await waterCommon.WaterCommon_Initialize(
+    CONTRACT_ADDRESSES.BEANSTALK,
+    CONTRACT_ADDRESSES.FERTILIZER,
+  );
+}
+
 export async function initAll(contractAddress: string) {
   const waterTower = await ethers.getContractAt('WaterTowerUpgradeable', contractAddress);
   const priceOracle = await ethers.getContractAt('PriceOracleUpgradeable', contractAddress);
@@ -208,6 +219,7 @@ export async function initAll(contractAddress: string) {
     'IrrigationControlUpgradeable',
     contractAddress,
   );
+  await initWaterCommon(contractAddress);
   await initPriceOracles(priceOracle);
   await initSprinkler(sprinkler);
   await initWaterTower(waterTower);

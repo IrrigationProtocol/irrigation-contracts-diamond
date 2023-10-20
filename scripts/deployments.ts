@@ -6,8 +6,8 @@ export const deployments: { [key: string]: INetworkDeployInfo } = {
     DeployerAddress: '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266',
     FacetDeployedInfo: {
       DiamondCutFacet: {
-        address: '0xf201fFeA8447AB3d43c98Da3349e0749813C9009',
-        tx_hash: '0xf629ca66b9119d6b1bce3245e6b4eaf892a74c6f21a61547f8d2c21923d5cd4d',
+        address: '0x3aD2306eDfBe72ce013cdb6b429212d9CdDE4F96',
+        tx_hash: '0x29a2f8bd32600dce7b630b1d27198b620f6f81469420c9494ef3e93cec988c1f',
         version: 0,
         funcSelectors: [
           '0x75b238fc', '0x5effdd20',
@@ -26,8 +26,8 @@ export const deployments: { [key: string]: INetworkDeployInfo } = {
         funcSelectors: [ '0xcdffacc6', '0x52ef6b2c', '0xadfca15e', '0x7a0ed627' ]
       },
       OwnershipFacet: {
-        address: '0x04f1A5b9BD82a5020C49975ceAd160E98d8B77Af',
-        tx_hash: '0x9b32a50e02597dc91a77e3b5fd91ebf1bc51735478fb0d12e84476de4a3a5339',
+        address: '0xFBc00Fa47a7d3bbE3e82B5Aa560B47008c1bD64c',
+        tx_hash: '0x4f7be3d8ec29869bff3e3f6fdfb6abe2188c88ffe253a32d2d73b33dc648159e',
         version: 0,
         funcSelectors: [ '0x8da5cb5b', '0xf2fde38b' ]
       },

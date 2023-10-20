@@ -7,14 +7,7 @@ export const Facets: FacetToDeployInfo = {
   DiamondLoupeFacet: { priority: 20 },
   OwnershipFacet: { priority: 30 },
   SprinklerUpgradeable: { priority: 40, versions: { 0.1: { init: null } } },
-  WaterCommonUpgradeable: {
-    priority: 50,
-    versions: {
-      0.0: {
-        callback: afterDeploy,
-      },
-    },
-  },
+  WaterCommonUpgradeable: { priority: 50, versions: { 0.0: {} } },
   // WaterFaucetUpgradeable: { priority: 60 },
   WaterTowerUpgradeable: { priority: 70, versions: { 0.2: { init: null } } },
   WaterUpgradeable: { priority: 80, versions: { 0.0: { init: 'Water_Initialize' } } },
