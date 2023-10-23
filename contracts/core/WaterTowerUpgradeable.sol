@@ -14,6 +14,7 @@ import "../libraries/Constants.sol";
 import "../interfaces/ISprinklerUpgradeable.sol";
 import "../interfaces/IPriceOracleUpgradeable.sol";
 import "../interfaces/IWaterTowerUpgradeable.sol";
+import "../interfaces/basin/IWell.sol";
 
 /// @title  WaterTower Contract
 /// @notice Allows users deposit Water token and receive ETH reward
