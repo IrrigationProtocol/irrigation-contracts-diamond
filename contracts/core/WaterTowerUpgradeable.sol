@@ -15,6 +15,7 @@ import "../interfaces/ISprinklerUpgradeable.sol";
 import "../interfaces/IPriceOracleUpgradeable.sol";
 import "../interfaces/IWaterTowerUpgradeable.sol";
 import "../interfaces/basin/IWell.sol";
+import "../interfaces/IWETH.sol";
 
 /// @title  WaterTower Contract
 /// @notice Allows users deposit Water token and receive ETH reward
@@ -238,27 +239,17 @@ contract WaterTowerUpgradeable is
         uint256 minSwapAmount
     ) internal returns (uint256 waterAmount) {
         if (WaterTowerStorage.layout().middleAssetForIrrigate == Constants.BEAN) {
-            /// @dev swap ETH for BEAN using curve router
-            address[9] memory route = [
-                Constants.ETHER,
-                Constants.TRI_CRYPTO_POOL,
-                Constants.USDT,
-                Constants.CURVE_BEAN_METAPOOL,
-                Constants.BEAN,
-                Constants.ZERO,
-                Constants.ZERO,
-                Constants.ZERO,
-                Constants.ZERO
-            ];
-            uint256[3][4] memory swapParams = [
-                [uint(2), 0, 3],
-                [uint(3), 0, 2],
-                [uint(0), 0, 0],
-                [uint(0), 0, 0]
-            ];
-            uint256 beanAmount = ICurveSwapRouter(Constants.CURVE_ROUTER).exchange_multiple{
-                value: amount
-            }(route, swapParams, amount, minSwapAmount);
+            /// @dev swap ETH for BEAN using bean-weth liquidity
+            IWETH(Constants.WETH).deposit{value: amount}();
+            IERC20Upgradeable(Constants.WETH).approve(Constants.BEAN_ETH_WELL, amount);
+            uint256 beanAmount = IWell(Constants.BEAN_ETH_WELL).swapFrom(
+                IERC20Upgradeable(Constants.WETH),
+                IERC20Upgradeable(Constants.BEAN),
+                amount,
+                minSwapAmount,
+                address(this),
+                block.timestamp
+            );
 
             waterAmount = ISprinklerUpgradeable(address(this)).getWaterAmount(
                 Constants.BEAN,
@@ -271,16 +262,11 @@ contract WaterTowerUpgradeable is
         uint256 ethAmount
     ) external view returns (uint256 waterAmount, uint256 bonusAmount, uint256 swapAmount) {
         if (WaterTowerStorage.layout().middleAssetForIrrigate == Constants.BEAN) {
-            /// @dev swap amount ETH->USDT->BEAN through Curve finance
-            uint256 usdtAmount = ICurveMetaPool(Constants.TRI_CRYPTO_POOL).get_dy(
-                uint256(2),
-                0,
+            /// @dev swap amount ETH->BEAN through well lp
+            swapAmount = IWell(Constants.BEAN_ETH_WELL).getSwapOut(
+                IERC20Upgradeable(Constants.WETH),
+                IERC20Upgradeable(Constants.BEAN),
                 ethAmount
-            );
-            swapAmount = ICurveMetaPool(Constants.CURVE_BEAN_METAPOOL).get_dy_underlying(
-                3,
-                0,
-                usdtAmount
             );
 
             /// @dev calculate swap water amount through Sprinkler

@@ -7,10 +7,10 @@
     "updateAuction": "55869",
     "exchangeETHToWater": "122900",
     "exchangeTokenToWater": "306428",
-    "createTranchesWithPods": "898160",
+    "createTranchesWithPods": "900634",
     "receivePodsForTranche": "273952",
     "claim": "136023",
     "deposit": "180818",
-    "irrigate": "929793",
+    "irrigate": "538497",
     "withdraw": "85747"
 }
