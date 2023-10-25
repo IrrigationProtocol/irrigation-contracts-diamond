@@ -207,6 +207,7 @@ const config: HardhatUserConfig = {
     dev: {
       url: process.env.DEV_RPC || '',
       chainId: 31337,
+      accounts: process.env.PRIVATE_KEY !== undefined ? [process.env.PRIVATE_KEY] : [],
     },
     anvil: {
       url: 'http://localhost:8545',
