@@ -16,9 +16,16 @@ import { getPriceOfPods } from './test/utils/price';
 import { deployments } from './scripts/deployments';
 import { fromWei, toBN, toWei } from './scripts/common';
 import { restorePlots } from './test/utils/restorePlot';
-
+import { extendEnvironment } from "hardhat/config";
+import { HardhatRuntimeEnvironment, HttpNetworkUserConfig } from "hardhat/types";
 dotenv.config();
 
+extendEnvironment((hre: HardhatRuntimeEnvironment) => {
+  const config = hre.network.config as HttpNetworkUserConfig;
+  if (config?.url) {
+    hre.ethers.provider = new hre.ethers.providers.JsonRpcProvider(config.url);
+  }
+});
 // This is a sample Hardhat task. To learn how to create your own go to
 // https://hardhat.org/guides/create-task.html
 task('accounts', 'Prints the list of accounts', async (taskArgs, hre) => {
