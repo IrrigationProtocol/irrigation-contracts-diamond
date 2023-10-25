@@ -16,6 +16,8 @@ library Constants {
     address internal constant ZERO = 0x0000000000000000000000000000000000000000;
     address internal constant BEANSTALK = 0xC1E088fC1323b20BCBee9bd1B9fC9546db5624C5;
     address internal constant FERTILIZER = 0x402c84De2Ce49aF88f5e2eF3710ff89bFED36cB6;
+    /// bean - weth pool
+    address internal constant BEAN_ETH_WELL = 0xBEA0e11282e2bB5893bEcE110cF199501e872bAd;
 
     /// @notice time out to get price from chainlink
     /// @dev should update before deploying on mainnet
@@ -25,7 +27,7 @@ library Constants {
     uint256 internal constant D18 = 1e18;
     // tranche nft is fractionalized with decimals 6
     uint8 internal constant TRANCHE_DECIMALS = 6;
-    uint8 internal constant WATER_DECIMALS = 18;    
+    uint8 internal constant WATER_DECIMALS = 18;
 
     bytes internal constant EMPTY = "";
 
