@@ -43,7 +43,7 @@ contract WaterTowerUpgradeable is
     error InsufficientEther();
 
     uint256 internal constant IRRIGATE_BONUS_DOMINATOR = 100;
-    uint256 internal constant AUTOIRRIGATE_GASLIMIT = 877100;
+    uint256 internal constant AUTOIRRIGATE_GASLIMIT = 542000;
     uint256 internal constant POOL_PERIOD = 30 days;
 
     function initWaterTower() external EIP2535Initializer onlySuperAdminRole {

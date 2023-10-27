@@ -56,9 +56,9 @@ export const deployments: { [key: string]: INetworkDeployInfo } = {
         verified: true
       },
       WaterTowerUpgradeable: {
-        address: '0xd05e08A647c4443eC394d5e7607324b63C8F2A0d',
-        tx_hash: '0x6f6da292420b8e15cb2405d12077d71c52f9075236976794221039c9a6cb4c7d',
-        version: 0.2,
+        address: '0xa19b849fc80B40Bb6634B41f66eE31B02eA065D2',
+        tx_hash: '0x088810813496553be6a13cf9e95046739dd012c00b895e97d09b08cac4d7cc00',
+        version: 0.3,
         funcSelectors: [
           '0x41f894ff', '0xc5e78556',
           '0x23eb4574', '0x379607f5',

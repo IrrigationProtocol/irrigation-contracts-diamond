@@ -9,7 +9,7 @@ export const Facets: FacetToDeployInfo = {
   SprinklerUpgradeable: { priority: 40, versions: { 0.1: { init: null } } },
   WaterCommonUpgradeable: { priority: 50, versions: { 0.0: {} } },
   // WaterFaucetUpgradeable: { priority: 60 },
-  WaterTowerUpgradeable: { priority: 70, versions: { 0.2: { init: null } } },
+  WaterTowerUpgradeable: { priority: 70, versions: { 0.3: { init: null } } },
   WaterUpgradeable: { priority: 80, versions: { 0.0: { init: 'Water_Initialize' } } },
   AuctionUpgradeable: { priority: 90, versions: { 0.2: { init: null } } },
   // ZSCUpgradeable: { priority: 100, libraries: ['BurnVerifier', 'ZetherVerifier', 'libEncryption'] },
