@@ -117,7 +117,7 @@ contract WaterTowerUpgradeable is
         uint256[] calldata rewardAmounts,
         uint256[] calldata minSwapAmounts
     ) external onlyAutoIrrigateAdminRole {
-        /// @dev gas fee is paid based on precalculated gasLimit(870200)
+        /// @dev gas fee is paid based on precalculated gasLimit(542000)
         uint256 gasFee = AUTOIRRIGATE_GASLIMIT * tx.gasprice;
         for (uint256 i; i < users.length; ) {
             _autoIrrigate(users[i], rewardAmounts[i], minSwapAmounts[i], gasFee);

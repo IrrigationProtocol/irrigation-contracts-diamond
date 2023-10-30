@@ -70,8 +70,8 @@ export function fromWei(value: number | string | BigNumber): number {
   return Number(utils.formatEther(value));
 }
 
-export function fromD6(value: number | string | BigNumber): string {
-  return utils.formatUnits(value, 6);
+export function fromD6(value: number | string | BigNumber): number {
+  return Number(utils.formatUnits(value, 6));
 }
 
 export function formatFixed(value: number): number {
