@@ -34,12 +34,12 @@ contract IrrigationControlUpgradeable is
         AuctionStorage.Layout storage auctionStorage = AuctionStorage.layout();
         // set default auction listing fee 1% and success fee 1.5%
         auctionStorage.fee.limits = [1e26];
-        auctionStorage.fee.listingFees = [10];
-        auctionStorage.fee.successFees = [15];
+        auctionStorage.fee.listingFees = [10000];
+        auctionStorage.fee.successFees = [15000];
         emit UpdateAuctionFee(auctionStorage.fee);
         // 25% of listing fee is added to water tower as reward
-        auctionStorage.feeForTower = 250;
-        emit UpdateFeeForWT(250);
+        auctionStorage.feeForTower = 250000;
+        emit UpdateFeeForWT(250000);
     }
 
     // admin setters

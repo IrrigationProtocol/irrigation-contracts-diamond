@@ -796,8 +796,8 @@ export function suite() {
       it('should create auction without paying ether', async () => {
         await irrigationControl.setAuctionFee({
           limits: [toWei(3200)],
-          listingFees: [10, 0],
-          successFees: [15, 0],
+          listingFees: [10000, 0],
+          successFees: [15000, 0],
         });
         let stotedWater = (await waterTower.userInfo(owner.address)).amount;
         if (stotedWater.lt(toWei(3200))) {
@@ -823,8 +823,8 @@ export function suite() {
         ).to.be.revertedWithCustomError(auctionContract, 'InsufficientFee');
         await irrigationControl.setAuctionFee({
           limits: [toWei(100_000_000)],
-          listingFees: [10],
-          successFees: [15],
+          listingFees: [10000],
+          successFees: [15000],
         });
         await expect(
           auctionContract.createAuction({ ...defaultAuctionSetting }, 0),
@@ -841,13 +841,13 @@ export function suite() {
         expect(averageWater).to.be.gt(toWei(12800));
         await irrigationControl.setAuctionFee({
           limits: [toWei(32), toWei(320), toWei(3200), toWei(6400), toWei(12800), toWei(32000)],
-          listingFees: [10, 6, 3, 2, 1, 1, 0],
-          successFees: [15, 10, 7, 5, 5, 5, 5],
+          listingFees: [10000, 6000, 3000, 2000, 1000, 1000, 0],
+          successFees: [15000, 10000, 7000, 5000, 5000, 5000, 5000],
         });
         expect(
           (await auctionContract.getAuctionFee((await waterTower.userInfo(owner.address)).amount))
             .listingFee,
-        ).to.be.eq(1);
+        ).to.be.eq(1000);
         await token1.approve(auctionContract.address, toWei(10000));
         await auctionContract.createAuction(
           { ...defaultAuctionSetting, auctionType: AuctionType.TimedAndFixed },

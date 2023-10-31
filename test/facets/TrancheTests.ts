@@ -325,7 +325,7 @@ export function suite() {
           .mul(toWei(10 ** 12))
           .div(await priceOracle.getUnderlyingPriceETH())
           .mul(listingFee)
-          .div(1000);
+          .div(toD6(1));
         expect(expectedFeeAmount).to.be.eq(calculatedFee);
         expect(updateOwnerBalance).to.be.eq(updateContractBalance);
         expect(updateContractBalance).to.be.eq(expectedFeeAmount);

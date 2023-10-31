@@ -36,6 +36,14 @@ task('accounts', 'Prints the list of accounts', async (taskArgs, hre) => {
   }
 });
 
+task('deployer', 'Prints balance of deployer account', async (taskArgs, hre) => {
+  const accounts = await hre.ethers.getSigners();
+  console.log(
+    'deployer:', accounts[0].address,
+    fromWei(await hre.ethers.provider.getBalance(accounts[0].address)),
+  );
+});
+
 task('podIndex', 'Prints podIndex and harvestableIndex', async (taskArgs, hre) => {
   const podContract = await hre.ethers.getContractAt(
     'IBeanstalkUpgradeable',

@@ -105,7 +105,7 @@ contract AuctionUpgradeable is
 
     event ClaimBid(uint auctionId, uint bidId, bool isWinner, uint claimAmount);
 
-    uint256 internal constant FEE_DENOMINATOR = 1000;
+    uint256 internal constant FEE_DENOMINATOR = 1e6;
     uint256 internal constant BID_GAS_LIMIT = 470000;
     uint256 internal constant CLOSE_GAS_LIMIT = 180000;
     uint256 internal constant D12 = 1e12;
