@@ -830,6 +830,40 @@ export function suite() {
           auctionContract.createAuction({ ...defaultAuctionSetting }, 0),
         ).to.be.revertedWithCustomError(auctionContract, 'InsufficientFee');
       });
+      it('creating auction with max gas', async () => {
+        await water.approve(water.address, toWei(33000));
+        await waterTower.setPool(0, 0);
+        await waterTower.deposit(toWei(31000), true);
+        await skipTime(86400 * 30);
+        await waterTower.setPool(0, 0);
+        await waterTower.deposit(toWei(0), true);
+        const averageWater = await waterTower.getAverageStoredWater(owner.address);
+        expect(averageWater).to.be.gt(toWei(12800));
+        await irrigationControl.setAuctionFee({
+          limits: [toWei(32), toWei(320), toWei(3200), toWei(6400), toWei(12800), toWei(32000)],
+          listingFees: [10, 6, 3, 2, 1, 1, 0],
+          successFees: [15, 10, 7, 5, 5, 5, 5],
+        });
+        expect(
+          (await auctionContract.getAuctionFee((await waterTower.userInfo(owner.address)).amount))
+            .listingFee,
+        ).to.be.eq(1);
+        await token1.approve(auctionContract.address, toWei(10000));
+        await auctionContract.createAuction(
+          { ...defaultAuctionSetting, auctionType: AuctionType.TimedAndFixed },
+          0,
+          {
+            value: toWei(0.01),
+          },
+        );
+        await usdc.connect(sender).approve(auctionContract.address, toD6(1000));
+        const auctionId = await auctionContract.getAuctionsCount();
+        await usdc.transfer(sender.address, toD6(10000));
+        await auctionContract.connect(sender).placeBid(auctionId, toWei(10), 1, 0, toWei(10000));
+        await auctionContract.connect(sender).buyNow(auctionId, toWei(10), 1);
+        await skipTime(7 * 86400);
+        await auctionContract.closeAuction(auctionId);
+      });
     });
   });
 }

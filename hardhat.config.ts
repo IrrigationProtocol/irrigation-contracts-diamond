@@ -211,6 +211,7 @@ const config: HardhatUserConfig = {
       url: 'http://127.0.0.1:8545',
       chainId: 20239,
       accounts: process.env.PRIVATE_KEY !== undefined ? [process.env.PRIVATE_KEY] : [],
+      timeout: 100000,
     },
     dev: {
       url: process.env.DEV_RPC || '',

@@ -308,14 +308,25 @@ export function suite() {
         updateContractBalance = (await ethers.provider.getBalance(rootAddress)).sub(
           updateContractBalance,
         );
-        // console.log(updateContractBalance);
+
+        const listingFee = (
+          await auctionContract.getAuctionFee((await waterTower.userInfo(owner.address)).amount)
+        ).listingFee;
+        const calculatedFee = await auctionContract.getListingFeeForUser(
+          owner.address,
+          trNftBalance,
+          toD6(1000_000),
+          defaultAuctionSetting.priceRangeStart,
+        );
+
         const expectedFeeAmount = trNftBalance
           .mul(defaultAuctionSetting.priceRangeStart)
           .div(toWei(1))
           .mul(toWei(10 ** 12))
           .div(await priceOracle.getUnderlyingPriceETH())
-          .mul(10)
+          .mul(listingFee)
           .div(1000);
+        expect(expectedFeeAmount).to.be.eq(calculatedFee);
         expect(updateOwnerBalance).to.be.eq(updateContractBalance);
         expect(updateContractBalance).to.be.eq(expectedFeeAmount);
         expect(await trancheCollection.balanceOf(rootAddress, trancheId)).to.be.equal(trNftBalance);
@@ -343,7 +354,6 @@ export function suite() {
           auction.s.reserve.eq(0),
           `expected reserve amount is 0 but ${fromWei(auction.s.reserve)}`,
         );
-
       });
 
       it('Test Tranche Auction bid', async () => {
