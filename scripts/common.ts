@@ -45,6 +45,7 @@ export interface IVersionInfo {
   upgradeInit?: string;
   deployInclude?: string[];
   callback?: AfterDeployInit;
+  initArgs?: any;
 }
 
 export type VersionRecord = Record<number, IVersionInfo>;

@@ -1,4 +1,4 @@
-import { FacetToDeployInfo } from './common';
+import { FacetToDeployInfo, toD6, toWei } from './common';
 import { glob } from 'glob';
 import { afterDeploy } from './facetdeployments/WaterCommonFacet';
 
@@ -19,7 +19,25 @@ export const Facets: FacetToDeployInfo = {
   PriceOracleUpgradeable: { priority: 140, libraries: ['UniswapV3Twap'] },
   IrrigationControlUpgradeable: {
     priority: 150,
-    versions: { 0.2: { init: 'initAuctionFee' } },
+    versions: {
+      0.2: {
+        init: 'initAuctionFee',
+        initArgs: [
+          {
+            limits: [toWei(32), toWei(320), toWei(3200), toWei(32000), toWei(320000)],
+            listingFees: [toD6(0.025), toD6(0.01), toD6(0.0066), toD6(0.0033), toD6(0.002), 0],
+            successFees: [
+              toD6(0.05),
+              toD6(0.015),
+              toD6(0.01),
+              toD6(0.0075),
+              toD6(0.005),
+              toD6(0.005),
+            ],
+          },
+        ],
+      },
+    },
   },
   Upgrade002: { priority: 160, versions: { 0.2: { init: 'init001' } } },
 };

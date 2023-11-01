@@ -665,6 +665,24 @@ contract AuctionUpgradeable is
         );
     }
 
+    function getAuctionFeeAndLimit(
+        uint256 waterAmount
+    ) public view returns (uint256 listingFee, uint256 successFee, uint256 limit) {
+        AuctionFee memory fee = AuctionStorage.layout().fee;
+        for (uint256 i; i < fee.limits.length; ) {
+            if (waterAmount < fee.limits[i])
+                return (fee.listingFees[i], fee.successFees[i], i == 0 ? 0 : fee.limits[i - 1]);
+            unchecked {
+                ++i;
+            }
+        }
+        return (
+            fee.listingFees[fee.listingFees.length - 1],
+            fee.successFees[fee.listingFees.length - 1],
+            fee.limits[fee.limits.length - 1]
+        );
+    }
+
     /// @notice return ether amount for listing fee
     function getListingFeeForUser(
         address user,

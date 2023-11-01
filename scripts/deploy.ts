@@ -99,9 +99,7 @@ export async function deployIrrigationDiamond(networkDeployInfo: INetworkDeployI
     tx_hash: diamondCutFacet.deployTransaction.hash,
     version: 0.0,
     funcSelectors: [
-      diamondCutFacet.interface.getSighash(
-        'diamondCut((address,uint8,bytes4[])[],address,bytes)',
-      ),
+      diamondCutFacet.interface.getSighash('diamondCut((address,uint8,bytes4[])[],address,bytes)'),
     ],
   };
 
@@ -198,6 +196,7 @@ export async function deployFuncSelectors(
           functionSelectors: replaceFuncSelectors,
           name: name,
           initFunc: initFunc,
+          initArgs: facetDeployInfo.initArgs,
         });
         numFuncSelectorsCut++;
       }
@@ -209,6 +208,7 @@ export async function deployFuncSelectors(
           functionSelectors: addFuncSelectors,
           name: name,
           initFunc: initFunc,
+          initArgs: facetDeployInfo.initArgs,
         });
         numFuncSelectorsCut++;
       }
@@ -245,7 +245,13 @@ export async function deployFuncSelectors(
     let functionCall;
     let initAddress;
     if (facetCutInfo.initFunc) {
-      functionCall = contract.interface.encodeFunctionData(facetCutInfo.initFunc!);
+      if (!facetCutInfo.initArgs)
+        functionCall = contract.interface.encodeFunctionData(facetCutInfo.initFunc!);
+      else
+        functionCall = contract.interface.encodeFunctionData(
+          facetCutInfo.initFunc!,
+          facetCutInfo.initArgs,
+        );
       initAddress = facetCutInfo.facetAddress;
       log(`Calling Function ${facetCutInfo.initFunc}`);
     } else {

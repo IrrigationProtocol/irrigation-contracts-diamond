@@ -30,13 +30,13 @@ contract IrrigationControlUpgradeable is
     /// @dev errors
     error NoWithdrawEtherFee();
 
-    function initAuctionFee() external EIP2535Reinitializer(2) onlyAdminRole {
+    function initAuctionFee(
+        AuctionFee calldata fee
+    ) external EIP2535Reinitializer(2) onlyAdminRole {
         AuctionStorage.Layout storage auctionStorage = AuctionStorage.layout();
         // set default auction listing fee 1% and success fee 1.5%
-        auctionStorage.fee.limits = [1e26];
-        auctionStorage.fee.listingFees = [10000];
-        auctionStorage.fee.successFees = [15000];
-        emit UpdateAuctionFee(auctionStorage.fee);
+        auctionStorage.fee = fee;
+        emit UpdateAuctionFee(fee);
         // 25% of listing fee is added to water tower as reward
         auctionStorage.feeForTower = 250000;
         emit UpdateFeeForWT(250000);

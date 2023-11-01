@@ -77,9 +77,9 @@ struct AuctionData {
 /// @dev Auction Fee
 struct AuctionFee {
     // fee when creating auction. 1 => 0.1%
-    uint256[] listingFees;
+    uint32[] listingFees;
     // fee percentage for buying and settled bids when closing auction
-    uint256[] successFees;
+    uint32[] successFees;
     // stored water amount list
     uint256[] limits;
 }

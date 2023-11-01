@@ -1,5 +1,5 @@
 import { ethers } from 'hardhat';
-import { dc, toWei } from '../scripts/common';
+import { dc, toD6, toWei } from '../scripts/common';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { expect } from './utils/debug';
 import {
@@ -66,10 +66,10 @@ export function suite() {
     });
 
     it('Auction fee', async () => {
-      expect((await auction.getAuctionFee(0)).listingFee).to.be.eq(10000);
-      expect((await auction.getAuctionFee(toWei(10))).listingFee).to.be.eq(10000);
-      expect((await auction.getAuctionFee(toWei(32))).listingFee).to.be.eq(10000);
-      expect((await auction.getAuctionFee(toWei(99_000_000))).listingFee).to.be.eq(10000);
+      expect((await auction.getAuctionFeeAndLimit(0)).listingFee).to.be.eq(toD6(0.025));
+      expect((await auction.getAuctionFeeAndLimit(0)).successFee).to.be.eq(toD6(0.05));
+      expect((await auction.getAuctionFeeAndLimit(0)).limit).to.be.eq(0);
+      
       // listing fee and closing fee is 0 when user stored more than 3200 water
       await irrigationControl.setAuctionFee({
         limits: [toWei(3200)],
