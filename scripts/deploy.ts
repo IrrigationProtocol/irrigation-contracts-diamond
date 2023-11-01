@@ -108,11 +108,12 @@ export async function deployIrrigationDiamond(networkDeployInfo: INetworkDeployI
 
 export async function deployFuncSelectors(
   networkDeployInfo: INetworkDeployInfo,
+  oldNetworkDeployInfo: INetworkDeployInfo,
   facetsToDeploy: FacetToDeployInfo = Facets,
 ) {
   const cut: FacetInfo[] = [];
   const deployedFacets = networkDeployInfo.FacetDeployedInfo;
-  const deployedFuncSelectors = await getDeployedFuncSelectors(networkDeployInfo);
+  const deployedFuncSelectors = await getDeployedFuncSelectors(oldNetworkDeployInfo);
   const registeredFunctionSignatures = new Set<string>();
 
   const facetsPriority = Object.keys(facetsToDeploy).sort(
@@ -323,8 +324,13 @@ export async function deployAndInitDiamondFacets(
   networkDeployInfo: INetworkDeployInfo,
   facetsToDeploy: FacetToDeployInfo = Facets,
 ) {
+  const oldNetworkDeployInfo = JSON.parse(JSON.stringify(networkDeployInfo));
   await deployDiamondFacets(networkDeployInfo, facetsToDeploy);
-  await deployFuncSelectors(networkDeployInfo, facetsToDeploy);
+  await deployFuncSelectors(
+    networkDeployInfo,
+    oldNetworkDeployInfo ?? networkDeployInfo,
+    facetsToDeploy,
+  );
   await afterDeployCallbacks(networkDeployInfo, facetsToDeploy);
 }
 
