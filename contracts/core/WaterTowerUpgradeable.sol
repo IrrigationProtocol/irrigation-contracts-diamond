@@ -350,10 +350,7 @@ contract WaterTowerUpgradeable is
     }
 
     function getPoolInfo(uint256 poolIndex) external view returns (PoolInfo memory) {
-        return
-            WaterTowerStorage.layout().pools[
-                poolIndex == 0 ? WaterTowerStorage.layout().curPoolIndex : poolIndex
-            ];
+        return WaterTowerStorage.layout().pools[poolIndex];
     }
 
     function getMiddleAsset() external view returns (address) {

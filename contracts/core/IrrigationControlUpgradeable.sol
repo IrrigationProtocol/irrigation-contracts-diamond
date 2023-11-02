@@ -2,8 +2,6 @@
 pragma solidity 0.8.17;
 
 import "./AuctionStorage.sol";
-
-import "../utils/EIP2535Initializable.sol";
 import "../utils/IrrigationAccessControl.sol";
 import "@gnus.ai/contracts-upgradeable-diamond/contracts/security/PausableUpgradeable.sol";
 import "../libraries/Constants.sol";
@@ -11,11 +9,7 @@ import "@gnus.ai/contracts-upgradeable-diamond/contracts/interfaces/IERC20Upgrad
 import "@gnus.ai/contracts-upgradeable-diamond/contracts/token/ERC20/utils/SafeERC20Upgradeable.sol";
 
 /// @title Admin Facet
-contract IrrigationControlUpgradeable is
-    EIP2535Initializable,
-    IrrigationAccessControl,
-    PausableUpgradeable
-{
+contract IrrigationControlUpgradeable is IrrigationAccessControl, PausableUpgradeable {
     using AuctionStorage for AuctionStorage.Layout;
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
@@ -29,18 +23,6 @@ contract IrrigationControlUpgradeable is
 
     /// @dev errors
     error NoWithdrawEtherFee();
-
-    function initAuctionFee(
-        AuctionFee calldata fee
-    ) external EIP2535Reinitializer(2) onlyAdminRole {
-        AuctionStorage.Layout storage auctionStorage = AuctionStorage.layout();
-        // set default auction listing fee 1% and success fee 1.5%
-        auctionStorage.fee = fee;
-        emit UpdateAuctionFee(fee);
-        // 25% of listing fee is added to water tower as reward
-        auctionStorage.feeForTower = 250000;
-        emit UpdateFeeForWT(250000);
-    }
 
     // admin setters
     // enable or disable sell tokens

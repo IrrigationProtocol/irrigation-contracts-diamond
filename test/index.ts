@@ -85,7 +85,7 @@ describe.only('Irrigation Diamond DApp Testing', async function () {
       );
       const ownerAddress = await ownership.owner();
       const owner = await impersonateSigner(ownerAddress);
-      await setEtherBalance(ownerAddress, toWei(2));
+      await setEtherBalance(ownerAddress, toWei(10));
       await ownership.connect(owner).transferOwnership(deployer.address);
       await deployAndInitDiamondFacets(networkDeployedInfo, updatedFacetsToDeploy);
       debuglog(`Contract address deployed is ${networkDeployedInfo.DiamondAddress}`);

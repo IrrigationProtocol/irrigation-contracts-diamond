@@ -35,11 +35,7 @@ export function suite() {
       const { totalRewardRate, monthlyRewards, endTime } = await waterTower.getPoolInfo(0);
       expect(totalRewardRate).to.be.eq(0);
       expect(monthlyRewards).to.be.eq(0);
-      const endAt = new Date(Number(endTime) * 1000);
-      assert(
-        endAt.getDate() === 30 || endAt.getDate() === 31,
-        `pool should be exited at month end, but end date is ${endAt}`,
-      );
+      expect(endTime).to.be.eq(0);
     });
 
     it('Test WaterTower deposit and setAutoIrrigate', async () => {

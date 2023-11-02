@@ -10,7 +10,16 @@ import {
   SprinklerUpgradeable,
   WaterTowerUpgradeable,
 } from '../typechain-types';
-import { formatFixed, fromWei, toWei } from './common';
+import {
+  AfterDeployInit,
+  INetworkDeployInfo,
+  dc,
+  formatFixed,
+  fromWei,
+  toD6,
+  toWei,
+} from './common';
+import { IrrigationDiamond } from '../typechain-types/contracts/IrrigationDiamond';
 
 const debuglog: debug.Debugger = debug('IrrigationInit:log');
 debuglog.color = '159';
@@ -27,6 +36,7 @@ export const whitelist = [
   CONTRACT_ADDRESSES.CNHT,
   CONTRACT_ADDRESSES.ETHER,
   CONTRACT_ADDRESSES.gOHM,
+  CONTRACT_ADDRESSES.USDC,
 ];
 export const auctionSellTokens = [
   CONTRACT_ADDRESSES.BEAN,
@@ -201,10 +211,7 @@ export async function initTrancheBond(contractAddress: string) {
 }
 
 async function initWaterCommon(contractAddress: string) {
-  const waterCommon = await ethers.getContractAt(
-    'WaterCommonUpgradeable',
-    contractAddress,
-  );
+  const waterCommon = await ethers.getContractAt('WaterCommonUpgradeable', contractAddress);
   await waterCommon.WaterCommon_Initialize(
     CONTRACT_ADDRESSES.BEANSTALK,
     CONTRACT_ADDRESSES.FERTILIZER,
@@ -230,3 +237,19 @@ export async function initAll(contractAddress: string) {
     fromWei(await ethers.provider.getBalance((await ethers.getSigners())[0].address)),
   );
 }
+// init auction fee for upgrade 002 (v1.01)
+export const initAuctionFee: AfterDeployInit = async (networkDeployInfo: INetworkDeployInfo) => {
+  debuglog('Set Auction Fee after upgrading');
+  const irrigationDiamond = dc.IrrigationDiamond as IrrigationDiamond;
+  const irrigationControl = await ethers.getContractAt(
+    'IrrigationControlUpgradeable',
+    irrigationDiamond.address,
+  );
+  await irrigationControl.setAuctionFee({
+    limits: [toWei(32), toWei(320), toWei(3200), toWei(32000), toWei(320000)],
+    listingFees: [toD6(0.025), toD6(0.01), toD6(0.0066), toD6(0.0033), toD6(0.002), 0],
+    successFees: [toD6(0.05), toD6(0.015), toD6(0.01), toD6(0.0075), toD6(0.005), toD6(0.005)],
+  });
+  // add reward 25% of auction ether fee to water tower
+  await irrigationControl.setFeeForWaterTower(toD6(0.25));
+};

@@ -324,13 +324,19 @@ export async function deployAndInitDiamondFacets(
   networkDeployInfo: INetworkDeployInfo,
   facetsToDeploy: FacetToDeployInfo = Facets,
 ) {
-  const oldNetworkDeployInfo = JSON.parse(JSON.stringify(networkDeployInfo));
-  await deployDiamondFacets(networkDeployInfo, facetsToDeploy);
-  await deployFuncSelectors(
-    networkDeployInfo,
-    oldNetworkDeployInfo ?? networkDeployInfo,
-    facetsToDeploy,
+  const deployInfoBeforeUpgraded: INetworkDeployInfo = JSON.parse(
+    JSON.stringify(networkDeployInfo),
   );
+  await deployDiamondFacets(networkDeployInfo, facetsToDeploy);
+  const deployInfoWithOldFacet: INetworkDeployInfo = Object.assign(
+    JSON.parse(JSON.stringify(networkDeployInfo)),
+  );
+  for (const key in deployInfoWithOldFacet.FacetDeployedInfo) {
+    if (deployInfoBeforeUpgraded.FacetDeployedInfo[key])
+      deployInfoWithOldFacet.FacetDeployedInfo[key] =
+        deployInfoBeforeUpgraded.FacetDeployedInfo[key];
+  }
+  await deployFuncSelectors(networkDeployInfo, deployInfoWithOldFacet, facetsToDeploy);
   await afterDeployCallbacks(networkDeployInfo, facetsToDeploy);
 }
 
