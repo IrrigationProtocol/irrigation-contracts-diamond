@@ -309,7 +309,7 @@ export function suite() {
         );
 
         const listingFee = (
-          await auctionContract.getAuctionFee((await waterTower.userInfo(owner.address)).amount)
+          await auctionContract.getAuctionFeeAndLimit((await waterTower.userInfo(owner.address)).amount)
         ).listingFee;
         const calculatedFee = await auctionContract.getListingFeeForUser(
           owner.address,

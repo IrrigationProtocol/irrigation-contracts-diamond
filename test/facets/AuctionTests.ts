@@ -81,8 +81,6 @@ export function suite() {
         diamondRootAddress,
       );
       // expect(await auctionContract.isSupportedPurchaseToken(usdc.address)).to.be.eq(true);
-      // 1.5% auction fee
-      // expect((await auctionContract.getAuctionFee()).numerator).to.be.eq(BigNumber.from(15));
       defaultAuctionSetting = {
         startTime: 0,
         endTime: 0, // duration mode
@@ -827,8 +825,9 @@ export function suite() {
 
     describe('#auction without fee', async function () {
       it('should create auction without paying ether', async () => {
+        // set fee 0 for users stored more than 3200 water
         await irrigationControl.setAuctionFee({
-          limits: [toWei(3200)],
+          limits: [0, toWei(3200)],
           listingFees: [10000, 0],
           successFees: [15000, 0],
         });
@@ -873,12 +872,12 @@ export function suite() {
         const averageWater = await waterTower.getAverageStoredWater(owner.address);
         expect(averageWater).to.be.gt(toWei(12800));
         await irrigationControl.setAuctionFee({
-          limits: [toWei(32), toWei(320), toWei(3200), toWei(6400), toWei(12800), toWei(32000)],
+          limits: [0, toWei(32), toWei(320), toWei(3200), toWei(6400), toWei(12800), toWei(32000)],
           listingFees: [10000, 6000, 3000, 2000, 1000, 1000, 0],
           successFees: [15000, 10000, 7000, 5000, 5000, 5000, 5000],
         });
         expect(
-          (await auctionContract.getAuctionFee((await waterTower.userInfo(owner.address)).amount))
+          (await auctionContract.getAuctionFeeAndLimit((await waterTower.userInfo(owner.address)).amount))
             .listingFee,
         ).to.be.eq(1000);
         await token1.approve(auctionContract.address, toWei(10000));

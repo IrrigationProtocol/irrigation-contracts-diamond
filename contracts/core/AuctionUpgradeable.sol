@@ -176,8 +176,7 @@ contract AuctionUpgradeable is
             // tranche nft decimals is 6 and ether decimals is 18, so calculated factor = 10 ** (18-6)
             tokenMultiplier = D12;
         }
-
-        uint256 feeAmount = getListingFeeForUser(
+        (uint256 feeAmount, uint256 lockedLevel) = lockWater(
             msg.sender,
             auctionSetting.sellAmount,
             tokenMultiplier,
@@ -197,6 +196,7 @@ contract AuctionUpgradeable is
         auctionSetting.reserve = auctionSetting.sellAmount;
         auctionStorage.auctions[auctionId].s = auctionSetting;
         auctionStorage.auctions[auctionId].seller = msg.sender;
+        auctionStorage.auctions[auctionId].lockedLevel = lockedLevel;
         emit AuctionCreated(auctionSetting, msg.sender, auctionId);
     }
 
@@ -285,8 +285,8 @@ contract AuctionUpgradeable is
             auction.s.fixedPrice,
             sellTokenDecimals
         );
-        (, uint256 successFee) = getAuctionFee(WaterTowerStorage.userInfo(auction.seller).amount);
-        uint256 fee = (payAmount * successFee) / FEE_DENOMINATOR;
+        uint256 fee = (payAmount * auctionStorage.fee.successFees[auction.lockedLevel]) /
+            FEE_DENOMINATOR;
         IERC20Upgradeable(_purchaseToken).safeTransferFrom(
             msg.sender,
             auction.seller,
@@ -488,15 +488,19 @@ contract AuctionUpgradeable is
                 --curBidId;
             }
         }
-        /// transfer paid tokens from contract to seller
-        uint256 realPayPecentage = FEE_DENOMINATOR - getSuccessFeeForUser(auction.seller);
+        // transfer paid tokens from contract to seller
+        // unclock locked water
+        uint256 realPayPecentage = FEE_DENOMINATOR -
+            unlockWater(auction.seller, auction.lockedLevel);
         for (uint256 i; i < bidTokens.length; ) {
             uint256 payoutAmount = payoutAmounts[i];
             if (payoutAmount > 0) {
                 address _purchaseToken = bidTokens[i];
                 uint256 realPayAmount = (payoutAmount * realPayPecentage) / FEE_DENOMINATOR;
                 IERC20Upgradeable(bidTokens[i]).safeTransfer(auction.seller, realPayAmount);
-                auctionStorage.reserveFees[_purchaseToken] += (payoutAmount - realPayAmount);
+                unchecked {
+                    auctionStorage.reserveFees[_purchaseToken] += (payoutAmount - realPayAmount);
+                }
             }
             unchecked {
                 ++i;
@@ -649,60 +653,95 @@ contract AuctionUpgradeable is
             revert InactiveAuction();
     }
 
-    function getAuctionFee(
-        uint256 waterAmount
-    ) public view returns (uint256 listingFee, uint256 successFee) {
-        AuctionFee memory fee = AuctionStorage.layout().fee;
-        for (uint256 i; i < fee.limits.length; ) {
-            if (waterAmount < fee.limits[i]) return (fee.listingFees[i], fee.successFees[i]);
-            unchecked {
-                ++i;
-            }
-        }
-        return (
-            fee.listingFees[fee.listingFees.length - 1],
-            fee.successFees[fee.listingFees.length - 1]
-        );
+    function getListingFeeForUser(
+        address user,
+        uint256 amount,
+        uint256 multiplier,
+        uint256 tokenPrice
+    ) external view returns (uint256 feeAmount) {
+        (uint256 listingFee, , , ) = getAuctionFeeAndLimit(WaterTowerStorage.userInfo(user).amount);
+        feeAmount = getListingFee(listingFee, amount, multiplier, tokenPrice);
     }
 
     function getAuctionFeeAndLimit(
         uint256 waterAmount
-    ) public view returns (uint256 listingFee, uint256 successFee, uint256 limit) {
+    )
+        public
+        view
+        returns (uint256 listingFee, uint256 successFee, uint256 feeLevel, uint256 limit)
+    {
         AuctionFee memory fee = AuctionStorage.layout().fee;
-        for (uint256 i; i < fee.limits.length; ) {
-            if (waterAmount < fee.limits[i])
-                return (fee.listingFees[i], fee.successFees[i], i == 0 ? 0 : fee.limits[i - 1]);
+        uint256 i;
+        for (i; i < fee.limits.length - 1; ) {
+            if (waterAmount < fee.limits[i + 1])
+                return (fee.listingFees[i], fee.successFees[i], i, fee.limits[i]);
             unchecked {
                 ++i;
             }
         }
-        return (
-            fee.listingFees[fee.listingFees.length - 1],
-            fee.successFees[fee.listingFees.length - 1],
-            fee.limits[fee.limits.length - 1]
-        );
+        return (fee.listingFees[i], fee.successFees[i], i, fee.limits[i]);
     }
 
-    /// @notice return ether amount for listing fee
-    function getListingFeeForUser(
-        address user,
+    /// @notice return listing fee amount for amount and fee percentage
+    function getListingFee(
+        uint256 listingFee,
         uint256 auctionAmount,
         uint256 multiplier,
         uint256 tokenPrice
-    ) public view returns (uint256 feeEthAmount) {
+    ) internal view returns (uint256 feeEthAmount) {
         /// @dev fee is calulated with ether price, auction price, and auction amount
         uint256 ethPrice = IPriceOracleUpgradeable(address(this)).getUnderlyingPriceETH();
-        (uint256 listingFee, ) = getAuctionFee(WaterTowerStorage.userInfo(user).amount);
         return
             (((auctionAmount * multiplier * listingFee * tokenPrice) / ethPrice)) / FEE_DENOMINATOR;
     }
 
-    /// @notice return success fee percentage for listing fee
-    function getSuccessFeeForUser(address user) public view returns (uint256 feeEthAmount) {
+    // lock water for fee level and return listing fee amount
+    // called when creating auction
+    function lockWater(
+        address user,
+        uint256 auctionAmount,
+        uint256 multiplier,
+        uint256 tokenPrice
+    ) internal returns (uint256 fee, uint256 lockedLevel) {
+        WaterTowerStorage.Layout storage wl = WaterTowerStorage.layout();
+        uint256 userAmount = wl.users[user].amount;
+        LockedUserInfo storage lockedInfo = wl.lockedUsers[user];
+        (uint256 listingFee, , uint256 feeLevel, uint256 amountToLock) = getAuctionFeeAndLimit(
+            userAmount
+        );
         /// @dev fee is calulated with ether price, auction price, and auction amount
-        uint256 averageAmount = IWaterTowerUpgradeable(address(this)).getAverageStoredWater(user);
-        (, uint256 successFee) = getAuctionFee(averageAmount);
-        return successFee;
+        fee = getListingFee(listingFee, auctionAmount, multiplier, tokenPrice);
+        if (amountToLock != 0) {
+            lockedInfo.lockedCounts[feeLevel] = lockedInfo.lockedCounts[feeLevel] + 1;
+            if (lockedInfo.lockedAmount < amountToLock) lockedInfo.lockedAmount = amountToLock;
+        }
+        return (fee, feeLevel);
+    }
+
+    function unlockWater(
+        address user,
+        uint256 lockedLevelForAuction
+    ) internal returns (uint256 successFee) {
+        WaterTowerStorage.Layout storage wl = WaterTowerStorage.layout();
+        LockedUserInfo memory lockedInfo = wl.lockedUsers[user];
+        AuctionFee memory fee = AuctionStorage.layout().fee;
+        successFee = fee.successFees[lockedLevelForAuction];
+        uint256 lockedForAuction = fee.limits[lockedLevelForAuction];
+        if (lockedForAuction == 0) return successFee;
+        uint256 lockedCount = lockedInfo.lockedCounts[lockedLevelForAuction] - 1;
+        if (lockedCount == 0 && lockedInfo.lockedAmount == lockedForAuction) {
+            // find locked min level
+            for (uint256 i = lockedLevelForAuction; i > 0; ) {
+                if (lockedInfo.lockedCounts[i] > 0) {
+                    wl.lockedUsers[user].lockedAmount = fee.limits[i];
+                    return successFee;
+                }
+                unchecked {
+                    --i;
+                }
+            }
+            wl.lockedUsers[user].lockedAmount = 0;
+        }
     }
 
     function getReserveFee(address token) external view returns (uint256 fee) {

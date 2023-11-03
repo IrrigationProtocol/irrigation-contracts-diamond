@@ -246,7 +246,7 @@ export const initAuctionFee: AfterDeployInit = async (networkDeployInfo: INetwor
     irrigationDiamond.address,
   );
   await irrigationControl.setAuctionFee({
-    limits: [toWei(32), toWei(320), toWei(3200), toWei(32000), toWei(320000)],
+    limits: [toWei(0), toWei(32), toWei(320), toWei(3200), toWei(32000), toWei(320000)],
     listingFees: [toD6(0.025), toD6(0.01), toD6(0.0066), toD6(0.0033), toD6(0.002), 0],
     successFees: [toD6(0.05), toD6(0.015), toD6(0.01), toD6(0.0075), toD6(0.005), toD6(0.005)],
   });

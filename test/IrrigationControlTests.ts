@@ -66,25 +66,46 @@ export function suite() {
     });
 
     it('Auction fee', async () => {
-      expect((await auction.getAuctionFeeAndLimit(0)).listingFee).to.be.eq(toD6(0.025));
-      expect((await auction.getAuctionFeeAndLimit(0)).successFee).to.be.eq(toD6(0.05));
-      expect((await auction.getAuctionFeeAndLimit(0)).limit).to.be.eq(0);
-      
-      // listing fee and closing fee is 0 when user stored more than 3200 water
-      await irrigationControl.setAuctionFee({
-        limits: [toWei(3200)],
-        listingFees: [10000, 0],
-        successFees: [15000, 0],
-      });
-      expect((await auction.getAuctionFee(toWei(32))).listingFee).to.be.eq(10000);
-      expect((await auction.getAuctionFee(toWei(3200))).listingFee).to.be.eq(0);
-      expect((await auction.getAuctionFee(toWei(99_000_000))).listingFee).to.be.eq(0);
+      let feeForlevel0 = await auction.getAuctionFeeAndLimit(0);
+      expect(feeForlevel0.listingFee).to.be.eq(toD6(0.025));
+      expect(feeForlevel0.successFee).to.be.eq(toD6(0.05));
+      expect(feeForlevel0.feeLevel).to.be.eq(0);
+      feeForlevel0 = await auction.getAuctionFeeAndLimit(31);
+      expect(feeForlevel0.listingFee).to.be.eq(toD6(0.025));
+      expect(feeForlevel0.successFee).to.be.eq(toD6(0.05));
+      expect(feeForlevel0.feeLevel).to.be.eq(0);
+      let feeForlevel1 = await auction.getAuctionFeeAndLimit(toWei(32));
+      expect(feeForlevel1.listingFee).to.be.eq(toD6(0.01));
+      expect(feeForlevel1.successFee).to.be.eq(toD6(0.015));
+      expect(feeForlevel1.feeLevel).to.be.eq(1);
+      expect(feeForlevel1.limit).to.be.eq(toWei(32));
+      feeForlevel1 = await auction.getAuctionFeeAndLimit(toWei(33));
+      expect(feeForlevel1.listingFee).to.be.eq(toD6(0.01));
+      expect(feeForlevel1.successFee).to.be.eq(toD6(0.015));
+      expect(feeForlevel1.feeLevel).to.be.eq(1);
+      expect(feeForlevel1.limit).to.be.eq(toWei(32));
+      let feeForlevel = await auction.getAuctionFeeAndLimit(toWei(320));
+      expect(feeForlevel.listingFee).to.be.eq(toD6(0.0066));
+      expect(feeForlevel.successFee).to.be.eq(toD6(0.01));
+      expect(feeForlevel.feeLevel).to.be.eq(2);
+      expect(feeForlevel.limit).to.be.eq(toWei(320));
+      // top level
+      feeForlevel = await auction.getAuctionFeeAndLimit(toWei(3200000));
+      expect(feeForlevel.listingFee).to.be.eq(0);
+      expect(feeForlevel.successFee).to.be.eq(toD6(0.005));
+      expect(feeForlevel.feeLevel).to.be.eq(5);
+      expect(feeForlevel.limit).to.be.eq(toWei(320000));
       // initialize auction fee as default 1.5%, 1% for everyone
       await irrigationControl.setAuctionFee({
-        limits: [toWei(100_000_000)],
-        listingFees: [10000],
-        successFees: [15000],
+        limits: [0, toWei(100_000_000)],
+        listingFees: [toD6(0.01), 0],
+        successFees: [toD6(0.015), 0],
       });
+      feeForlevel = await auction.getAuctionFeeAndLimit(toWei(320));      
+      expect(feeForlevel.listingFee).to.be.eq(toD6(0.01));
+      expect(feeForlevel.successFee).to.be.eq(toD6(0.015));
+      expect(feeForlevel.feeLevel).to.be.eq(0);
+      expect(feeForlevel.limit).to.be.eq(0);
     });
   });
 }
