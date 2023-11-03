@@ -845,7 +845,22 @@ export function suite() {
             defaultAuctionSetting.priceRangeStart,
           ),
         ).to.be.eq(0);
+        expect((await waterTower.getLockedUserInfo(owner.address)).lockedAmount).to.be.eq(0);
         await auctionContract.createAuction({ ...defaultAuctionSetting }, 0);
+        await skipTime(3 * 86400);
+        const lockInfo = await waterTower.getLockedUserInfo(owner.address);
+        expect(lockInfo.lockedAmount).to.be.eq(toWei(3200));
+        expect(lockInfo.lockedCounts[1]).to.be.eq(1);
+        expect(lockInfo.lockedCounts[0]).to.be.eq(0);
+        stotedWater = (await waterTower.userInfo(owner.address)).amount;
+        await expect(waterTower.withdraw(stotedWater)).to.be.revertedWithCustomError(
+          waterTower,
+          'LockedWater',
+        );
+        const auctionId = await auctionContract.getAuctionsCount();
+        expect((await auctionContract.getAuction(auctionId)).lockedLevel).to.be.eq(1);
+        await auctionContract.closeAuction(auctionId);
+        expect((await waterTower.getLockedUserInfo(owner.address)).lockedAmount).to.be.eq(0);
       });
       it('creating auction without fee should fail', async () => {
         let stotedWater = (await waterTower.userInfo(owner.address)).amount;
@@ -877,8 +892,13 @@ export function suite() {
           successFees: [15000, 10000, 7000, 5000, 5000, 5000, 5000],
         });
         expect(
-          (await auctionContract.getAuctionFeeAndLimit((await waterTower.userInfo(owner.address)).amount))
-            .listingFee,
+          (
+            await auctionContract.getAuctionFeeAndLimit(
+              (
+                await waterTower.userInfo(owner.address)
+              ).amount,
+            )
+          ).listingFee,
         ).to.be.eq(1000);
         await token1.approve(auctionContract.address, toWei(10000));
         await auctionContract.createAuction(

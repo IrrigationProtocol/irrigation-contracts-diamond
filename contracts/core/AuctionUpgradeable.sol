@@ -729,18 +729,21 @@ contract AuctionUpgradeable is
         uint256 lockedForAuction = fee.limits[lockedLevelForAuction];
         if (lockedForAuction == 0) return successFee;
         uint256 lockedCount = lockedInfo.lockedCounts[lockedLevelForAuction] - 1;
+        wl.lockedUsers[user].lockedCounts[lockedLevelForAuction] = uint32(lockedCount);
         if (lockedCount == 0 && lockedInfo.lockedAmount == lockedForAuction) {
-            // find locked min level
-            for (uint256 i = lockedLevelForAuction; i > 0; ) {
-                if (lockedInfo.lockedCounts[i] > 0) {
-                    wl.lockedUsers[user].lockedAmount = fee.limits[i];
-                    return successFee;
-                }
-                unchecked {
-                    --i;
+            if (lockedForAuction >= 1) {
+                // find locked min level
+                for (uint256 i = lockedLevelForAuction - 1; i > 0; ) {
+                    if (lockedInfo.lockedCounts[i] > 0) {
+                        wl.lockedUsers[user].lockedAmount = fee.limits[i];
+                        return successFee;
+                    }
+                    unchecked {
+                        --i;
+                    }
                 }
             }
-            wl.lockedUsers[user].lockedAmount = 0;
+            wl.lockedUsers[user].lockedAmount = fee.limits[0];
         }
     }
 

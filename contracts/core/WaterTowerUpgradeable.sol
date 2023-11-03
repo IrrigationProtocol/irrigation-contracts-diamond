@@ -41,6 +41,7 @@ contract WaterTowerUpgradeable is
     /// @dev admin errors
     error InvalidTime();
     error InsufficientEther();
+    error LockedWater();
 
     uint256 internal constant IRRIGATE_BONUS_DOMINATOR = 100;
     uint256 internal constant AUTOIRRIGATE_GASLIMIT = 542000;
@@ -227,6 +228,8 @@ contract WaterTowerUpgradeable is
         // if amount is 0, update only pool info
         if (amount == 0) return;
         l.users[user].amount -= amount;
+        // can't withdraw locked water amount
+        if (l.users[user].amount < l.lockedUsers[user].lockedAmount) revert LockedWater();
         uint256 rewardRate = amount * (poolInfo.endTime - block.timestamp);
         l.users[user].rewardRate -= rewardRate;
         l.pools[curPoolIndex].totalRewardRate -= rewardRate;
@@ -323,6 +326,10 @@ contract WaterTowerUpgradeable is
     /// @notice userInfo contains deposit amount by the user, irrigate setting, and so on
     function userInfo(address user) external view returns (UserInfo memory) {
         return WaterTowerStorage.userInfo(user);
+    }
+
+    function getLockedUserInfo(address user) external view returns (LockedUserInfo memory) {
+        return WaterTowerStorage.layout().lockedUsers[user];
     }
 
     /// @notice view function to get pending eth reward for user
