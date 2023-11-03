@@ -309,7 +309,11 @@ export function suite() {
         );
 
         const listingFee = (
-          await auctionContract.getAuctionFeeAndLimit((await waterTower.userInfo(owner.address)).amount)
+          await auctionContract.getAuctionFeeAndLimit(
+            (
+              await waterTower.userInfo(owner.address)
+            ).amount,
+          )
         ).listingFee;
         const calculatedFee = await auctionContract.getListingFeeForUser(
           owner.address,
@@ -492,19 +496,17 @@ export function suite() {
       });
 
       it('should receive pods after the tranche A is mature', async () => {
-        let trancheId = (await trancheBond.getDepositCount()).mul(4).add(2);
-        let { tranche, depositPods, underlyingAsset } = await trancheBond.getTranchePods(
-          trancheId.sub(1),
-        );
+        let trancheId = (await trancheBond.getDepositCount()).mul(4).add(1);
+        let { tranche, depositPods, underlyingAsset } = await trancheBond.getTranchePods(trancheId);
         const oldPods = await beanstalk.plot(trancheBond.address, depositPods.podIndexes[0]);
-        await trancheBond.connect(sender).receivePodsForTranche(trancheId.sub(1));
+        await trancheBond.connect(sender).receivePodsForTranche(trancheId);
         const pods0 = await beanstalk.plot(sender.address, depositPods.podIndexes[0]);
         const pods1 = await beanstalk.plot(sender.address, depositPods.podIndexes[1]);
         const expectedReceivePods = (
           await trancheBond.getPlotsForTranche(trancheId)
         ).podAmounts[0].div(2);
 
-        depositPods = (await trancheBond.getTranchePods(trancheId.sub(1))).depositPods;        
+        depositPods = (await trancheBond.getTranchePods(trancheId)).depositPods;
         expectWithTolerance(pods0.add(pods1), expectedReceivePods);
         if (expectedReceivePods.gt(oldPods)) {
           expect(depositPods.startIndexAndOffsets[0]).to.be.eq(1);
