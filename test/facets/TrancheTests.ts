@@ -135,14 +135,13 @@ export function suite() {
         podsGroup.indexes.push(podIndex);
         podsGroup.amounts.push(podsAmount);
         // console.log('---second:', fromD6(podIndex), fromD6(podsAmount));
-        await trancheBond.createTranchesWithPods(
+        const tx = await trancheBond.createTranchesWithPods(
           podsGroup.indexes,
           podsGroup.indexes.map((e) => 0),
           podsGroup.amounts,
           0,
         );
-
-        const trancheId = 5;
+        const trancheId = (await trancheBond.getDepositCount()).mul(4).add(1);
         let tokenBalance = await trancheCollection.balanceOf(owner.address, trancheId);
         // check proxy name for our contract
         expect(
@@ -164,11 +163,11 @@ export function suite() {
       });
 
       it('total supply of tranche nft should be same amount as owner tranche nft balance', async () => {
-        let trancheId = 5;
+        let trancheId = (await trancheBond.getDepositCount()).mul(4).add(1);
         let trNftBalance = await trancheCollection.balanceOf(owner.address, trancheId);
         let trTotalSupply = await trancheCollection.totalSupply(trancheId);
         expect(trNftBalance).to.be.eq(trTotalSupply);
-        trancheId = 6;
+        trancheId = trancheId.add(1);
         const { tranche, underlyingAsset, depositPods } = await trancheBond.getTranchePods(
           trancheId,
         );
@@ -185,14 +184,14 @@ export function suite() {
       });
 
       it('should divide plots by FMV', async () => {
-        let trancheId = 5;
+        let trancheId = (await trancheBond.getDepositCount()).mul(4).add(1);
         let { depositPods, tranche, underlyingAsset } = await trancheBond.getTranchePods(trancheId);
         const { starts, podAmounts } = await trancheBond.getPlotsForTranche(trancheId);
-        trancheId = 6;
+        trancheId = trancheId.add(1);
         const { starts: startsB, podAmounts: podsB } = await trancheBond.getPlotsForTranche(
           trancheId,
         );
-        trancheId = 7;
+        trancheId = trancheId.add(1);
         const { starts: startsZ, podAmounts: podsZ } = await trancheBond.getPlotsForTranche(
           trancheId,
         );
@@ -229,7 +228,7 @@ export function suite() {
         );
       });
       it('Test transfer tranche nft', async () => {
-        const trancheId = 5;
+        let trancheId = (await trancheBond.getDepositCount()).mul(4).add(1);
         const trNftBalance = await trancheCollection.balanceOf(owner.address, trancheId);
         // transfer 50% of total balance
         await trancheCollection.safeTransferFrom(
@@ -252,7 +251,7 @@ export function suite() {
 
     describe('#tranche auction', async function () {
       it('Test Tranche Auction for z tranche should be failed ', async () => {
-        const trancheId = 7;
+        let trancheId = (await trancheBond.getDepositCount()).mul(4).add(3);
         const trNftBalance = await trancheCollection.balanceOf(owner.address, trancheId);
         await expect(
           auctionContract.createAuction(
@@ -285,7 +284,7 @@ export function suite() {
       });
 
       it('Test Tranche Auction create', async () => {
-        let trancheId = 6;
+        let trancheId = (await trancheBond.getDepositCount()).mul(4).add(2);
         let trNftBalance = await trancheCollection.balanceOf(owner.address, trancheId);
         await trancheCollection.setApprovalForAll(trancheCollection.address, true);
         let updateOwnerBalance = await ethers.provider.getBalance(owner.address);
@@ -333,7 +332,7 @@ export function suite() {
       });
 
       it('Test Tranche Auction buyNow', async () => {
-        const trancheId = 6;
+        let trancheId = (await trancheBond.getDepositCount()).mul(4).add(2);
         const lastAuctionId = await auctionContract.getAuctionsCount();
         let auction = await auctionContract.getAuction(lastAuctionId);
         assert(
@@ -359,7 +358,7 @@ export function suite() {
       it('Test Tranche Auction bid', async () => {
         const seller = sender;
         const bidder = owner;
-        const trancheId = 6;
+        let trancheId = (await trancheBond.getDepositCount()).mul(4).add(2);
         let trNftBalance = await trancheCollection.balanceOf(seller.address, trancheId);
         await skipTime(86400 * 4 + 3600);
         let updateTotalRewards = await waterTower.getTotalRewards();
@@ -415,15 +414,15 @@ export function suite() {
 
       it('Test Tranche Auction close', async () => {
         await skipTime(86400 * 6 + 3601);
-        const trancheIndex = 6;
+        let trancheId = (await trancheBond.getDepositCount()).mul(4).add(2);
         const seller = sender;
         const bidder = owner;
         const auctionId = await auctionContract.getAuctionsCount();
-        let bidderBalance = await trancheCollection.balanceOf(bidder.address, trancheIndex);
+        let bidderBalance = await trancheCollection.balanceOf(bidder.address, trancheId);
         assert(bidderBalance.eq(0), `expected tranche nft is 0, but ${bidderBalance}`);
         await auctionContract.connect(seller).closeAuction(auctionId);
         const auction = await auctionContract.getAuction(auctionId);
-        bidderBalance = await trancheCollection.balanceOf(bidder.address, trancheIndex);
+        bidderBalance = await trancheCollection.balanceOf(bidder.address, trancheId);
         assert(
           bidderBalance.gt(0) && bidderBalance.eq(auction.s.sellAmount),
           `expected sell amount ${auction.s.sellAmount}, but ${bidderBalance}`,
@@ -440,7 +439,7 @@ export function suite() {
       });
 
       it('should be able to receive pods as many as user nft balance for tranche A', async () => {
-        const trancheId = 5;
+        let trancheId = (await trancheBond.getDepositCount()).mul(4).add(1);
         const { depositPods, underlyingAsset, tranche } = await trancheBond.getTranchePods(
           trancheId,
         );
@@ -455,10 +454,11 @@ export function suite() {
       });
 
       it('should be able to receive pods correct for tranche B', async () => {
-        const { depositPods, underlyingAsset } = await trancheBond.getTranchePods(6);
-        const { starts, podAmounts } = await trancheBond.getPlotsForUser(6, owner.address);
+        const trancheId = (await trancheBond.getDepositCount()).mul(4).add(2);
+        const { depositPods, underlyingAsset } = await trancheBond.getTranchePods(trancheId);
+        const { starts, podAmounts } = await trancheBond.getPlotsForUser(trancheId, owner.address);
         expect(starts[1]).to.be.eq(0);
-        const balance = await trancheCollection.balanceOf(owner.address, 6);
+        const balance = await trancheCollection.balanceOf(owner.address, trancheId);
         let expectedFMV = toD6(0);
         for (let i = 0; i < starts.length; i++) {
           expectedFMV = expectedFMV.add(
@@ -469,41 +469,42 @@ export function suite() {
       });
 
       it('should revert with not mature error before maturity period is over ', async () => {
-        await expect(trancheBond.receivePodsForTranche(5)).to.be.revertedWithCustomError(
+        const trancheId = (await trancheBond.getDepositCount()).mul(4).add(1);
+        await expect(trancheBond.receivePodsForTranche(trancheId)).to.be.revertedWithCustomError(
           trancheBond,
           'NotMatureTranche',
         );
-        await expect(trancheBond.receivePodsForTranche(6)).to.be.revertedWithCustomError(
-          trancheBond,
-          'NotMatureTranche',
-        );
-        await expect(trancheBond.receivePodsForTranche(7)).to.be.revertedWithCustomError(
-          trancheBond,
-          'NotMatureTranche',
-        );
+        await expect(
+          trancheBond.receivePodsForTranche(trancheId.add(1)),
+        ).to.be.revertedWithCustomError(trancheBond, 'NotMatureTranche');
+        await expect(
+          trancheBond.receivePodsForTranche(trancheId.add(2)),
+        ).to.be.revertedWithCustomError(trancheBond, 'NotMatureTranche');
       });
 
       it('should revert with insuffifient pods error when user tranche balance is 0 or too small, so calculated pods is 0', async () => {
+        const trancheId = (await trancheBond.getDepositCount()).mul(4).add(3);
         await skipTime(86400 * 180);
-        expect(await trancheCollection.balanceOf(sender.address, 7)).to.be.eq(0);
+        expect(await trancheCollection.balanceOf(sender.address, trancheId)).to.be.eq(0);
         await expect(
-          trancheBond.connect(sender).receivePodsForTranche(7),
+          trancheBond.connect(sender).receivePodsForTranche(trancheId),
         ).to.be.revertedWithCustomError(trancheBond, 'InsufficientPods');
       });
 
       it('should receive pods after the tranche A is mature', async () => {
-        const trancheId = 5;
-        let { tranche, depositPods, underlyingAsset } = await trancheBond.getTranchePods(5);
+        let trancheId = (await trancheBond.getDepositCount()).mul(4).add(2);
+        let { tranche, depositPods, underlyingAsset } = await trancheBond.getTranchePods(
+          trancheId.sub(1),
+        );
         const oldPods = await beanstalk.plot(trancheBond.address, depositPods.podIndexes[0]);
-        const tx = await trancheBond.connect(sender).receivePodsForTranche(5);
+        await trancheBond.connect(sender).receivePodsForTranche(trancheId.sub(1));
         const pods0 = await beanstalk.plot(sender.address, depositPods.podIndexes[0]);
         const pods1 = await beanstalk.plot(sender.address, depositPods.podIndexes[1]);
         const expectedReceivePods = (
           await trancheBond.getPlotsForTranche(trancheId)
         ).podAmounts[0].div(2);
 
-        depositPods = (await trancheBond.getTranchePods(5)).depositPods;
-        // expect(pods0.add(pods1)).to.be.eq(expectedReceivePods);
+        depositPods = (await trancheBond.getTranchePods(trancheId.sub(1))).depositPods;        
         expectWithTolerance(pods0.add(pods1), expectedReceivePods);
         if (expectedReceivePods.gt(oldPods)) {
           expect(depositPods.startIndexAndOffsets[0]).to.be.eq(1);
@@ -515,7 +516,7 @@ export function suite() {
       });
 
       it('should receive pods after the tranche B is mature', async () => {
-        const trancheId = 6;
+        let trancheId = (await trancheBond.getDepositCount()).mul(4).add(2);
         let { tranche, underlyingAsset, depositPods } = await trancheBond.getTranchePods(trancheId);
         const tx = await trancheBond.receivePodsForTranche(trancheId);
         const plotsForTranche = await trancheBond.getPlotsForTranche(trancheId);
@@ -529,7 +530,7 @@ export function suite() {
       });
 
       it('should receive pods after the tranche Z is mature', async () => {
-        const trancheId = 7;
+        let trancheId = (await trancheBond.getDepositCount()).mul(4).add(3);
         let { tranche, underlyingAsset, depositPods } = await trancheBond.getTranchePods(trancheId);
         const tx = await trancheBond.receivePodsForTranche(trancheId);
         const plotsForTranche = await trancheBond.getPlotsForTranche(trancheId);
@@ -546,7 +547,7 @@ export function suite() {
       });
 
       it('should receive pods with rest tranche A nft', async () => {
-        const trancheId = 5;
+        let trancheId = (await trancheBond.getDepositCount()).mul(4).add(1);
         let { tranche, underlyingAsset, depositPods } = await trancheBond.getTranchePods(trancheId);
         const tx = await trancheBond.receivePodsForTranche(trancheId);
         const plotsForTranche = await trancheBond.getPlotsForTranche(trancheId);
@@ -601,12 +602,13 @@ export function suite() {
           holdPlots.map((e) => e.pods),
           0,
         );
-        const { starts } = await trancheBond.getPlotsForTranche(11);
+        const trancheId = (await trancheBond.getDepositCount()).mul(4).add(3);
+        const { starts } = await trancheBond.getPlotsForTranche(trancheId);
         await skipTime(180 * 86400);
         await trancheCollection.connect(tester).setApprovalForAll(trancheBond.address, true);
-        await trancheBond.connect(tester).receivePodsForTranche(11);
-        await trancheBond.connect(tester).receivePodsForTranche(9);
-        await trancheBond.connect(tester).receivePodsForTranche(10);
+        await trancheBond.connect(tester).receivePodsForTranche(trancheId);
+        await trancheBond.connect(tester).receivePodsForTranche(trancheId.sub(2));
+        await trancheBond.connect(tester).receivePodsForTranche(trancheId.sub(1));
         const pods1 = await beanstalk.plot(tester.address, holdPlots[0].index);
         const pods2 = await beanstalk.plot(tester.address, holdPlots[0].index.add(pods1));
         const pods3 = await beanstalk.plot(tester.address, holdPlots[0].index.add(starts[0]));
@@ -671,16 +673,16 @@ export function suite() {
           holdPlots.map((e) => e.pods),
           0,
         );
-        await tx.wait(1);
+        const trancheId = (await trancheBond.getDepositCount()).mul(4).add(3);
         expect(await beanstalk.plot(trancheBond.address, holdPlots[0].index)).to.be.eq(toD6(1000));
         expect(await beanstalk.plot(trancheBond.address, holdPlots[1].index)).to.be.eq(toD6(1000));
         expect(await beanstalk.plot(trancheBond.address, holdPlots[2].index)).to.be.eq(toD6(1000));
-        const { starts } = await trancheBond.getPlotsForTranche(15);
+        const { starts } = await trancheBond.getPlotsForTranche(trancheId);
         await skipTime(180 * 86400);
         await trancheCollection.connect(tester).setApprovalForAll(trancheBond.address, true);
-        await trancheBond.connect(tester).receivePodsForTranche(14);
-        await trancheBond.connect(tester).receivePodsForTranche(15);
-        await trancheBond.connect(tester).receivePodsForTranche(13);
+        await trancheBond.connect(tester).receivePodsForTranche(trancheId.sub(1));
+        await trancheBond.connect(tester).receivePodsForTranche(trancheId);
+        await trancheBond.connect(tester).receivePodsForTranche(trancheId.sub(2));
         const pods1 = await beanstalk.plot(tester.address, holdPlots[0].index);
         const pods2 = await beanstalk.plot(tester.address, holdPlots[0].index.add(pods1));
         const pods3 = starts[0].eq(toD6(0))

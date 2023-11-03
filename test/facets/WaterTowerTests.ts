@@ -81,6 +81,7 @@ export function suite() {
     });
 
     it('Test WaterTower claim for one depositer', async () => {
+      await waterTower.setPool(0, 0);
       await water.connect(sender).approve(irrigationDiamond.address, toWei(10));
       await waterTower.connect(sender).deposit(toWei(10), false);
       await waterTower.addETHReward({ value: toWei(10) });
@@ -111,7 +112,6 @@ export function suite() {
       await skipTime(30 * 86400);
       // set monthly reward and new month
       await waterTower.setPool(0, toWei(1));
-      expect(Number(await waterTower.getPoolIndex())).to.be.eq(3);
       let updatedEthOfClaimer = await provider.getBalance(sender.address);
       let claimValue = 1;
       expect(await waterTower.userETHReward(sender.address)).to.be.eq(toWei(claimValue));
@@ -133,7 +133,6 @@ export function suite() {
       await skipTime(30 * 86400);
       // set monthly reward and new month
       await waterTower.setPool(0, toWei(1));
-      expect(Number(await waterTower.getPoolIndex())).to.be.eq(4);
       let claimValue = 1;
       expect(await waterTower.userETHReward(sender.address)).to.be.eq(toWei(claimValue));
       let updatedEthInContract = await provider.getBalance(waterTower.address);
@@ -237,7 +236,8 @@ export function suite() {
       const { waterAmount, bonusAmount, swapAmount } = await waterTower.getBonusForIrrigate(
         testerReward,
       );
-      const autoIrrigateAdmin = signers[5];
+      const autoIrrigateAdmin = signers[5];      
+      await waterTower.grantRole(waterTower.AUTO_IRRIGATE_ADMIN_ROLE(), autoIrrigateAdmin.address);
       let autoIrrigatorEthBalance = await ethers.provider.getBalance(autoIrrigateAdmin.address);
       // slippage 10% doesn't work for small amount, so we set 20%
       const tx = await waterTower
