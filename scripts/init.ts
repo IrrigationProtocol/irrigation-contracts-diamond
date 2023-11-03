@@ -237,6 +237,12 @@ export async function initAll(contractAddress: string) {
     fromWei(await ethers.provider.getBalance((await ethers.getSigners())[0].address)),
   );
 }
+export const defaultAuctionFeeData = {
+  limits: [toWei(0), toWei(32), toWei(320), toWei(3200), toWei(32000), toWei(320000)],
+  listingFees: [toD6(0.025), toD6(0.01), toD6(0.0066), toD6(0.0033), toD6(0.002), 0],
+  successFees: [toD6(0.05), toD6(0.015), toD6(0.01), toD6(0.0075), toD6(0.005), toD6(0.005)],
+};
+
 // init auction fee for upgrade 002 (v1.01)
 export const initAuctionFee: AfterDeployInit = async (networkDeployInfo: INetworkDeployInfo) => {
   debuglog('Set Auction Fee after upgrading');
@@ -245,11 +251,7 @@ export const initAuctionFee: AfterDeployInit = async (networkDeployInfo: INetwor
     'IrrigationControlUpgradeable',
     irrigationDiamond.address,
   );
-  await irrigationControl.setAuctionFee({
-    limits: [toWei(0), toWei(32), toWei(320), toWei(3200), toWei(32000), toWei(320000)],
-    listingFees: [toD6(0.025), toD6(0.01), toD6(0.0066), toD6(0.0033), toD6(0.002), 0],
-    successFees: [toD6(0.05), toD6(0.015), toD6(0.01), toD6(0.0075), toD6(0.005), toD6(0.005)],
-  });
+  await irrigationControl.setAuctionFee(defaultAuctionFeeData);
   // add reward 25% of auction ether fee to water tower
   await irrigationControl.setFeeForWaterTower(toD6(0.25));
 };

@@ -17,6 +17,7 @@ import { CONTRACT_ADDRESSES } from '../../scripts/shared';
 import { skipTime } from '../utils/time';
 import { AuctionSetting, Bid } from '../utils/interface';
 import { getCurrentTime } from '../utils';
+import { defaultAuctionFeeData } from '../../scripts/init';
 export const getDefaultAuctionSetting = (): AuctionSetting => {
   const defaultAuctionSetting: AuctionSetting = {
     startTime: 0,
@@ -824,7 +825,7 @@ export function suite() {
     });
 
     describe('#auction without fee', async function () {
-      it('should create auction without paying ether', async () => {
+      it('big water holders should create auction without paying ether', async () => {
         // set fee 0 for users stored more than 3200 water
         await irrigationControl.setAuctionFee({
           limits: [0, toWei(3200)],
@@ -915,6 +916,159 @@ export function suite() {
         await auctionContract.connect(sender).buyNow(auctionId, toWei(10), 1);
         await skipTime(7 * 86400);
         await auctionContract.closeAuction(auctionId);
+      });
+      it('locked water with level 1 for default auction fee', async () => {
+        await irrigationControl.setAuctionFee(defaultAuctionFeeData);
+        await waterTower.withdraw((await waterTower.userInfo(owner.address)).amount);
+        let lockedInfo = await waterTower.getLockedUserInfo(owner.address);
+        expect(lockedInfo.lockedAmount).to.be.eq(0);
+        assert.sameMembers(
+          lockedInfo.lockedCounts.map((e) => Number(e)),
+          [0, 0, 0, 0, 0, 0, 0, 0],
+        );
+        // user level 1
+        await waterTower.deposit(toWei(32), true);
+        await auctionContract.createAuction({ ...defaultAuctionSetting }, 0, { value: toWei(0.1) });
+        await skipTime(3 * 86400);
+        lockedInfo = await waterTower.getLockedUserInfo(owner.address);
+        expect(lockedInfo.lockedAmount).to.be.eq(toWei(32));
+        expect(lockedInfo.lockedCounts[1]).to.be.eq(1);
+        await expect(waterTower.withdraw(toWei(32))).to.be.revertedWithCustomError(
+          waterTower,
+          'LockedWater',
+        );
+        const auctionId = await auctionContract.getAuctionsCount();
+        expect((await auctionContract.getAuction(auctionId)).lockedLevel).to.be.eq(1);
+        await auctionContract.closeAuction(auctionId);
+        lockedInfo = await waterTower.getLockedUserInfo(owner.address);
+        expect(lockedInfo.lockedAmount).to.be.eq(0);
+        assert.sameMembers(
+          lockedInfo.lockedCounts.map((e) => Number(e)),
+          [0, 0, 0, 0, 0, 0, 0, 0],
+        );
+      });
+      it('locked water on two auctions with level 2', async () => {
+        // user level 2
+        await waterTower.deposit(
+          toWei(320).sub((await waterTower.userInfo(owner.address)).amount),
+          true,
+        );
+        await auctionContract.createAuction({ ...defaultAuctionSetting }, 0, { value: toWei(0.1) });
+        await skipTime(1 * 86400);
+        let lockedInfo = await waterTower.getLockedUserInfo(owner.address);
+        expect(lockedInfo.lockedAmount).to.be.eq(toWei(320));
+        assert.sameMembers(
+          lockedInfo.lockedCounts.map((e) => Number(e)),
+          [0, 0, 1, 0, 0, 0, 0, 0],
+        );
+        await expect(waterTower.withdraw(toWei(320))).to.be.revertedWithCustomError(
+          waterTower,
+          'LockedWater',
+        );
+        let auctionId = await auctionContract.getAuctionsCount();
+        expect((await auctionContract.getAuction(auctionId)).lockedLevel).to.be.eq(2);
+        await auctionContract.createAuction({ ...defaultAuctionSetting }, 0, { value: toWei(0.1) });
+        lockedInfo = await waterTower.getLockedUserInfo(owner.address);
+        expect(lockedInfo.lockedAmount).to.be.eq(toWei(320));
+        assert.sameMembers(
+          lockedInfo.lockedCounts.map((e) => Number(e)),
+          [0, 0, 2, 0, 0, 0, 0, 0],
+        );
+        await auctionContract.closeAuction(auctionId);
+        skipTime(86400);
+        lockedInfo = await waterTower.getLockedUserInfo(owner.address);
+        expect(lockedInfo.lockedAmount).to.be.eq(toWei(320));
+        assert.sameMembers(
+          lockedInfo.lockedCounts.map((e) => Number(e)),
+          [0, 0, 1, 0, 0, 0, 0, 0],
+        );
+        auctionId = await auctionContract.getAuctionsCount();
+        await auctionContract.closeAuction(auctionId);
+        lockedInfo = await waterTower.getLockedUserInfo(owner.address);
+        expect(lockedInfo.lockedAmount).to.be.eq(0);
+        assert.sameMembers(
+          lockedInfo.lockedCounts.map((e) => Number(e)),
+          [0, 0, 0, 0, 0, 0, 0, 0],
+        );
+      });
+      it('locked water on two auctions with high and low level: first create low level and later create high level', async () => {
+        // user level 2
+        await auctionContract.createAuction({ ...defaultAuctionSetting }, 0, { value: toWei(0.1) });
+        await skipTime(1 * 86400);
+        let lockedInfo = await waterTower.getLockedUserInfo(owner.address);
+        expect(lockedInfo.lockedAmount).to.be.eq(toWei(320));
+        assert.sameMembers(
+          lockedInfo.lockedCounts.map((e) => Number(e)),
+          [0, 0, 1, 0, 0, 0, 0, 0],
+        );
+        let auctionId = await auctionContract.getAuctionsCount();
+        expect((await auctionContract.getAuction(auctionId)).lockedLevel).to.be.eq(2);
+        await water.approve(water.address, toWei(3200000));
+        // user level 3
+        await waterTower.deposit(toWei(3200).sub(toWei(320)), true);
+        await auctionContract.createAuction({ ...defaultAuctionSetting }, 0, { value: toWei(0.1) });
+        lockedInfo = await waterTower.getLockedUserInfo(owner.address);
+        expect(lockedInfo.lockedAmount).to.be.eq(toWei(3200));
+        assert.sameMembers(
+          lockedInfo.lockedCounts.map((e) => Number(e)),
+          [0, 0, 1, 1, 0, 0, 0, 0],
+        );
+        await auctionContract.closeAuction(auctionId);
+        skipTime(86400);
+        lockedInfo = await waterTower.getLockedUserInfo(owner.address);
+        expect(lockedInfo.lockedAmount).to.be.eq(toWei(3200));
+        assert.sameMembers(
+          lockedInfo.lockedCounts.map((e) => Number(e)),
+          [0, 0, 0, 1, 0, 0, 0, 0],
+        );
+        auctionId = await auctionContract.getAuctionsCount();
+        await auctionContract.closeAuction(auctionId);
+        lockedInfo = await waterTower.getLockedUserInfo(owner.address);
+        expect(lockedInfo.lockedAmount).to.be.eq(0);
+        assert.sameMembers(
+          lockedInfo.lockedCounts.map((e) => Number(e)),
+          [0, 0, 0, 0, 0, 0, 0, 0],
+        );
+      });
+      it('first close auction with high fee level and later close low level', async () => {
+        // user level 2
+        await waterTower.withdraw(toWei(3200).sub(toWei(320)));
+        await auctionContract.createAuction({ ...defaultAuctionSetting }, 0, { value: toWei(0.1) });
+        await skipTime(1 * 86400);
+        let lockedInfo = await waterTower.getLockedUserInfo(owner.address);
+        expect(lockedInfo.lockedAmount).to.be.eq(toWei(320));
+        assert.sameMembers(
+          lockedInfo.lockedCounts.map((e) => Number(e)),
+          [0, 0, 1, 0, 0, 0, 0, 0],
+        );
+        let auctionId = await auctionContract.getAuctionsCount();
+        expect((await auctionContract.getAuction(auctionId)).lockedLevel).to.be.eq(2);
+        await water.approve(water.address, toWei(3200000));
+        // user level 3
+        await waterTower.deposit(toWei(3200).sub(toWei(320)), true);
+        await auctionContract.createAuction({ ...defaultAuctionSetting }, 0, { value: toWei(0.1) });
+        lockedInfo = await waterTower.getLockedUserInfo(owner.address);
+        expect(lockedInfo.lockedAmount).to.be.eq(toWei(3200));
+        assert.sameMembers(
+          lockedInfo.lockedCounts.map((e) => Number(e)),
+          [0, 0, 1, 1, 0, 0, 0, 0],
+        );
+        await skipTime(86400);
+        await auctionContract.closeAuction(auctionId.add(1));
+        lockedInfo = await waterTower.getLockedUserInfo(owner.address);
+        // after closing auction with locking more water, locked water is decreased
+        expect(lockedInfo.lockedAmount).to.be.eq(toWei(320));
+        assert.sameMembers(
+          lockedInfo.lockedCounts.map((e) => Number(e)),
+          [0, 0, 1, 0, 0, 0, 0, 0],
+        );
+        await auctionContract.closeAuction(auctionId);
+        lockedInfo = await waterTower.getLockedUserInfo(owner.address);
+        expect(lockedInfo.lockedAmount).to.be.eq(0);
+        assert.sameMembers(
+          lockedInfo.lockedCounts.map((e) => Number(e)),
+          [0, 0, 0, 0, 0, 0, 0, 0],
+        );
       });
     });
   });
