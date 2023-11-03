@@ -45,6 +45,8 @@ export function suite() {
       assert(ownerSupply.gt(toWei(100)), `Owner balanceOf should be > 100, but is ${ethers.utils.formatEther(ownerSupply)}`);
 
       await irrigationDiamond.transfer(signers[3].address, toWei(150));
+
+      await irrigationDiamond.transfer(signers[5].address, toWei(1500));
     });
 
     it("Testing Irrigation transferFrom & approval", async () => {
@@ -65,5 +67,26 @@ export function suite() {
         /ERC20: insufficient allowance/);
 
     });
+
+    it("Testing WaterToken max approval and then transferFrom", async () => {
+      const gdAddr5 = await irrigationDiamond.connect(signers[5]);
+      const gdAddr6 = await irrigationDiamond.connect(signers[6]);
+      const addr5 = signers[5].address;
+      const addr6 = signers[6].address;
+
+      await gdAddr5.approve(owner, ethers.constants.MaxUint256);
+
+      await irrigationDiamond.transferFrom(addr5, addr6, toWei(150));
+
+      const gdAddr5Supply = await irrigationDiamond["balanceOf(address)"](addr5);
+      assert(gdAddr5Supply.eq(toWei(1350)), `Addr5 balanceOf should be = 1350, but is ${ethers.utils.formatEther(gdAddr5Supply)}`);
+
+      await gdAddr5.approve(owner, ethers.constants.Zero);
+
+      await expect(irrigationDiamond.transferFrom(addr5, addr6, toWei(1350))).to.eventually.be.rejectedWith(Error,
+          /ERC20: insufficient allowance/);
+
+    });
+
   });
 }

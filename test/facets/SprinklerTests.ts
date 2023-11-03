@@ -15,7 +15,7 @@ import { expect } from 'chai';
 import { assert } from '../utils/debug';
 
 export function suite() {
-  describe('Irrigation Sprintkler Testing', async function () {
+  describe('Irrigation Sprinkler Testing', async function () {
     let signers: SignerWithAddress[];
     let owner: SignerWithAddress;
     let token1: IERC20Upgradeable;
@@ -196,7 +196,7 @@ export function suite() {
     it('Multiplier of usdt should be 18-6', async () => {
       expect(await sprinkler.tokenMultiplier(usdt.address)).to.be.eq(10 ** 12);
     });
-    
+
     it('Test exchange gOHM for WATER', async () => {
       const amount = await sprinkler.getWaterAmount(gOHM.address, toWei(0.1));
       const gOHMPrice = await priceOracle.getPrice(gOHM.address);
