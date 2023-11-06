@@ -17,7 +17,7 @@ contract Upgrade002 is EIP2535Initializable, IrrigationAccessControl {
     }
     event Upgrade002PoolInfo();
 
-    function init001() external reinitializer(2) onlyAdminRole {
+    function init002() external reinitializer(2) onlyAdminRole {
         WaterTowerStorage.Layout storage l = WaterTowerStorage.layout();
         for (uint256 i = l.curPoolIndex; i > 0; ) {
             PoolInfo storage poolInfo = l.pools[i];

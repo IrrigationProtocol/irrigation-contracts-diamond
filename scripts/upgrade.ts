@@ -72,7 +72,7 @@ async function main() {
       await attachIrrigationDiamond(deployInfo);
       await deployAndInitDiamondFacets(deployInfo, updatedFacetsToDeploy);
       log(`Contract address deployed is ${deployInfo.DiamondAddress}`);
-      writeDeployedInfo(deployments);
+      if (networkName !== 'local') writeDeployedInfo(deployments);
     } else {
       log(`No deployments found to attach to for ${networkName}, aborting.`);
     }

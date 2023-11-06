@@ -45,7 +45,6 @@ export interface IVersionInfo {
   upgradeInit?: string;
   deployInclude?: string[];
   callback?: AfterDeployInit;
-  initArgs?: any;
 }
 
 export type VersionRecord = Record<number, IVersionInfo>;
@@ -56,7 +55,14 @@ export interface IFacetToDeployInfo {
   libraries?: string[];
 }
 
+export interface IUpgradeInit {
+  initContractName: string;
+  initFuncName: string;
+  initArgs: any;
+}
+
 export type FacetToDeployInfo = Record<string, IFacetToDeployInfo>;
+export type UpgradeInitInfo = Record<string, IUpgradeInit>;
 
 export function toWei(value: number | string): BigNumber {
   return utils.parseEther(value.toString());
@@ -93,10 +99,10 @@ export function writeDeployedInfo(deployments: { [key: string]: INetworkDeployIn
   fs.writeFileSync(
     'scripts/deployments.ts',
     `\nimport { INetworkDeployInfo } from "../scripts/common";\n` +
-    `export const deployments: { [key: string]: INetworkDeployInfo } = ${util.inspect(
-      deployments,
-      { depth: null },
-    )};\n`,
+      `export const deployments: { [key: string]: INetworkDeployInfo } = ${util.inspect(
+        deployments,
+        { depth: null },
+      )};\n`,
     'utf8',
   );
 }

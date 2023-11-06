@@ -68,7 +68,7 @@ async function mintLUSD(address: string, amount) {
 async function mintWithTransfer(tokenAddress: string, from: string, address: string, amount) {
   const signer = await impersonateSigner(from);
   const token = await ethers.getContractAt('IERC20Upgradeable', tokenAddress);
-  await setEtherBalance(signer.address, toWei(0.2));
+  await setEtherBalance(signer.address, toWei(1));
   await token.connect(signer).transfer(address, amount);
 }
 

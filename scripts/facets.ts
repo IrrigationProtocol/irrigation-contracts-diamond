@@ -1,4 +1,4 @@
-import { FacetToDeployInfo } from './common';
+import { FacetToDeployInfo, UpgradeInitInfo } from './common';
 import { glob } from 'glob';
 import { initAuctionFee } from './init';
 
@@ -21,7 +21,14 @@ export const Facets: FacetToDeployInfo = {
     priority: 150,
     versions: { 0.2: { callback: initAuctionFee } },
   },
-  Upgrade002: { priority: 160, versions: { 0.2: { init: 'init001' } } },
+};
+
+export const UpgradeInits: UpgradeInitInfo = {
+  0.2: {
+    initContractName: 'Upgrade002',
+    initFuncName: 'init002',
+    initArgs: null,
+  },
 };
 
 export async function LoadFacetDeployments() {
