@@ -14,7 +14,7 @@ export const Facets: FacetToDeployInfo = {
   AuctionUpgradeable: { priority: 90, versions: { 0.2: {} } },
   // ZSCUpgradeable: { priority: 100, libraries: ['BurnVerifier', 'ZetherVerifier', 'libEncryption'] },
   PodsOracleUpgradeable: { priority: 110 },
-  TrancheBondUpgradeable: { priority: 120, versions: { 0.2: {} } },
+  TrancheBondUpgradeable: { priority: 120 },
   ERC1155WhitelistUpgradeable: { priority: 130 },
   PriceOracleUpgradeable: { priority: 140, libraries: ['UniswapV3Twap'] },
   IrrigationControlUpgradeable: {

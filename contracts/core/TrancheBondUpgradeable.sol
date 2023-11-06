@@ -372,10 +372,6 @@ contract TrancheBondUpgradeable is
         return (trancheId >> 2, uint8(trancheId & 3) - 1);
     }
 
-    function getDepositCount() external view returns (uint256) {
-        return TrancheBondStorage.layout().curDepositCount;
-    }
-
     function setMaturityPeriods(uint48[] calldata periods) external onlyAdminRole {
         TrancheBondStorage.layout().periods = periods;
         emit SetMaturityPeriods(periods);
