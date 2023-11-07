@@ -44,17 +44,8 @@ contract WaterTowerUpgradeable is
     error LockedWater();
 
     uint256 internal constant IRRIGATE_BONUS_DOMINATOR = 100;
-    uint256 internal constant AUTOIRRIGATE_GASLIMIT = 542000;
+    uint256 internal constant AUTOIRRIGATE_GASLIMIT = 490000;
     uint256 internal constant POOL_PERIOD = 30 days;
-
-    function initWaterTower() external EIP2535Initializer onlySuperAdminRole {
-        __ReentrancyGuard_init();
-        WaterTowerStorage.Layout storage l = WaterTowerStorage.layout();
-        // middle asset for irrigate is BEAN
-        l.middleAssetForIrrigate = Constants.BEAN;
-        // added bonus for irrigating is 5%
-        l.irrigateBonusRate = 5;
-    }
 
     /// @notice deposit water token
     function deposit(uint256 amount, bool bAutoIrrigate) external whenNotPaused {
@@ -154,11 +145,6 @@ contract WaterTowerUpgradeable is
                 _userInfo.pending +=
                     (_userInfo.rewardRate * lastPoolInfo.monthlyRewards) /
                     lastPoolInfo.totalRewardRate;
-                l.userPoolHistories[user][_userInfo.lastPoolIndex].rewardRate = _userInfo
-                    .rewardRate;
-                l.userPoolHistories[user][_userInfo.lastPoolIndex].averageStored =
-                    _userInfo.rewardRate /
-                    (lastPoolInfo.endTime - lastPoolInfo.startTime);
             }
             /// if there is no deposit for user, reward rate start from 0
             _userInfo.lastPoolIndex = curPoolIndex;
@@ -194,7 +180,6 @@ contract WaterTowerUpgradeable is
     function _claimReward(address user, uint256 amount) internal returns (uint256) {
         uint256 curPoolIndex = WaterTowerStorage.layout().curPoolIndex;
         _updateUserPool(user, WaterTowerStorage.layout().pools[curPoolIndex], curPoolIndex);
-
         uint256 ethReward = WaterTowerStorage.userInfo(user).pending;
         if (ethReward < amount) revert InsufficientReward();
         if (amount == 0) amount = ethReward;
@@ -366,18 +351,5 @@ contract WaterTowerUpgradeable is
 
     function getTotalRewards() external view returns (uint256 totalRewards) {
         totalRewards = WaterTowerStorage.layout().totalRewards;
-    }
-
-    function getAverageStoredWater(address user) external view returns (uint256 amount) {
-        WaterTowerStorage.Layout storage l = WaterTowerStorage.layout();
-        uint256 curPoolIndex = l.curPoolIndex;
-        return l.userPoolHistories[user][curPoolIndex - 1].averageStored;
-    }
-
-    function getUserPoolHistory(
-        address user,
-        uint256 poolIndex
-    ) external view returns (UserPoolHistory memory userPoolHistory) {
-        return WaterTowerStorage.layout().userPoolHistories[user][poolIndex];
     }
 }

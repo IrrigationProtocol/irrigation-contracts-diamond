@@ -85,7 +85,7 @@ contract AuctionUpgradeable is
     );
 
     /// @notice Emitted by auction when bidder places a bid
-    /// @param bid bid token struct
+    /// @param bid Bid token struct
     /// @param auctionId The id of auction list
     /// @param bidId The id of bid list
 
@@ -94,6 +94,7 @@ contract AuctionUpgradeable is
     /// @notice Emitted by auction when bidder or auctioneer closes a auction
     /// @param unSoldAmount Amount of unsold auctioning token
     /// @param auctionId Auction id
+    /// @param settledBidCount Settled bid count when closing auction
     event AuctionClosed(uint256 unSoldAmount, uint256 indexed auctionId, uint256 settledBidCount);
 
     event AuctionUpdate(
@@ -663,6 +664,7 @@ contract AuctionUpgradeable is
         feeAmount = getListingFee(listingFee, amount, multiplier, tokenPrice);
     }
 
+    /// @notice returns fee level, fee amount, listing fee and closing fee numerator for water amount
     function getAuctionFeeAndLimit(
         uint256 waterAmount
     )
@@ -722,20 +724,20 @@ contract AuctionUpgradeable is
         address user,
         uint256 lockedLevelForAuction
     ) internal returns (uint256 successFee) {
-        WaterTowerStorage.Layout storage wl = WaterTowerStorage.layout();
-        LockedUserInfo memory lockedInfo = wl.lockedUsers[user];
+        // WaterTowerStorage.Layout storage wl = WaterTowerStorage.layout();
+        LockedUserInfo storage lockedInfo = WaterTowerStorage.layout().lockedUsers[user];
         AuctionFee memory fee = AuctionStorage.layout().fee;
         successFee = fee.successFees[lockedLevelForAuction];
         uint256 lockedForAuction = fee.limits[lockedLevelForAuction];
         if (lockedForAuction == 0) return successFee;
         uint256 lockedCount = lockedInfo.lockedCounts[lockedLevelForAuction] - 1;
-        wl.lockedUsers[user].lockedCounts[lockedLevelForAuction] = uint32(lockedCount);
+        lockedInfo.lockedCounts[lockedLevelForAuction] = uint32(lockedCount);
         if (lockedCount == 0 && lockedInfo.lockedAmount == lockedForAuction) {
             if (lockedForAuction >= 1) {
                 // find locked min level
                 for (uint256 i = lockedLevelForAuction - 1; i > 0; ) {
                     if (lockedInfo.lockedCounts[i] > 0) {
-                        wl.lockedUsers[user].lockedAmount = fee.limits[i];
+                       lockedInfo.lockedAmount = fee.limits[i];
                         return successFee;
                     }
                     unchecked {
@@ -743,7 +745,7 @@ contract AuctionUpgradeable is
                     }
                 }
             }
-            wl.lockedUsers[user].lockedAmount = fee.limits[0];
+            lockedInfo.lockedAmount = fee.limits[0];
         }
     }
 

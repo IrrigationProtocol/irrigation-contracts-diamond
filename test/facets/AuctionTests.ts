@@ -884,9 +884,7 @@ export function suite() {
         await waterTower.deposit(toWei(31000), true);
         await skipTime(86400 * 30);
         await waterTower.setPool(0, 0);
-        await waterTower.deposit(toWei(0), true);
-        const averageWater = await waterTower.getAverageStoredWater(owner.address);
-        expect(averageWater).to.be.gt(toWei(12800));
+        await waterTower.deposit(toWei(0), true);        
         await irrigationControl.setAuctionFee({
           limits: [0, toWei(32), toWei(320), toWei(3200), toWei(6400), toWei(12800), toWei(32000)],
           listingFees: [10000, 6000, 3000, 2000, 1000, 1000, 0],

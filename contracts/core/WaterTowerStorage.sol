@@ -60,8 +60,6 @@ library WaterTowerStorage {
         // Middle asset for irrigating ether reward
         address middleAssetForIrrigate;
         // added upgrade 002
-        // user => pool id => average stored amount and reward rate for users in the pool
-        mapping(address => mapping(uint256 => UserPoolHistory)) userPoolHistories;
         // user => locked user info
         mapping(address => LockedUserInfo) lockedUsers;
     }
