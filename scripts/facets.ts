@@ -5,7 +5,7 @@ export const Facets: FacetToDeployInfo = {
   DiamondCutFacet: { priority: 10, versions: { 0.0: { init: 'initDiamondCut' } } },
   DiamondLoupeFacet: { priority: 20 },
   OwnershipFacet: { priority: 30 },
-  SprinklerUpgradeable: { priority: 40, versions: { 0.2: {} } },
+  SprinklerUpgradeable: { priority: 40 },
   WaterCommonUpgradeable: { priority: 50 },
   // WaterFaucetUpgradeable: { priority: 60 },
   WaterTowerUpgradeable: { priority: 70, versions: { 0.2: {} } },
