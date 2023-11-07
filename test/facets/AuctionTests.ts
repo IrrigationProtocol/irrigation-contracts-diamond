@@ -824,7 +824,7 @@ export function suite() {
       });
     });
 
-    describe('#auction without fee', async function () {
+    describe('#auction fee', async function () {
       it('big water holders should create auction without paying ether', async () => {
         // set fee 0 for users stored more than 3200 water
         await irrigationControl.setAuctionFee({

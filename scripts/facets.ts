@@ -1,6 +1,5 @@
 import { FacetToDeployInfo, UpgradeInitInfo } from './common';
 import { glob } from 'glob';
-import { initAuctionFee } from './init';
 
 export const Facets: FacetToDeployInfo = {
   DiamondCutFacet: { priority: 10, versions: { 0.0: { init: 'initDiamondCut' } } },
@@ -17,17 +16,14 @@ export const Facets: FacetToDeployInfo = {
   TrancheBondUpgradeable: { priority: 120 },
   ERC1155WhitelistUpgradeable: { priority: 130 },
   PriceOracleUpgradeable: { priority: 140, libraries: ['UniswapV3Twap'] },
-  IrrigationControlUpgradeable: {
-    priority: 150,
-    versions: { 0.2: { callback: initAuctionFee } },
-  },
+  IrrigationControlUpgradeable: { priority: 150, versions: { 0.2: {} } },
 };
 
 export const UpgradeInits: UpgradeInitInfo = {
   0.2: {
     initContractName: 'Upgrade002',
     initFuncName: 'init002',
-    initArgs: null,
+    initArgs: [[3, 4, 5, 8]],
   },
 };
 

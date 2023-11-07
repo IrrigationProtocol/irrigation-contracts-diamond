@@ -28,7 +28,7 @@ import * as util from 'util';
 const log: debug.Debugger = debug('IrrigationDeploy:log');
 log.color = '159';
 
-const GAS_LIMIT_PER_FACET = 30000;
+const GAS_LIMIT_PER_FACET = 20000;
 const GAS_LIMIT_CUT_BASE = 70000;
 
 export async function deployIrrigationDiamond(networkDeployInfo: INetworkDeployInfo) {
@@ -259,25 +259,24 @@ export async function deployFuncSelectors(
     log(`Calling Function:`, upgradeInitInfo);
   }
 
-  log('Cutting: ', cut.length);
   try {
     let totalSelectors = 0;
     cut.forEach((e) => {
       totalSelectors += e.functionSelectors.length;
-    });    
+    });
     const tx = await diamondCut.diamondCut(cut, initAddress, functionCall, {
       gasLimit: GAS_LIMIT_CUT_BASE + totalSelectors * GAS_LIMIT_PER_FACET,
-    });    
-    
-    log(`Diamond cut: tx hash: ${tx.hash}`);    
-    const receipt = await tx.wait();    
+    });
+
+    log(`Diamond cut: tx hash: ${tx.hash}`);
+    const receipt = await tx.wait();
     if (!receipt.status) {
       throw Error(`Diamond upgrade was failed: ${tx.hash}`);
     }
   } catch (e) {
     log(`unable to cut facet: \n ${e}`);
   }
-  for (const facetCutInfo of cut) {    
+  for (const facetCutInfo of cut) {
     for (const facetModified of facetCutInfo.functionSelectors) {
       switch (facetCutInfo.action) {
         case FacetCutAction.Add:
