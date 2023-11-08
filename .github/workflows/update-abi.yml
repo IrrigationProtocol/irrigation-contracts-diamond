@@ -20,3 +20,4 @@ jobs:
           destination-branch: 'develop'
           destination-directory: 'src/config/abi'
           commit-email:  ${{ secrets.DEV_MAIL }}
+          commit-username: 'ruymaster'
