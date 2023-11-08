@@ -15,8 +15,7 @@ jobs:
         env:
           API_TOKEN_GITHUB: ${{ secrets.API_TOKEN_GITHUB }}
         with:    
-          source-files: 'data/abi/Irrigation.json'
-          destination-username: 'ruymaster'
+          source-files: 'data/abi/Irrigation.json'          
           destination-repository: 'IrrigationProtocol/irrigation-dapp'
           destination-directory: 'src/config/abi'
           commit-email:  ${{ secrets.DEV_MAIL }}
