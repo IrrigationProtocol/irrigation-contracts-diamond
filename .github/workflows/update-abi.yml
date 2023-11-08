@@ -17,5 +17,6 @@ jobs:
         with:    
           source-files: 'data/abi/Irrigation.json'          
           destination-repository: 'IrrigationProtocol/irrigation-dapp'
+          destination-branch: 'develop'
           destination-directory: 'src/config/abi'
           commit-email:  ${{ secrets.DEV_MAIL }}
