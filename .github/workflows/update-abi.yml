@@ -6,7 +6,7 @@ on:
       - main
       - add-workflow
 jobs:
-  update-abi:
+  update-ui:
     runs-on: ubuntu-latest
     environment: ${{ github.ref_name }}
     steps:
@@ -21,6 +21,10 @@ jobs:
           destination-directory: 'src/config/abi'
           commit-email:  ${{ secrets.DEV_MAIL }}
           commit-username: 'ruymaster'
+  update-subgraph:
+    runs-on: ubuntu-latest
+    environment: ${{ github.ref_name }}
+    steps:
       - name: Update Subgraph
         uses: nkoppel/push-files-to-another-repository@v1.1.2
         env:
