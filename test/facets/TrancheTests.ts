@@ -14,7 +14,7 @@ import {
   WaterUpgradeable,
 } from '../../typechain-types';
 import { AuctionType } from '../types';
-import { getBean, getBeanMetapool, getBeanstalk, getMockPlots, getUsdc } from '../utils/mint';
+import { getBean, getBeanMetapool, getBeanstalk, getUsdc } from '../utils/mint';
 import { CONTRACT_ADDRESSES } from '../../scripts/shared';
 import { skipTime } from '../utils/time';
 import { BigNumber, utils } from 'ethers';
@@ -110,8 +110,6 @@ export function suite() {
         await waterTower.deposit(toWei(32), false);
         /// approve pods
         await beanstalk.approvePods(trancheBond.address, ethers.constants.MaxUint256);
-        /// get mock plots with old plots data
-        await getMockPlots();
         await expect(
           trancheBond.createTranchesWithPods(['747381568584998', 200], [0, 0], [20, 20], 0),
         ).revertedWithCustomError(trancheBond, 'NotSortedPlots');

@@ -11,15 +11,13 @@ import {
   WaterTowerUpgradeable,
 } from '../typechain-types';
 import {
-  AfterDeployInit,
-  INetworkDeployInfo,
-  dc,
   formatFixed,
   fromWei,
   toD6,
   toWei,
 } from './common';
-import { IrrigationDiamond } from '../typechain-types/contracts/IrrigationDiamond';
+import { impersonateSigner, setEtherBalance } from '../test/utils/signer';
+import { getMockPlots, mintAllTokensForTesting } from '../test/utils/mint';
 
 const debuglog: debug.Debugger = debug('IrrigationInit:log');
 debuglog.color = '159';
@@ -242,16 +240,26 @@ export const defaultAuctionFeeData = {
   listingFees: [toD6(0.025), toD6(0.01), toD6(0.0066), toD6(0.0033), toD6(0.002), 0],
   successFees: [toD6(0.05), toD6(0.015), toD6(0.01), toD6(0.0075), toD6(0.005), toD6(0.005)],
 };
+export const updateOwnerForTest = async (rootAddress: string) => {
+  const curOwner = (await ethers.getSigners())[0];
+  const ownership = await ethers.getContractAt('OwnershipFacet', rootAddress);
+  const oldOwnerAddress = await ownership.owner();
+  const oldOwner = await impersonateSigner(oldOwnerAddress);
+  if (oldOwnerAddress !== curOwner.address) {
+    debuglog(`Transterring ownership from ${oldOwnerAddress}`);
+    await setEtherBalance(oldOwnerAddress, toWei(10));
+    await ownership.connect(oldOwner).transferOwnership(curOwner.address);
+  }
+  return oldOwnerAddress;
+};
 
-// init auction fee for upgrade 002 (v1.01)
-export const initAuctionFee: AfterDeployInit = async (networkDeployInfo: INetworkDeployInfo) => {
-  debuglog('Set Auction Fee after upgrading');
-  const irrigationDiamond = dc.IrrigationDiamond as IrrigationDiamond;
-  const irrigationControl = await ethers.getContractAt(
-    'IrrigationControlUpgradeable',
-    irrigationDiamond.address,
-  );
-  await irrigationControl.setAuctionFee(defaultAuctionFeeData);
-  // add reward 25% of auction ether fee to water tower
-  await irrigationControl.setFeeForWaterTower(toD6(0.25));
+export const initForTest = async (rootAddress: string, oldOwnerAddress: string) => {
+  debuglog('minting tokens and plots for test');
+  const curOwner = (await ethers.getSigners())[0];  
+  const oldOwner = await impersonateSigner(oldOwnerAddress);
+  const water = await ethers.getContractAt('WaterUpgradeable', rootAddress);
+  const waterBalance = await water.balanceOf(oldOwnerAddress);
+  await water.connect(oldOwner).transfer(curOwner.address, waterBalance);  
+  await mintAllTokensForTesting(curOwner.address);
+  await getMockPlots();
 };

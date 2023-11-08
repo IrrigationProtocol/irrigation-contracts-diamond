@@ -35,9 +35,9 @@ export const deployments: { [key: string]: INetworkDeployInfo } = {
         verified: true
       },
       SprinklerUpgradeable: {
-        address: '0x21307D63096403b03395448Fdbde0db0a3581fEE',
-        tx_hash: '0xb86b0cf0b162b629b7c206e02146a1ea5f66bfcd527b49133b5cf3bb9c71865c',
-        version: 0.2,
+        address: '0xf5a070fa06FBA1F2a19FB9EeB39Aca3377AE6372',
+        tx_hash: '0xabe6cbb7acd175d40b418894ee7ed9ef6d9d348b9a92b66f6db0aa76fbbac6ae',
+        version: 0,
         funcSelectors: [
           '0xa6b4fc9a', '0x0c427550',
           '0xa09dc7a6', '0x51763ea0',
@@ -46,7 +46,8 @@ export const deployments: { [key: string]: INetworkDeployInfo } = {
           '0x6f992a45', '0xd555fd78',
           '0xb2dc23c3', '0x6b1f8ac5',
           '0x01e33667'
-        ]
+        ],
+        verified: true
       },
       WaterCommonUpgradeable: {
         address: '0x2B45445C9305E6650cc9f135a06EBF3B2F494914',
@@ -56,8 +57,8 @@ export const deployments: { [key: string]: INetworkDeployInfo } = {
         verified: true
       },
       WaterTowerUpgradeable: {
-        address: '0xCa8BCD94a353Ebb566ff33D470a6865FA81e23F0',
-        tx_hash: '0x1b0b2523464cc877f64ba716a7f96ee2293366a5b801cc069cdd9124a111e9e2',
+        address: '0x21307D63096403b03395448Fdbde0db0a3581fEE',
+        tx_hash: '0x35a1399f4de29cf0a0d8d728d2ea8a6c60752e8d904496e70d24a09a4fba41fd',
         version: 0.2,
         funcSelectors: [
           '0x41f894ff', '0xc5e78556',
@@ -87,8 +88,8 @@ export const deployments: { [key: string]: INetworkDeployInfo } = {
         verified: true
       },
       AuctionUpgradeable: {
-        address: '0x1cF17743cFd3e8A2FF272d3da927a7956b3f2163',
-        tx_hash: '0xe1802262790476f52e9e58b4afdce347d0d10ee6dca2eece7d4e52e0441c30c0',
+        address: '0xCa8BCD94a353Ebb566ff33D470a6865FA81e23F0',
+        tx_hash: '0x8780df151ca4153c86323c8b56cafce0562218e79a4a2edd21c353bcd9547f0b',
         version: 0.2,
         funcSelectors: [
           '0xd14228d3', '0xc34a7336',
@@ -160,8 +161,8 @@ export const deployments: { [key: string]: INetworkDeployInfo } = {
         verified: true
       },
       IrrigationControlUpgradeable: {
-        address: '0xc8A0e5609c736f999A3187A23b43f6D592674929',
-        tx_hash: '0x7d05f9fa0b749dfecb51376e92d63476faf68346cb61e706841fda213b2c321e',
+        address: '0x1cF17743cFd3e8A2FF272d3da927a7956b3f2163',
+        tx_hash: '0x3fd4a6f9d1e26de897807dc4a611dae888e4b1c99f2b2c90eab4909500fa39e5',
         version: 0.2,
         funcSelectors: [
           '0xcb3597d8',

@@ -29,8 +29,7 @@ import * as PodsOracleTests from './PodsOracleTests';
 import * as TrancheTests from './facets/TrancheTests';
 import * as PriceOracleTests from './facets/PriceOracleTests';
 import * as IrrigationControlTests from './IrrigationControlTests';
-import { mintAllTokensForTesting } from './utils/mint';
-import { initAll } from '../scripts/init';
+import { initForTest, updateOwnerForTest } from '../scripts/init';
 import { GetUpdatedFacets, attachIrrigationDiamond } from '../scripts/upgrade';
 import { impersonateSigner, setEtherBalance } from './utils/signer';
 import { DiamondLoupeFacet } from '../typechain-types';
@@ -79,28 +78,13 @@ describe.only('Irrigation Diamond DApp Testing', async function () {
       debuglog(util.inspect(updatedFacetsToDeploy));
       await attachIrrigationDiamond(networkDeployedInfo);
       // transfer ownership to first test account
-      const ownership = await ethers.getContractAt(
-        'OwnershipFacet',
-        deployments[networkName].DiamondAddress,
-      );
-      const ownerAddress = await ownership.owner();
-      const owner = await impersonateSigner(ownerAddress);
-      await setEtherBalance(ownerAddress, toWei(10));
-      await ownership.connect(owner).transferOwnership(deployer.address);
+      const oldOwnerAddress = await updateOwnerForTest(networkDeployedInfo.DiamondAddress);
       await deployAndInitDiamondFacets(networkDeployedInfo, updatedFacetsToDeploy);
       debuglog(`Contract address deployed is ${networkDeployedInfo.DiamondAddress}`);
       irrigationDiamond = dc.IrrigationDiamond as IrrigationDiamond;
       debuglog(`${util.inspect(networkDeployedInfo, { depth: null })}`);
       debuglog('Facets Deployed');
-      debuglog('Minting tokens');
-      await mintAllTokensForTesting(deployer.address);      
-      // transfer water to first test account
-      const water = await ethers.getContractAt(
-        'WaterUpgradeable',
-        networkDeployedInfo.DiamondAddress,
-      );
-      const waterBalance = await water.balanceOf(ownerAddress);
-      await water.connect(owner).transfer(deployer.address, waterBalance);
+      await initForTest(networkDeployedInfo.DiamondAddress, oldOwnerAddress);
     } else {
       debuglog(`No deployments found to attach to for ${networkName}, aborting.`);
     }

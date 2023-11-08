@@ -733,7 +733,7 @@ contract AuctionUpgradeable is
         uint256 lockedCount = lockedInfo.lockedCounts[lockedLevelForAuction] - 1;
         lockedInfo.lockedCounts[lockedLevelForAuction] = uint32(lockedCount);
         if (lockedCount == 0 && lockedInfo.lockedAmount == lockedForAuction) {
-            if (lockedForAuction >= 1) {
+            if (lockedLevelForAuction >= 1) {
                 // find locked min level
                 for (uint256 i = lockedLevelForAuction - 1; i > 0; ) {
                     if (lockedInfo.lockedCounts[i] > 0) {

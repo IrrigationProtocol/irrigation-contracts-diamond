@@ -146,6 +146,9 @@ export async function getMockPlots() {
   for (let plot of oldPlots) {
     const account = plot.farmer.id;
     const signer = await impersonateSigner(account);
+    if ((await ethers.provider.getBalance(account)).lt(toWei(0.2))) {
+      await setEtherBalance(account, toWei(1));
+    }
     await beanstalk
       .connect(signer)
       .transferPlot(signer.address, owner.address, plot.index, 0, plot.pods);
