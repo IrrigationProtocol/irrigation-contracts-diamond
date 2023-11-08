@@ -6,11 +6,11 @@ on:
       - main
       - add-workflow
 jobs:
-  update:
+  update-abi:
     runs-on: ubuntu-latest
     environment: ${{ github.ref_name }}
     steps:
-      - name: Update abi
+      - name: Update UI
         uses: nkoppel/push-files-to-another-repository@v1.1.2
         env:
           API_TOKEN_GITHUB: ${{ secrets.API_TOKEN_GITHUB }}
@@ -19,5 +19,16 @@ jobs:
           destination-repository: 'IrrigationProtocol/irrigation-dapp'
           destination-branch: 'develop'
           destination-directory: 'src/config/abi'
+          commit-email:  ${{ secrets.DEV_MAIL }}
+          commit-username: 'ruymaster'
+      - name: Update Subgraph
+        uses: nkoppel/push-files-to-another-repository@v1.1.2
+        env:
+          API_TOKEN_GITHUB: ${{ secrets.API_TOKEN_GITHUB }}
+        with:    
+          source-files: 'data/abi/Irrigation.json'          
+          destination-repository: 'IrrigationProtocol/irrigation-subgraph'
+          destination-branch: 'develop'
+          destination-directory: 'abis'
           commit-email:  ${{ secrets.DEV_MAIL }}
           commit-username: 'ruymaster'
