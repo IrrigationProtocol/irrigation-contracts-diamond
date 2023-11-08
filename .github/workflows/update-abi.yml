@@ -1,0 +1,20 @@
+name: CI/CD Update abi
+
+on:
+  workflow_dispatch:
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    environment: ${{ github.ref_name }}
+    steps:
+      - name: Update abi
+        uses: nkoppel/push-files-to-another-repository@1.1.0
+        env:
+          API_TOKEN_GITHUB: ${{ secrets.API_TOKEN_GITHUB }}
+        with:    
+          source-files: 'data/abi/Irrigation.json'
+          destination-username: 'ruymaster'
+          destination-repository: 'IrrigationProtocol/irrigation-dapp'
+          destination-directory: 'src/config/abi'
+          commit-email:  ${{ secrets.DEV_MAIL }}
