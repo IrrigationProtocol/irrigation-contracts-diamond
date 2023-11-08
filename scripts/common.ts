@@ -3,6 +3,7 @@ import { Fragment } from '@ethersproject/abi';
 import fs from 'fs';
 import util from 'util';
 import crypto from 'crypto';
+import { includesInAbi } from './shared';
 
 export const toBN = BigNumber.from;
 export const FERTILIZER_TOKEN_ID = 0;
@@ -115,4 +116,14 @@ export function random32bit() {
   let u = new Uint32Array(1);
   const randomeBuffer = crypto.randomBytes(32);
   return '0x' + randomeBuffer.toString('hex');
+}
+
+export function writeIrrigationAbi(rawAbi: any[]) {
+  const filteredAbi = rawAbi.filter((abiElement, index, abi) => {
+    if (includesInAbi.includes(abiElement.name)) {
+      return true;
+    }
+    return false;
+  });
+  fs.writeFileSync('data/abi/Irrigation.json', JSON.stringify(filteredAbi, null, 2), 'utf8');
 }

@@ -63,3 +63,45 @@ export enum OracleType {
   UNISWAP_V3,
   CUSTOM_ORACLE,
 }
+/// all function and event names used in subgraph and UI
+export const includesInAbi = [
+  // external functions
+  'buyNow',
+  'claimBid',
+  'closeAuction',
+  'createAuction',
+  'placeBid',
+  'updateAuction',
+  'exchangeETHToWater',
+  'exchangeTokenToWater',
+  'createTranchesWithPods',
+  'receivePodsForTranche',
+  'claim',
+  'deposit',
+  'irrigate',
+  'withdraw',
+  // events (exclude erc20 and erc1155 events)
+  // auction
+  'AuctionCreated',
+  'AuctionBuy',
+  'AuctionBid',
+  'AuctionClosed',
+  'ClaimBid',
+  'UpdateBidTokenGroup',
+  'UpdateAuctionPeriods',
+  'UpdateAuctionFee',
+  // sprinkler
+  'WaterExchanged',
+  'AddWhiteListAsset',
+  'UnListAsset',
+  'DepositWater',
+  // watertower
+  'Deposited',
+  'Withdrawn',
+  'Claimed',
+  'Irrigate',
+  'SetAutoIrrigate',
+  'AddETHReward',
+  'UpdateRewardPeriod',
+  'AutoIrrigate',
+];

@@ -14,7 +14,7 @@ import '@nomiclabs/hardhat-web3';
 import { CONTRACT_ADDRESSES } from './scripts/shared';
 import { getPriceOfPods } from './test/utils/price';
 import { deployments } from './scripts/deployments';
-import { fromWei, toBN, toWei } from './scripts/common';
+import { fromWei, toBN, toWei, writeIrrigationAbi } from './scripts/common';
 import { restorePlots } from './test/utils/restorePlot';
 import { extendEnvironment } from 'hardhat/config';
 import { HardhatRuntimeEnvironment, HttpNetworkUserConfig } from 'hardhat/types';
@@ -39,7 +39,8 @@ task('accounts', 'Prints the list of accounts', async (taskArgs, hre) => {
 task('deployer', 'Prints balance of deployer account', async (taskArgs, hre) => {
   const accounts = await hre.ethers.getSigners();
   console.log(
-    'deployer:', accounts[0].address,
+    'deployer:',
+    accounts[0].address,
     fromWei(await hre.ethers.provider.getBalance(accounts[0].address)),
   );
 });
@@ -156,6 +157,13 @@ task('reserve', 'Get reserve tokens on sprinkler', async (taskArgs: any, hre) =>
     ),
   );
 }).addParam('token');
+
+task('update-abi', 'Write updated prototocol abi file', async (taskArgs: any, hre) => {
+  const contractName = 'hardhat-diamond-abi/HardhatDiamondABI.sol:IrrigationDiamond';
+  const { abi } = await hre.artifacts.readArtifact(contractName);
+  writeIrrigationAbi(abi);
+  console.log('Irrigation abi file was updated');
+});
 
 const elementSeenSet = new Set<string>();
 // filter out duplicate function signatures
