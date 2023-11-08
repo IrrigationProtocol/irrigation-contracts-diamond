@@ -1,8 +1,10 @@
 name: CI/CD Update abi
 
 on:
-  workflow_dispatch:
-
+  push:
+    branches: 
+      - main
+      - add-workflow
 jobs:
   update:
     runs-on: ubuntu-latest
