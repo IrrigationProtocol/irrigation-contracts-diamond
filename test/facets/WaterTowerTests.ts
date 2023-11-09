@@ -37,6 +37,18 @@ export function suite() {
       expect(endTime).to.be.eq(0);
     });
 
+    it('should get current pool info when poolIndex is greater than current pool index', async () => {
+      const { totalRewardRate, monthlyRewards, endTime } = await waterTower.getPoolInfo(100000);
+      const {
+        totalRewardRate: t1,
+        monthlyRewards: m1,
+        endTime: c1,
+      } = await waterTower.getPoolInfo(await waterTower.getPoolIndex());      
+      expect(totalRewardRate).to.be.eq(t1);
+      expect(monthlyRewards).to.be.eq(m1);
+      expect(endTime).to.be.eq(c1);
+    });
+
     it('Test WaterTower deposit and setAutoIrrigate', async () => {
       let updatedBalance = await water.balanceOf(irrigationDiamond.address);
       await water.connect(owner).transfer(sender.address, toWei(100));

@@ -87,10 +87,11 @@ task('rewards', 'Prints rewards on Water Tower', async (taskArgs, hre) => {
     deployments[hre.network.name].DiamondAddress,
   );
   console.log('totalRewards in WaterTower:', fromWei(await waterTowerContract.getTotalRewards()));
-  const lastPool = await waterTowerContract.getPoolInfo(
-    (await waterTowerContract.getPoolIndex()).sub(1),
-  );
+  const curPoolIndex = await waterTowerContract.getPoolIndex();
+  const lastPool = await waterTowerContract.getPoolInfo(curPoolIndex.sub(1));
   console.log('last monthly Rewards in WaterTower:', fromWei(lastPool.monthlyRewards));
+  const curPool = await waterTowerContract.getPoolInfo(curPoolIndex);
+  console.log('current pool end time', new Date(1000 * Number(curPool.endTime)));
 });
 
 task('update-rewards', 'Update monthly rewards on Water Tower', async (taskArgs: any, hre) => {

@@ -268,6 +268,7 @@ contract WaterTowerUpgradeable is
         } else return (0, 0, 0);
     }
 
+    /// @notice add ether reward in watertower
     function addETHReward() external payable {
         if (msg.value == 0) revert InsufficientEther();
         WaterTowerStorage.layout().totalRewards += msg.value;
@@ -341,8 +342,11 @@ contract WaterTowerUpgradeable is
         return WaterTowerStorage.layout().curPoolIndex;
     }
 
+    /// @notice return pool info for poolIndex. If poolIndex is greater than current pool index, return current pool
     function getPoolInfo(uint256 poolIndex) external view returns (PoolInfo memory) {
-        return WaterTowerStorage.layout().pools[poolIndex];
+        WaterTowerStorage.Layout storage l = WaterTowerStorage.layout();
+        if (poolIndex > l.curPoolIndex) poolIndex = l.curPoolIndex;
+        return l.pools[poolIndex];
     }
 
     function getMiddleAsset() external view returns (address) {
