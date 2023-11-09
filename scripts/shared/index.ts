@@ -63,25 +63,44 @@ export enum OracleType {
   UNISWAP_V3,
   CUSTOM_ORACLE,
 }
+
 /// all function and event names used in subgraph and UI
 export const includesInAbi = [
   // external functions
+  //  auction
   'buyNow',
   'claimBid',
   'closeAuction',
   'createAuction',
   'placeBid',
   'updateAuction',
+  //  sprinkler
   'exchangeETHToWater',
   'exchangeTokenToWater',
+  //  tranche
   'createTranchesWithPods',
   'receivePodsForTranche',
+  //  watertower
   'claim',
   'deposit',
   'irrigate',
   'withdraw',
+  'setAutoIrrigate',
+  /// view functions
+  'getPrice',
+  'latestPriceOfPods',
+  'getAuctionFeeAndLimit',
+  'getTranchePods',
+  'getPlotsForTranche',
+  'getPlotsForUser',
+  'totalDeposits',
+  'userInfo',
+  'userETHReward',
+  'getPoolInfo',
+  'getBonusForIrrigate',
+
   // events (exclude erc20 and erc1155 events)
-  // auction
+  //  auction
   'AuctionCreated',
   'AuctionBuy',
   'AuctionBid',
@@ -90,12 +109,16 @@ export const includesInAbi = [
   'UpdateBidTokenGroup',
   'UpdateAuctionPeriods',
   'UpdateAuctionFee',
-  // sprinkler
+  //  sprinkler
   'WaterExchanged',
   'AddWhiteListAsset',
   'UnListAsset',
   'DepositWater',
-  // watertower
+  //  tranche
+  'CreateTranche',
+  'ReceivePodsWithTranche',
+  'SetMaturityPeriods',
+  //  watertower
   'Deposited',
   'Withdrawn',
   'Claimed',

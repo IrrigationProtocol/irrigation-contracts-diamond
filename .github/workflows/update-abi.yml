@@ -4,7 +4,7 @@ on:
   push:
     branches: 
       - main
-      - add-workflow
+      - develop
 jobs:
   update-ui:
     runs-on: ubuntu-latest
