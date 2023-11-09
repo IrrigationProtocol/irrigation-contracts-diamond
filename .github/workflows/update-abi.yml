@@ -15,7 +15,7 @@ jobs:
         env:
           API_TOKEN_GITHUB: ${{ secrets.API_TOKEN_GITHUB }}
         with:
-          source-files: "data/"
+          source-files: "data//"
           destination-repository: "IrrigationProtocol/irrigation-dapp"
           destination-branch: "develop"
           destination-directory: "src/config"
