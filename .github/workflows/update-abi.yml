@@ -18,7 +18,7 @@ jobs:
           source-files: "data/"
           destination-repository: "IrrigationProtocol/irrigation-dapp"
           destination-branch: "develop"
-          destination-directory: "src/config/abi"
+          destination-directory: "src/config"
           commit-email: ${{ secrets.DEV_MAIL }}
           commit-username: "ruymaster"
   update-subgraph:
