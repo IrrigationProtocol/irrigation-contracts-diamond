@@ -41,6 +41,11 @@ if (!process.env.FORK_URL) {
   process.exit(0);
 }
 
+if (!(Number(process.env.FORK_BLOCK_NUMBER) > 18179487)) {
+  console.log('Unit test is supported from block later than 18179487.');
+  process.exit(0);
+}
+
 export async function logEvents(tx: ContractTransaction) {
   const receipt = await tx.wait();
 

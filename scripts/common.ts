@@ -74,6 +74,11 @@ export function toD6(value: number | string): BigNumber {
   return utils.parseUnits(value.toString(), 6);
 }
 
+export function toD4(value: number | string): BigNumber {
+  if (typeof value === 'number') value = Math.floor(value * 10 ** 4) / 10 ** 4;
+  return utils.parseUnits(value.toString(), 4);
+}
+
 export function fromWei(value: number | string | BigNumber): number {
   return Number(utils.formatEther(value));
 }

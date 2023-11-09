@@ -863,7 +863,7 @@ export function suite() {
         await auctionContract.closeAuction(auctionId);
         expect((await waterTower.getLockedUserInfo(owner.address)).lockedAmount).to.be.eq(0);
       });
-      it('creating auction without fee should fail', async () => {
+      it('creating auction without fee by users not stored water should fail', async () => {
         let stotedWater = (await waterTower.userInfo(owner.address)).amount;
         await waterTower.withdraw(stotedWater);
         await expect(
@@ -884,7 +884,7 @@ export function suite() {
         await waterTower.deposit(toWei(31000), true);
         await skipTime(86400 * 30);
         await waterTower.setPool(0, 0);
-        await waterTower.deposit(toWei(0), true);        
+        await waterTower.deposit(toWei(0), true);
         await irrigationControl.setAuctionFee({
           limits: [0, toWei(32), toWei(320), toWei(3200), toWei(6400), toWei(12800), toWei(32000)],
           listingFees: [10000, 6000, 3000, 2000, 1000, 1000, 0],
@@ -926,8 +926,32 @@ export function suite() {
         );
         // user level 1
         await waterTower.deposit(toWei(32), true);
-        await auctionContract.createAuction({ ...defaultAuctionSetting }, 0, { value: toWei(0.1) });
-        await skipTime(3 * 86400);
+        const listingFeeDominator = (await auctionContract.getAuctionFeeAndLimit(toWei(32)))
+          .listingFee;
+        // listing fee 1% for level 1
+        expect(listingFeeDominator).to.be.eq(10000);
+        const tokenDecimals = await token1.decimals();
+        const etherPrice = await (
+          await ethers.getContractAt('PriceOracleUpgradeable', diamondRootAddress)
+        ).getUnderlyingPriceETH();
+        const listingFee = defaultAuctionSetting.sellAmount
+          .mul(defaultAuctionSetting.fixedPrice)
+          .mul(toWei(1).div(BigNumber.from(10).pow(tokenDecimals)))
+          .mul(listingFeeDominator)
+          .div(etherPrice)
+          .div(toD6(1));
+        //slippage for fee is 5%, because ether price can be changed
+        const appliedListingFee = listingFee.mul(105).div(100);
+        const ethBalance = await owner.getBalance();
+        const tx = await auctionContract.createAuction({ ...defaultAuctionSetting }, 0, {
+          value: appliedListingFee,
+        });
+        const receipt = await tx.wait();
+        // test fee amount
+        // contract refund rest slippage ether
+        expect(ethBalance.sub(await owner.getBalance())).to.be.eq(
+          listingFee.add(receipt.gasUsed.mul(receipt.effectiveGasPrice)),
+        );
         lockedInfo = await waterTower.getLockedUserInfo(owner.address);
         expect(lockedInfo.lockedAmount).to.be.eq(toWei(32));
         expect(lockedInfo.lockedCounts[1]).to.be.eq(1);
@@ -937,7 +961,24 @@ export function suite() {
         );
         const auctionId = await auctionContract.getAuctionsCount();
         expect((await auctionContract.getAuction(auctionId)).lockedLevel).to.be.eq(1);
+        const usdcContractBalance = await usdc.balanceOf(auctionContract.address);
+        await usdc.connect(secondBidder).approve(auctionContract.address, toD6(100));
+        const token1Balance = await token1.balanceOf(secondBidder.address);
+        const usdcBalance = await usdc.balanceOf(secondBidder.address);
+        const usdcOwnerBalance = await usdc.balanceOf(owner.address);
+        await auctionContract.connect(secondBidder).buyNow(auctionId, toWei(1), 1);
+        expect((await token1.balanceOf(secondBidder.address)).sub(token1Balance)).to.be.eq(
+          toWei(1),
+        );
+        expect(usdcBalance.sub(await usdc.balanceOf(secondBidder.address))).to.be.eq(toD6(0.9574));
+        await skipTime(3 * 86400);        
         await auctionContract.closeAuction(auctionId);
+        expect((await usdc.balanceOf(auctionContract.address)).sub(usdcContractBalance)).to.be.eq(
+          toD6(0.9574).mul(15000).div(1000000),
+        );
+        expect((await usdc.balanceOf(owner.address)).sub(usdcOwnerBalance)).to.be.eq(
+          toD6(0.9574).mul(985000).div(1000000),
+        );
         lockedInfo = await waterTower.getLockedUserInfo(owner.address);
         expect(lockedInfo.lockedAmount).to.be.eq(0);
         assert.sameMembers(

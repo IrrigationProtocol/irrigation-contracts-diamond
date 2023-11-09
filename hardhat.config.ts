@@ -267,6 +267,7 @@ const config: HardhatUserConfig = {
   gasReporter: {
     enabled: process.env.REPORT_GAS !== undefined,
     currency: 'USD',
+    excludeContracts: ['hardhat-diamond-abi/HardhatDiamondABI.sol:IrrigationDiamond'],
   },
   etherscan: {
     apiKey: {
