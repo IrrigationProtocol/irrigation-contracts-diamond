@@ -1201,6 +1201,37 @@
   {
     "inputs": [
       {
+        "internalType": "address",
+        "name": "user",
+        "type": "address"
+      }
+    ],
+    "name": "getLockedUserInfo",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "uint32[8]",
+            "name": "lockedCounts",
+            "type": "uint32[8]"
+          },
+          {
+            "internalType": "uint256",
+            "name": "lockedAmount",
+            "type": "uint256"
+          }
+        ],
+        "internalType": "struct LockedUserInfo",
+        "name": "",
+        "type": "tuple"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
         "internalType": "uint256",
         "name": "poolIndex",
         "type": "uint256"

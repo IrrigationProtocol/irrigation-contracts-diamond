@@ -95,10 +95,10 @@ export const includesInAbi = [
   'getPlotsForUser',
   'totalDeposits',
   'userInfo',
+  'getLockedUserInfo',
   'userETHReward',
   'getPoolInfo',
   'getBonusForIrrigate',
-
   // events (exclude erc20 and erc1155 events)
   //  auction
   'AuctionCreated',
