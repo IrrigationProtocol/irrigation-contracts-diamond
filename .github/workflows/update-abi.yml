@@ -2,7 +2,7 @@ name: CI/CD Update abi
 
 on:
   push:
-    branches: 
+    branches:
       - main
       - develop
 jobs:
@@ -14,13 +14,13 @@ jobs:
         uses: nkoppel/push-files-to-another-repository@v1.1.2
         env:
           API_TOKEN_GITHUB: ${{ secrets.API_TOKEN_GITHUB }}
-        with:    
-          source-files: 'data/abi/Irrigation.json'          
-          destination-repository: 'IrrigationProtocol/irrigation-dapp'
-          destination-branch: 'develop'
-          destination-directory: 'src/config/abi'
-          commit-email:  ${{ secrets.DEV_MAIL }}
-          commit-username: 'ruymaster'
+        with:
+          source-files: "data/"
+          destination-repository: "IrrigationProtocol/irrigation-dapp"
+          destination-branch: "develop"
+          destination-directory: "src/config/abi"
+          commit-email: ${{ secrets.DEV_MAIL }}
+          commit-username: "ruymaster"
   update-subgraph:
     runs-on: ubuntu-latest
     environment: ${{ github.ref_name }}
@@ -29,10 +29,10 @@ jobs:
         uses: nkoppel/push-files-to-another-repository@v1.1.2
         env:
           API_TOKEN_GITHUB: ${{ secrets.API_TOKEN_GITHUB }}
-        with:    
-          source-files: 'data/abi/Irrigation.json'          
-          destination-repository: 'IrrigationProtocol/irrigation-subgraph'
-          destination-branch: 'develop'
-          destination-directory: 'abis'
-          commit-email:  ${{ secrets.DEV_MAIL }}
-          commit-username: 'ruymaster'
+        with:
+          source-files: "data/abi/Irrigation.json"
+          destination-repository: "IrrigationProtocol/irrigation-subgraph"
+          destination-branch: "develop"
+          destination-directory: "abis"
+          commit-email: ${{ secrets.DEV_MAIL }}
+          commit-username: "ruymaster"
