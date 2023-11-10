@@ -47,97 +47,99 @@ export const auctionSellTokens = [
   CONTRACT_ADDRESSES.stETH,
 ];
 const purchaseTokens = [CONTRACT_ADDRESSES.DAI, CONTRACT_ADDRESSES.USDC, CONTRACT_ADDRESSES.USDT];
+
+const defaultOracleData = [
+  {
+    symbol: 'ETH',
+    asset: CONTRACT_ADDRESSES.ETHER,
+    oracle: CONTRACT_ADDRESSES.CHAINLINK_ORACLE_ETH,
+    base: ethers.constants.AddressZero,
+    oType: OracleType.CHAINLINK,
+  },
+  /// stable coins
+  {
+    symbol: 'USDC',
+    asset: CONTRACT_ADDRESSES.USDC,
+    oracle: CONTRACT_ADDRESSES.CHAINLINK_ORACLE_USDC,
+    base: ethers.constants.AddressZero,
+    oType: OracleType.CHAINLINK,
+  },
+  {
+    symbol: 'DAI',
+    asset: CONTRACT_ADDRESSES.DAI,
+    oracle: CONTRACT_ADDRESSES.CHAINLINK_ORACLE_DAI,
+    base: ethers.constants.AddressZero,
+    oType: OracleType.CHAINLINK,
+  },
+  {
+    symbol: 'USDT',
+    asset: CONTRACT_ADDRESSES.USDT,
+    oracle: CONTRACT_ADDRESSES.CHAINLINK_ORACLE_USDT,
+    base: ethers.constants.AddressZero,
+    oType: OracleType.CHAINLINK,
+  },
+  {
+    symbol: 'LUSD',
+    asset: CONTRACT_ADDRESSES.LUSD,
+    oracle: CONTRACT_ADDRESSES.CHAINLINK_ORACLE_LUSD,
+    base: ethers.constants.AddressZero,
+    oType: OracleType.CHAINLINK,
+  },
+  {
+    symbol: 'BEAN',
+    asset: CONTRACT_ADDRESSES.BEAN,
+    oracle: ethers.constants.AddressZero,
+    base: ethers.constants.AddressZero,
+    oType: OracleType.CUSTOM_ORACLE,
+  },
+  // {
+  //   symbol: 'ROOT',
+  //   asset: CONTRACT_ADDRESSES.ROOT,
+  //   oracle: CONTRACT_ADDRESSES.UNIV3_POOL_ROOT,
+  //   base: CONTRACT_ADDRESSES.BEAN,
+  //   oType: OracleType.UNISWAP_V3,
+  // },
+  {
+    symbol: 'SPOT',
+    asset: CONTRACT_ADDRESSES.SPOT,
+    oracle: CONTRACT_ADDRESSES.UNIV3_POOL_SPOT,
+    base: CONTRACT_ADDRESSES.USDC,
+    oType: OracleType.UNISWAP_V3,
+  },
+  {
+    symbol: 'OHM',
+    asset: CONTRACT_ADDRESSES.OHM,
+    oracle: CONTRACT_ADDRESSES.CHAINLINK_ORACLE_OHM,
+    base: CONTRACT_ADDRESSES.ETHER,
+    oType: OracleType.CHAINLINK,
+  },
+  {
+    symbol: 'PAXG',
+    asset: CONTRACT_ADDRESSES.PAXG,
+    oracle: CONTRACT_ADDRESSES.CHAINLINK_ORACLE_PAXG,
+    base: CONTRACT_ADDRESSES.ETHER,
+    oType: OracleType.CHAINLINK,
+  },
+  {
+    symbol: 'CNHT',
+    asset: CONTRACT_ADDRESSES.CNHT,
+    oracle: CONTRACT_ADDRESSES.UNIV3_POOL_CNHT,
+    base: CONTRACT_ADDRESSES.ETHER,
+    oType: OracleType.UNISWAP_V3,
+  },
+  {
+    symbol: 'gOHM',
+    asset: CONTRACT_ADDRESSES.gOHM,
+    oracle: CONTRACT_ADDRESSES.UNIV3_POOL_GOHM,
+    base: CONTRACT_ADDRESSES.ETHER,
+    oType: OracleType.UNISWAP_V3,
+  },
+];
 export async function initPriceOracles(priceOracle: PriceOracleUpgradeable) {
   const factory = await ethers.getContractFactory('BeanPriceOracle');
   const beanOracle = await factory.deploy();
   await beanOracle.deployed();
-  const defaultOracleData = [
-    {
-      symbol: 'ETH',
-      asset: CONTRACT_ADDRESSES.ETHER,
-      oracle: CONTRACT_ADDRESSES.CHAINLINK_ORACLE_ETH,
-      base: ethers.constants.AddressZero,
-      oType: OracleType.CHAINLINK,
-    },
-    /// stable coins
-    {
-      symbol: 'USDC',
-      asset: CONTRACT_ADDRESSES.USDC,
-      oracle: CONTRACT_ADDRESSES.CHAINLINK_ORACLE_USDC,
-      base: ethers.constants.AddressZero,
-      oType: OracleType.CHAINLINK,
-    },
-    {
-      symbol: 'DAI',
-      asset: CONTRACT_ADDRESSES.DAI,
-      oracle: CONTRACT_ADDRESSES.CHAINLINK_ORACLE_DAI,
-      base: ethers.constants.AddressZero,
-      oType: OracleType.CHAINLINK,
-    },
-    {
-      symbol: 'USDT',
-      asset: CONTRACT_ADDRESSES.USDT,
-      oracle: CONTRACT_ADDRESSES.CHAINLINK_ORACLE_USDT,
-      base: ethers.constants.AddressZero,
-      oType: OracleType.CHAINLINK,
-    },
-    {
-      symbol: 'LUSD',
-      asset: CONTRACT_ADDRESSES.LUSD,
-      oracle: CONTRACT_ADDRESSES.CHAINLINK_ORACLE_LUSD,
-      base: ethers.constants.AddressZero,
-      oType: OracleType.CHAINLINK,
-    },
-    {
-      symbol: 'BEAN',
-      asset: CONTRACT_ADDRESSES.BEAN,
-      oracle: beanOracle.address,
-      base: ethers.constants.AddressZero,
-      oType: OracleType.CUSTOM_ORACLE,
-    },
-    // {
-    //   symbol: 'ROOT',
-    //   asset: CONTRACT_ADDRESSES.ROOT,
-    //   oracle: CONTRACT_ADDRESSES.UNIV3_POOL_ROOT,
-    //   base: CONTRACT_ADDRESSES.BEAN,
-    //   oType: OracleType.UNISWAP_V3,
-    // },
-    {
-      symbol: 'SPOT',
-      asset: CONTRACT_ADDRESSES.SPOT,
-      oracle: CONTRACT_ADDRESSES.UNIV3_POOL_SPOT,
-      base: CONTRACT_ADDRESSES.USDC,
-      oType: OracleType.UNISWAP_V3,
-    },
-    {
-      symbol: 'OHM',
-      asset: CONTRACT_ADDRESSES.OHM,
-      oracle: CONTRACT_ADDRESSES.CHAINLINK_ORACLE_OHM,
-      base: CONTRACT_ADDRESSES.ETHER,
-      oType: OracleType.CHAINLINK,
-    },
-    {
-      symbol: 'PAXG',
-      asset: CONTRACT_ADDRESSES.PAXG,
-      oracle: CONTRACT_ADDRESSES.CHAINLINK_ORACLE_PAXG,
-      base: CONTRACT_ADDRESSES.ETHER,
-      oType: OracleType.CHAINLINK,
-    },
-    {
-      symbol: 'CNHT',
-      asset: CONTRACT_ADDRESSES.CNHT,
-      oracle: CONTRACT_ADDRESSES.UNIV3_POOL_CNHT,
-      base: CONTRACT_ADDRESSES.ETHER,
-      oType: OracleType.UNISWAP_V3,
-    },
-    {
-      symbol: 'gOHM',
-      asset: CONTRACT_ADDRESSES.gOHM,
-      oracle: CONTRACT_ADDRESSES.UNIV3_POOL_GOHM,
-      base: CONTRACT_ADDRESSES.ETHER,
-      oType: OracleType.UNISWAP_V3,
-    },
-  ];
+  defaultOracleData.find((e) => e.symbol === 'BEAN').oracle = beanOracle.address;
   for (const o of defaultOracleData) {
     await priceOracle.setOracle(o.asset, o.oracle, o.base, o.oType);
     debuglog(`${o.symbol} price: ${formatFixed(fromWei(await priceOracle.getPrice(o.asset)))}`);
@@ -257,6 +259,14 @@ export const initForTest = async (rootAddress: string, oldOwnerAddress: string) 
   await water.connect(oldOwner).transfer(curOwner.address, waterBalance);
   await mintAllTokensForTesting(curOwner.address);
   await getMockPlots();
+  const factory = await ethers.getContractFactory('MockAggregator');
+  const priceOracle = await ethers.getContractAt('PriceOracleUpgradeable', rootAddress);
+  for (const oracleToUpdate of defaultOracleData.filter((e) => e.oType === OracleType.CHAINLINK)) {
+    const mockAggregator = await factory.deploy(oracleToUpdate.oracle);
+    await mockAggregator.deployed();
+    debuglog(`Update oracle to mock ${oracleToUpdate.symbol}: ${mockAggregator.address}`);
+    await priceOracle.setOracleAddress(oracleToUpdate.asset, mockAggregator.address);
+  }
 };
 
 export const updateBeanPrice = async (networkDeployInfo: INetworkDeployInfo) => {

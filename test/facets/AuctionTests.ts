@@ -943,6 +943,8 @@ export function suite() {
         //slippage for fee is 5%, because ether price can be changed
         const appliedListingFee = listingFee.mul(105).div(100);
         const ethBalance = await owner.getBalance();
+        const totalRewards = await waterTower.getTotalRewards();
+        const etherReserve = await auctionContract.getReserveFee(CONTRACT_ADDRESSES.ETHER);
         const tx = await auctionContract.createAuction({ ...defaultAuctionSetting }, 0, {
           value: appliedListingFee,
         });
@@ -952,6 +954,11 @@ export function suite() {
         expect(ethBalance.sub(await owner.getBalance())).to.be.eq(
           listingFee.add(receipt.gasUsed.mul(receipt.effectiveGasPrice)),
         );
+        const addedReward = listingFee.mul(250000).div(1000000);
+        expect((await waterTower.getTotalRewards()).sub(totalRewards)).to.be.eq(addedReward);
+        expect(
+          (await auctionContract.getReserveFee(CONTRACT_ADDRESSES.ETHER)).sub(etherReserve),
+        ).to.be.eq(listingFee.sub(addedReward));
         lockedInfo = await waterTower.getLockedUserInfo(owner.address);
         expect(lockedInfo.lockedAmount).to.be.eq(toWei(32));
         expect(lockedInfo.lockedCounts[1]).to.be.eq(1);
@@ -971,7 +978,7 @@ export function suite() {
           toWei(1),
         );
         expect(usdcBalance.sub(await usdc.balanceOf(secondBidder.address))).to.be.eq(toD6(0.9574));
-        await skipTime(3 * 86400);        
+        await skipTime(3 * 86400);
         await auctionContract.closeAuction(auctionId);
         expect((await usdc.balanceOf(auctionContract.address)).sub(usdcContractBalance)).to.be.eq(
           toD6(0.9574).mul(15000).div(1000000),

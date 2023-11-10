@@ -41,7 +41,7 @@ contract Upgrade002 {
         al.fee.limits = [0, 32 * 1e18, 320 * 1e18, 3200 * 1e18, 32000 * 1e18, 320000 * 1e18];
         al.fee.listingFees = [25000, 10000, 6600, 3300, 2000, 0];
         al.fee.successFees = [50000, 15000, 10000, 7500, 5000, 5000];
-        al.feeForTower = 25000;
+        al.feeForTower = 250000;
         emit Upgrade002PoolInfo();
     }
 }

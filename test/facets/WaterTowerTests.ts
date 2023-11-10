@@ -8,7 +8,7 @@ import { skipTime } from '../utils/time';
 import { BigNumber } from 'ethers';
 import { assert, expect } from '../utils/debug';
 
-const AUTOIRRIGATE_GASLIMIT = BigNumber.from('490000');
+const AUTOIRRIGATE_GASLIMIT = BigNumber.from('602000');
 export function suite() {
   describe('Irrigation WaterTower Testing', async function () {
     let signers: SignerWithAddress[];
@@ -261,6 +261,7 @@ export function suite() {
         autoIrrigatorEthBalance.sub(await ethers.provider.getBalance(autoIrrigateAdmin.address)),
       ).to.be.eq(txReceipt.gasUsed.sub(AUTOIRRIGATE_GASLIMIT).mul(txReceipt.effectiveGasPrice));
       // actual gas is 5% smaller than expected gas
+      expect(AUTOIRRIGATE_GASLIMIT.sub(txReceipt.gasUsed)).to.be.gte(0);
       expect(AUTOIRRIGATE_GASLIMIT.sub(txReceipt.gasUsed).toString()).to.be.lte(
         AUTOIRRIGATE_GASLIMIT.div(20),
       );

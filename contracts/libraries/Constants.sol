@@ -21,7 +21,7 @@ library Constants {
 
     /// @notice time out to get price from chainlink
     /// @dev should update before deploying on mainnet
-    uint256 internal constant GRACE_PERIOD_TIME = 72000000;
+    uint256 internal constant GRACE_PERIOD_TIME = 6 days;
 
     /// underlying decimals
     uint256 internal constant D18 = 1e18;

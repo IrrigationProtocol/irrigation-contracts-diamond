@@ -44,7 +44,7 @@ contract WaterTowerUpgradeable is
     error LockedWater();
 
     uint256 internal constant IRRIGATE_BONUS_DOMINATOR = 100;
-    uint256 internal constant AUTOIRRIGATE_GASLIMIT = 490000;
+    uint256 internal constant AUTOIRRIGATE_GASLIMIT = 602000;
     uint256 internal constant POOL_PERIOD = 30 days;
 
     /// @notice deposit water token
