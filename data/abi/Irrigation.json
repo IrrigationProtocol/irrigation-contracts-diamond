@@ -1,0 +1,1438 @@
+[
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "components": [
+          {
+            "internalType": "uint128",
+            "name": "bidAmount",
+            "type": "uint128"
+          },
+          {
+            "internalType": "uint128",
+            "name": "bidPrice",
+            "type": "uint128"
+          },
+          {
+            "internalType": "address",
+            "name": "bidder",
+            "type": "address"
+          },
+          {
+            "internalType": "uint128",
+            "name": "paidAmount",
+            "type": "uint128"
+          },
+          {
+            "internalType": "uint16",
+            "name": "bidTokenId",
+            "type": "uint16"
+          },
+          {
+            "internalType": "bool",
+            "name": "bCleared",
+            "type": "bool"
+          }
+        ],
+        "indexed": false,
+        "internalType": "struct Bid",
+        "name": "bid",
+        "type": "tuple"
+      },
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "auctionId",
+        "type": "uint256"
+      },
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "bidId",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "availableBidDepth",
+        "type": "uint256"
+      }
+    ],
+    "name": "AuctionBid",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "buyer",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "amountIn",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "amountOut",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "address",
+        "name": "purchaseToken",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "auctionId",
+        "type": "uint256"
+      }
+    ],
+    "name": "AuctionBuy",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "unSoldAmount",
+        "type": "uint256"
+      },
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "auctionId",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "settledBidCount",
+        "type": "uint256"
+      }
+    ],
+    "name": "AuctionClosed",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "components": [
+          {
+            "internalType": "uint48",
+            "name": "startTime",
+            "type": "uint48"
+          },
+          {
+            "internalType": "uint48",
+            "name": "endTime",
+            "type": "uint48"
+          },
+          {
+            "internalType": "address",
+            "name": "sellToken",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "trancheIndex",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint128",
+            "name": "minBidAmount",
+            "type": "uint128"
+          },
+          {
+            "internalType": "uint128",
+            "name": "fixedPrice",
+            "type": "uint128"
+          },
+          {
+            "internalType": "uint128",
+            "name": "priceRangeStart",
+            "type": "uint128"
+          },
+          {
+            "internalType": "uint128",
+            "name": "priceRangeEnd",
+            "type": "uint128"
+          },
+          {
+            "internalType": "uint128",
+            "name": "sellAmount",
+            "type": "uint128"
+          },
+          {
+            "internalType": "uint128",
+            "name": "reserve",
+            "type": "uint128"
+          },
+          {
+            "internalType": "uint128",
+            "name": "incrementBidPrice",
+            "type": "uint128"
+          },
+          {
+            "internalType": "uint16",
+            "name": "bidTokenGroupId",
+            "type": "uint16"
+          },
+          {
+            "internalType": "enum AuctionType",
+            "name": "auctionType",
+            "type": "uint8"
+          }
+        ],
+        "indexed": false,
+        "internalType": "struct AuctionSetting",
+        "name": "auctionSetting",
+        "type": "tuple"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "seller",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "auctionId",
+        "type": "uint256"
+      }
+    ],
+    "name": "AuctionCreated",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "auctionId",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "bidId",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "bool",
+        "name": "isWinner",
+        "type": "bool"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "claimAmount",
+        "type": "uint256"
+      }
+    ],
+    "name": "ClaimBid",
+    "type": "event"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "auctionId",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint128",
+        "name": "purchaseAmount",
+        "type": "uint128"
+      },
+      {
+        "internalType": "uint16",
+        "name": "buyTokenId",
+        "type": "uint16"
+      }
+    ],
+    "name": "buyNow",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "auctionId",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "bidId",
+        "type": "uint256"
+      }
+    ],
+    "name": "claimBid",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "auctionId",
+        "type": "uint256"
+      }
+    ],
+    "name": "closeAuction",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "components": [
+          {
+            "internalType": "uint48",
+            "name": "startTime",
+            "type": "uint48"
+          },
+          {
+            "internalType": "uint48",
+            "name": "endTime",
+            "type": "uint48"
+          },
+          {
+            "internalType": "address",
+            "name": "sellToken",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "trancheIndex",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint128",
+            "name": "minBidAmount",
+            "type": "uint128"
+          },
+          {
+            "internalType": "uint128",
+            "name": "fixedPrice",
+            "type": "uint128"
+          },
+          {
+            "internalType": "uint128",
+            "name": "priceRangeStart",
+            "type": "uint128"
+          },
+          {
+            "internalType": "uint128",
+            "name": "priceRangeEnd",
+            "type": "uint128"
+          },
+          {
+            "internalType": "uint128",
+            "name": "sellAmount",
+            "type": "uint128"
+          },
+          {
+            "internalType": "uint128",
+            "name": "reserve",
+            "type": "uint128"
+          },
+          {
+            "internalType": "uint128",
+            "name": "incrementBidPrice",
+            "type": "uint128"
+          },
+          {
+            "internalType": "uint16",
+            "name": "bidTokenGroupId",
+            "type": "uint16"
+          },
+          {
+            "internalType": "enum AuctionType",
+            "name": "auctionType",
+            "type": "uint8"
+          }
+        ],
+        "internalType": "struct AuctionSetting",
+        "name": "auctionSetting",
+        "type": "tuple"
+      },
+      {
+        "internalType": "uint8",
+        "name": "periodId",
+        "type": "uint8"
+      }
+    ],
+    "name": "createAuction",
+    "outputs": [],
+    "stateMutability": "payable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "waterAmount",
+        "type": "uint256"
+      }
+    ],
+    "name": "getAuctionFeeAndLimit",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "listingFee",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "successFee",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "feeLevel",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "limit",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "auctionId",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint128",
+        "name": "bidAmount",
+        "type": "uint128"
+      },
+      {
+        "internalType": "uint16",
+        "name": "bidTokenId",
+        "type": "uint16"
+      },
+      {
+        "internalType": "uint128",
+        "name": "bidPrice",
+        "type": "uint128"
+      },
+      {
+        "internalType": "uint128",
+        "name": "maxBidPrice",
+        "type": "uint128"
+      }
+    ],
+    "name": "placeBid",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "auctionId",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint128",
+        "name": "minBidAmount",
+        "type": "uint128"
+      },
+      {
+        "internalType": "uint128",
+        "name": "priceRangeStart",
+        "type": "uint128"
+      },
+      {
+        "internalType": "uint128",
+        "name": "incrementBidPrice",
+        "type": "uint128"
+      }
+    ],
+    "name": "updateAuction",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "components": [
+          {
+            "internalType": "uint32[]",
+            "name": "listingFees",
+            "type": "uint32[]"
+          },
+          {
+            "internalType": "uint32[]",
+            "name": "successFees",
+            "type": "uint32[]"
+          },
+          {
+            "internalType": "uint256[]",
+            "name": "limits",
+            "type": "uint256[]"
+          }
+        ],
+        "indexed": false,
+        "internalType": "struct AuctionFee",
+        "name": "fee",
+        "type": "tuple"
+      }
+    ],
+    "name": "UpdateAuctionFee",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "internalType": "uint48[]",
+        "name": "periods",
+        "type": "uint48[]"
+      }
+    ],
+    "name": "UpdateAuctionPeriods",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "id",
+        "type": "uint256"
+      },
+      {
+        "components": [
+          {
+            "internalType": "address[]",
+            "name": "bidTokens",
+            "type": "address[]"
+          },
+          {
+            "internalType": "address",
+            "name": "basePriceToken",
+            "type": "address"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "name",
+            "type": "bytes32"
+          }
+        ],
+        "indexed": false,
+        "internalType": "struct BidTokenGroup",
+        "name": "bidTokenGroup",
+        "type": "tuple"
+      }
+    ],
+    "name": "UpdateBidTokenGroup",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "token",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "tokenMultiplier",
+        "type": "uint256"
+      }
+    ],
+    "name": "AddWhiteListAsset",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256"
+      }
+    ],
+    "name": "DepositWater",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "token",
+        "type": "address"
+      }
+    ],
+    "name": "UnListAsset",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "user",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "token",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "waterAmount",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "bool",
+        "name": "isTemporarily",
+        "type": "bool"
+      }
+    ],
+    "name": "WaterExchanged",
+    "type": "event"
+  },
+  {
+    "inputs": [],
+    "name": "exchangeETHToWater",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "waterAmount",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "payable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "token",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256"
+      }
+    ],
+    "name": "exchangeTokenToWater",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "waterAmount",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "depositIndex",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "address",
+        "name": "user",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "periodId",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256[]",
+        "name": "depositIndexes",
+        "type": "uint256[]"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256[]",
+        "name": "amounts",
+        "type": "uint256[]"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256[]",
+        "name": "fmvs",
+        "type": "uint256[]"
+      }
+    ],
+    "name": "CreateTranche",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "trancheId",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "address",
+        "name": "user",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256[]",
+        "name": "podIndexes",
+        "type": "uint256[]"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "totalPods",
+        "type": "uint256"
+      }
+    ],
+    "name": "ReceivePodsWithTranche",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "internalType": "uint48[]",
+        "name": "periods",
+        "type": "uint48[]"
+      }
+    ],
+    "name": "SetMaturityPeriods",
+    "type": "event"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256[]",
+        "name": "indexes",
+        "type": "uint256[]"
+      },
+      {
+        "internalType": "uint256[]",
+        "name": "starts",
+        "type": "uint256[]"
+      },
+      {
+        "internalType": "uint256[]",
+        "name": "ends",
+        "type": "uint256[]"
+      },
+      {
+        "internalType": "uint8",
+        "name": "periodId",
+        "type": "uint8"
+      }
+    ],
+    "name": "createTranchesWithPods",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "trancheId",
+        "type": "uint256"
+      }
+    ],
+    "name": "getPlotsForTranche",
+    "outputs": [
+      {
+        "internalType": "uint256[]",
+        "name": "starts",
+        "type": "uint256[]"
+      },
+      {
+        "internalType": "uint256[]",
+        "name": "podAmounts",
+        "type": "uint256[]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "trancheId",
+        "type": "uint256"
+      },
+      {
+        "internalType": "address",
+        "name": "user",
+        "type": "address"
+      }
+    ],
+    "name": "getPlotsForUser",
+    "outputs": [
+      {
+        "internalType": "uint256[]",
+        "name": "starts",
+        "type": "uint256[]"
+      },
+      {
+        "internalType": "uint256[]",
+        "name": "podAmounts",
+        "type": "uint256[]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "trancheId",
+        "type": "uint256"
+      }
+    ],
+    "name": "getTranchePods",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "uint256",
+            "name": "fmv",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "claimedFMV",
+            "type": "uint256"
+          }
+        ],
+        "internalType": "struct TrancheMetadata",
+        "name": "tranche",
+        "type": "tuple"
+      },
+      {
+        "components": [
+          {
+            "internalType": "uint256[]",
+            "name": "podIndexes",
+            "type": "uint256[]"
+          },
+          {
+            "internalType": "uint256[]",
+            "name": "amounts",
+            "type": "uint256[]"
+          },
+          {
+            "internalType": "uint256[]",
+            "name": "fmvs",
+            "type": "uint256[]"
+          },
+          {
+            "internalType": "uint128[6]",
+            "name": "startIndexAndOffsets",
+            "type": "uint128[6]"
+          }
+        ],
+        "internalType": "struct DepositPods",
+        "name": "depositPods",
+        "type": "tuple"
+      },
+      {
+        "components": [
+          {
+            "internalType": "address",
+            "name": "contractAddress",
+            "type": "address"
+          },
+          {
+            "internalType": "enum UnderlyingAssetType",
+            "name": "assetType",
+            "type": "uint8"
+          },
+          {
+            "internalType": "uint48",
+            "name": "maturityDate",
+            "type": "uint48"
+          },
+          {
+            "internalType": "uint256",
+            "name": "totalDeposited",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "totalFMV",
+            "type": "uint256"
+          }
+        ],
+        "internalType": "struct UnderlyingAssetMetadata",
+        "name": "underlyingAsset",
+        "type": "tuple"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "trancheId",
+        "type": "uint256"
+      }
+    ],
+    "name": "receivePodsForTranche",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256"
+      }
+    ],
+    "name": "AddETHReward",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "user",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "rewardAmount",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "gasFee",
+        "type": "uint256"
+      }
+    ],
+    "name": "AutoIrrigate",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "user",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256"
+      }
+    ],
+    "name": "Claimed",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "user",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256"
+      }
+    ],
+    "name": "Deposited",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "user",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "address",
+        "name": "middleAsset",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "irrigateAmount",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "waterAmount",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "bonusAmount",
+        "type": "uint256"
+      }
+    ],
+    "name": "Irrigate",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "user",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "timestamp",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "bool",
+        "name": "bAutoIrrigate",
+        "type": "bool"
+      }
+    ],
+    "name": "SetAutoIrrigate",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "poolIndex",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "endTime",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "monthlyRewards",
+        "type": "uint256"
+      }
+    ],
+    "name": "UpdateRewardPeriod",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "user",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256"
+      }
+    ],
+    "name": "Withdrawn",
+    "type": "event"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256"
+      }
+    ],
+    "name": "claim",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256"
+      },
+      {
+        "internalType": "bool",
+        "name": "bAutoIrrigate",
+        "type": "bool"
+      }
+    ],
+    "name": "deposit",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "ethAmount",
+        "type": "uint256"
+      }
+    ],
+    "name": "getBonusForIrrigate",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "waterAmount",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "bonusAmount",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "swapAmount",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "user",
+        "type": "address"
+      }
+    ],
+    "name": "getLockedUserInfo",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "uint32[8]",
+            "name": "lockedCounts",
+            "type": "uint32[8]"
+          },
+          {
+            "internalType": "uint256",
+            "name": "lockedAmount",
+            "type": "uint256"
+          }
+        ],
+        "internalType": "struct LockedUserInfo",
+        "name": "",
+        "type": "tuple"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "poolIndex",
+        "type": "uint256"
+      }
+    ],
+    "name": "getPoolInfo",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "uint256",
+            "name": "totalRewardRate",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "monthlyRewards",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint128",
+            "name": "endTime",
+            "type": "uint128"
+          },
+          {
+            "internalType": "uint128",
+            "name": "startTime",
+            "type": "uint128"
+          }
+        ],
+        "internalType": "struct PoolInfo",
+        "name": "",
+        "type": "tuple"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "minSwapAmount",
+        "type": "uint256"
+      }
+    ],
+    "name": "irrigate",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bool",
+        "name": "bAutoIrrigate",
+        "type": "bool"
+      }
+    ],
+    "name": "setAutoIrrigate",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "totalDeposits",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "user",
+        "type": "address"
+      }
+    ],
+    "name": "userETHReward",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "ethReward",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "user",
+        "type": "address"
+      }
+    ],
+    "name": "userInfo",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "bool",
+            "name": "isAutoIrrigate",
+            "type": "bool"
+          },
+          {
+            "internalType": "uint256",
+            "name": "lastPoolIndex",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "pending",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "rewardRate",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "amount",
+            "type": "uint256"
+          }
+        ],
+        "internalType": "struct UserInfo",
+        "name": "",
+        "type": "tuple"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256"
+      }
+    ],
+    "name": "withdraw",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "placeInLine",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "pods",
+        "type": "uint256"
+      }
+    ],
+    "name": "latestPriceOfPods",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "price",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "asset",
+        "type": "address"
+      }
+    ],
+    "name": "getPrice",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "price",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  }
+]

@@ -15,7 +15,7 @@ import { expect } from 'chai';
 import { assert } from '../utils/debug';
 
 export function suite() {
-  describe('Irrigation Sprintkler Testing', async function () {
+  describe('Irrigation Sprinkler Testing', async function () {
     let signers: SignerWithAddress[];
     let owner: SignerWithAddress;
     let token1: IERC20Upgradeable;
@@ -44,15 +44,10 @@ export function suite() {
       priceOracle = await ethers.getContractAt('PriceOracleUpgradeable', irrigationMainAddress);
       usdt = await ethers.getContractAt('IERC20MetadataUpgradeable', CONTRACT_ADDRESSES.USDT);
     });
-    it('Test Sprinkler sprinkleable water amount should be enough', async () => {
-      expect(await sprinkler.sprinkleableWater()).to.be.eq(toWei(10_000));
+    it('Test Sprinkler sprinkleable water should be enough in contract', async () => {
+      const amount = await sprinkler.sprinkleableWater();
       const waterBalanceOfIrrigation = await waterToken.balanceOf(irrigationMainAddress);
-      assert(
-        waterBalanceOfIrrigation.eq(toWei(10_000)),
-        `irrigation balanceOf water should be 10000, but is ${ethers.utils.formatEther(
-          waterBalanceOfIrrigation,
-        )}`,
-      );
+      expect(waterBalanceOfIrrigation).to.be.gte(amount);
     });
     it('Test Sprinkler Whitelist', async () => {
       const gotWhitelist = await sprinkler.getWhitelist();
@@ -62,7 +57,8 @@ export function suite() {
       );
       assert(
         gotWhitelist[gotWhitelist.length - 1] == whitelist[gotWhitelist.length - 1],
-        `expected whitelist token ${whitelist[gotWhitelist.length - 1]}, but ${gotWhitelist[gotWhitelist.length - 1]
+        `expected whitelist token ${whitelist[gotWhitelist.length - 1]}, but ${
+          gotWhitelist[gotWhitelist.length - 1]
         }`,
       );
     });
@@ -159,29 +155,40 @@ export function suite() {
       const etherPrice = await priceOracle.getPrice(CONTRACT_ADDRESSES.ETHER);
       const waterPrice = await priceOracle.getPrice(waterToken.address);
       expect(waterBalance.mul(waterPrice).eq(etherPrice.mul(toWei(0.1))));
-      const waterAmountForETH = await sprinkler.getWaterAmount(CONTRACT_ADDRESSES.ETHER, toWei(0.1));
+      const waterAmountForETH = await sprinkler.getWaterAmount(
+        CONTRACT_ADDRESSES.ETHER,
+        toWei(0.1),
+      );
       expect(waterAmountForETH.eq(waterBalance));
     });
 
     it('Test SuperAdmin should be able to withdraw only ether swapped', async () => {
       let reserveEther = await sprinkler.getReserveToken(CONTRACT_ADDRESSES.ETHER);
-      expect(reserveEther).to.be.eq(toWei(0.1));
+      expect(reserveEther).to.be.gte(toWei(0.1));
       let updatedReceiverEtherBalance = await ethers.provider.getBalance(receiver.address);
       await sprinkler.withdrawToken(CONTRACT_ADDRESSES.ETHER, receiver.address, toWei(0.1));
-      updatedReceiverEtherBalance = (await ethers.provider.getBalance(receiver.address)).sub(updatedReceiverEtherBalance);
+      updatedReceiverEtherBalance = (await ethers.provider.getBalance(receiver.address)).sub(
+        updatedReceiverEtherBalance,
+      );
       expect(updatedReceiverEtherBalance).to.be.eq(toWei(0.1));
-      reserveEther = await sprinkler.getReserveToken(CONTRACT_ADDRESSES.ETHER);
-      expect(reserveEther).to.be.eq(toWei(0));
+      reserveEther = reserveEther.sub(await sprinkler.getReserveToken(CONTRACT_ADDRESSES.ETHER));
+      expect(reserveEther).to.be.eq(toWei(0.1));
       /// even if contract ether balance is enough, withdraw ether should be failed. so we will not confuse swapped ether
       /// from ether for reward
       await owner.sendTransaction({ to: sprinkler.address, value: toWei(0.02) });
       /// overflowed operation error even if our contract has enough balance
-      await expect(sprinkler.withdrawToken(CONTRACT_ADDRESSES.ETHER, receiver.address, toWei(0.001))).to.be.revertedWith('');
+      await expect(
+        sprinkler.withdrawToken(
+          CONTRACT_ADDRESSES.ETHER,
+          receiver.address,
+          (await sprinkler.getReserveToken(CONTRACT_ADDRESSES.ETHER)).add(toWei(0.001)),
+        ),
+      ).to.be.revertedWith('');
     });
 
     it('Test SuperAdmin should be able to withdraw swapped tokens', async () => {
       let reserveDAI = await sprinkler.getReserveToken(token1.address);
-      expect(reserveDAI).to.be.eq(toWei(100));
+      expect(reserveDAI).to.be.gte(toWei(100));
       await sprinkler.withdrawToken(CONTRACT_ADDRESSES.DAI, receiver.address, toWei(100));
       expect(await token1.balanceOf(receiver.address)).to.be.eq(toWei(100));
     });
@@ -189,14 +196,15 @@ export function suite() {
     it('exchangeTokenToWater with ether should not be worked', async () => {
       await waterToken.approve(sprinkler.address, toWei(100_000));
       await sprinkler.depositWater(toWei(100_000));
-      await expect(sprinkler.exchangeTokenToWater(CONTRACT_ADDRESSES.ETHER, toWei(1))).
-        to.be.revertedWithCustomError(sprinkler, 'InvalidSwapToken');
+      await expect(
+        sprinkler.exchangeTokenToWater(CONTRACT_ADDRESSES.ETHER, toWei(1)),
+      ).to.be.revertedWithCustomError(sprinkler, 'InvalidSwapToken');
     });
 
     it('Multiplier of usdt should be 18-6', async () => {
       expect(await sprinkler.tokenMultiplier(usdt.address)).to.be.eq(10 ** 12);
     });
-    
+
     it('Test exchange gOHM for WATER', async () => {
       const amount = await sprinkler.getWaterAmount(gOHM.address, toWei(0.1));
       const gOHMPrice = await priceOracle.getPrice(gOHM.address);
@@ -209,7 +217,9 @@ export function suite() {
       const expectedWaterAmount = toWei(0.1).mul(gOHMPrice).mul(token1Multiplier).div(waterPrice);
       assert(
         expectedWaterAmount.eq(amount),
-        `expected water is ${ fromWei(expectedWaterAmount)}, received water amount is ${fromWei(amount)}`,
+        `expected water is ${fromWei(expectedWaterAmount)}, received water amount is ${fromWei(
+          amount,
+        )}`,
       );
     });
   });

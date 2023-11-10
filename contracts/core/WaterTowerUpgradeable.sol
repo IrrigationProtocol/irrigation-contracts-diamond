@@ -14,6 +14,8 @@ import "../libraries/Constants.sol";
 import "../interfaces/ISprinklerUpgradeable.sol";
 import "../interfaces/IPriceOracleUpgradeable.sol";
 import "../interfaces/IWaterTowerUpgradeable.sol";
+import "../interfaces/basin/IWell.sol";
+import "../interfaces/IWETH.sol";
 
 /// @title  WaterTower Contract
 /// @notice Allows users deposit Water token and receive ETH reward
@@ -39,19 +41,11 @@ contract WaterTowerUpgradeable is
     /// @dev admin errors
     error InvalidTime();
     error InsufficientEther();
+    error LockedWater();
 
     uint256 internal constant IRRIGATE_BONUS_DOMINATOR = 100;
-    uint256 internal constant AUTOIRRIGATE_GASLIMIT = 877100;
+    uint256 internal constant AUTOIRRIGATE_GASLIMIT = 602000;
     uint256 internal constant POOL_PERIOD = 30 days;
-
-    function initWaterTower() external EIP2535Initializer onlySuperAdminRole {
-        __ReentrancyGuard_init();
-        WaterTowerStorage.Layout storage l = WaterTowerStorage.layout();
-        // middle asset for irrigate is BEAN
-        l.middleAssetForIrrigate = Constants.BEAN;
-        // added bonus for irrigating is 5%
-        l.irrigateBonusRate = 5;
-    }
 
     /// @notice deposit water token
     function deposit(uint256 amount, bool bAutoIrrigate) external whenNotPaused {
@@ -115,7 +109,7 @@ contract WaterTowerUpgradeable is
         uint256[] calldata rewardAmounts,
         uint256[] calldata minSwapAmounts
     ) external onlyAutoIrrigateAdminRole {
-        /// @dev gas fee is paid based on precalculated gasLimit(870200)
+        /// @dev gas fee is paid based on precalculated gasLimit(542000)
         uint256 gasFee = AUTOIRRIGATE_GASLIMIT * tx.gasprice;
         for (uint256 i; i < users.length; ) {
             _autoIrrigate(users[i], rewardAmounts[i], minSwapAmounts[i], gasFee);
@@ -151,11 +145,6 @@ contract WaterTowerUpgradeable is
                 _userInfo.pending +=
                     (_userInfo.rewardRate * lastPoolInfo.monthlyRewards) /
                     lastPoolInfo.totalRewardRate;
-                l.userPoolHistories[user][_userInfo.lastPoolIndex].rewardRate = _userInfo
-                    .rewardRate;
-                l.userPoolHistories[user][_userInfo.lastPoolIndex].averageStored =
-                    _userInfo.rewardRate /
-                    (lastPoolInfo.endTime - lastPoolInfo.startTime);
             }
             /// if there is no deposit for user, reward rate start from 0
             _userInfo.lastPoolIndex = curPoolIndex;
@@ -191,7 +180,6 @@ contract WaterTowerUpgradeable is
     function _claimReward(address user, uint256 amount) internal returns (uint256) {
         uint256 curPoolIndex = WaterTowerStorage.layout().curPoolIndex;
         _updateUserPool(user, WaterTowerStorage.layout().pools[curPoolIndex], curPoolIndex);
-
         uint256 ethReward = WaterTowerStorage.userInfo(user).pending;
         if (ethReward < amount) revert InsufficientReward();
         if (amount == 0) amount = ethReward;
@@ -225,6 +213,8 @@ contract WaterTowerUpgradeable is
         // if amount is 0, update only pool info
         if (amount == 0) return;
         l.users[user].amount -= amount;
+        // can't withdraw locked water amount
+        if (l.users[user].amount < l.lockedUsers[user].lockedAmount) revert LockedWater();
         uint256 rewardRate = amount * (poolInfo.endTime - block.timestamp);
         l.users[user].rewardRate -= rewardRate;
         l.pools[curPoolIndex].totalRewardRate -= rewardRate;
@@ -237,27 +227,17 @@ contract WaterTowerUpgradeable is
         uint256 minSwapAmount
     ) internal returns (uint256 waterAmount) {
         if (WaterTowerStorage.layout().middleAssetForIrrigate == Constants.BEAN) {
-            /// @dev swap ETH for BEAN using curve router
-            address[9] memory route = [
-                Constants.ETHER,
-                Constants.TRI_CRYPTO_POOL,
-                Constants.USDT,
-                Constants.CURVE_BEAN_METAPOOL,
-                Constants.BEAN,
-                Constants.ZERO,
-                Constants.ZERO,
-                Constants.ZERO,
-                Constants.ZERO
-            ];
-            uint256[3][4] memory swapParams = [
-                [uint(2), 0, 3],
-                [uint(3), 0, 2],
-                [uint(0), 0, 0],
-                [uint(0), 0, 0]
-            ];
-            uint256 beanAmount = ICurveSwapRouter(Constants.CURVE_ROUTER).exchange_multiple{
-                value: amount
-            }(route, swapParams, amount, minSwapAmount);
+            /// @dev swap ETH for BEAN using bean-weth liquidity
+            IWETH(Constants.WETH).deposit{value: amount}();
+            IERC20Upgradeable(Constants.WETH).approve(Constants.BEAN_ETH_WELL, amount);
+            uint256 beanAmount = IWell(Constants.BEAN_ETH_WELL).swapFrom(
+                IERC20Upgradeable(Constants.WETH),
+                IERC20Upgradeable(Constants.BEAN),
+                amount,
+                minSwapAmount,
+                address(this),
+                block.timestamp
+            );
 
             waterAmount = ISprinklerUpgradeable(address(this)).getWaterAmount(
                 Constants.BEAN,
@@ -270,16 +250,11 @@ contract WaterTowerUpgradeable is
         uint256 ethAmount
     ) external view returns (uint256 waterAmount, uint256 bonusAmount, uint256 swapAmount) {
         if (WaterTowerStorage.layout().middleAssetForIrrigate == Constants.BEAN) {
-            /// @dev swap amount ETH->USDT->BEAN through Curve finance
-            uint256 usdtAmount = ICurveMetaPool(Constants.TRI_CRYPTO_POOL).get_dy(
-                uint256(2),
-                0,
+            /// @dev swap amount ETH->BEAN through well lp
+            swapAmount = IWell(Constants.BEAN_ETH_WELL).getSwapOut(
+                IERC20Upgradeable(Constants.WETH),
+                IERC20Upgradeable(Constants.BEAN),
                 ethAmount
-            );
-            swapAmount = ICurveMetaPool(Constants.CURVE_BEAN_METAPOOL).get_dy_underlying(
-                3,
-                0,
-                usdtAmount
             );
 
             /// @dev calculate swap water amount through Sprinkler
@@ -293,6 +268,7 @@ contract WaterTowerUpgradeable is
         } else return (0, 0, 0);
     }
 
+    /// @notice add ether reward in watertower
     function addETHReward() external payable {
         if (msg.value == 0) revert InsufficientEther();
         WaterTowerStorage.layout().totalRewards += msg.value;
@@ -338,6 +314,10 @@ contract WaterTowerUpgradeable is
         return WaterTowerStorage.userInfo(user);
     }
 
+    function getLockedUserInfo(address user) external view returns (LockedUserInfo memory) {
+        return WaterTowerStorage.layout().lockedUsers[user];
+    }
+
     /// @notice view function to get pending eth reward for user
     function userETHReward(address user) external view returns (uint256 ethReward) {
         uint256 curPoolIndex = WaterTowerStorage.layout().curPoolIndex;
@@ -362,11 +342,11 @@ contract WaterTowerUpgradeable is
         return WaterTowerStorage.layout().curPoolIndex;
     }
 
+    /// @notice return pool info for poolIndex. If poolIndex is greater than current pool index, return current pool
     function getPoolInfo(uint256 poolIndex) external view returns (PoolInfo memory) {
-        return
-            WaterTowerStorage.layout().pools[
-                poolIndex == 0 ? WaterTowerStorage.layout().curPoolIndex : poolIndex
-            ];
+        WaterTowerStorage.Layout storage l = WaterTowerStorage.layout();
+        if (poolIndex > l.curPoolIndex) poolIndex = l.curPoolIndex;
+        return l.pools[poolIndex];
     }
 
     function getMiddleAsset() external view returns (address) {
@@ -375,18 +355,5 @@ contract WaterTowerUpgradeable is
 
     function getTotalRewards() external view returns (uint256 totalRewards) {
         totalRewards = WaterTowerStorage.layout().totalRewards;
-    }
-
-    function getAverageStoredWater(address user) external view returns (uint256 amount) {
-        WaterTowerStorage.Layout storage l = WaterTowerStorage.layout();
-        uint256 curPoolIndex = l.curPoolIndex;
-        return l.userPoolHistories[user][curPoolIndex - 1].averageStored;
-    }
-
-    function getUserPoolHistory(
-        address user,
-        uint256 poolIndex
-    ) external view returns (UserPoolHistory memory userPoolHistory) {
-        return WaterTowerStorage.layout().userPoolHistories[user][poolIndex];
     }
 }

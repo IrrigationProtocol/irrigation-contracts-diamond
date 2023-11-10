@@ -3,13 +3,14 @@ import hre, { ethers } from 'hardhat';
 import { getSelectors } from '../scripts/FacetSelectors';
 import {
   afterDeployCallbacks,
+  deployAndInitDiamondFacets,
   deployDiamondFacets,
   deployExternalLibraries,
   deployFuncSelectors,
   deployIrrigationDiamond,
 } from '../scripts/deploy';
 import { IrrigationDiamond } from '../typechain-types/hardhat-diamond-abi/HardhatDiamondABI.sol';
-import { dc, INetworkDeployInfo } from '../scripts/common';
+import { dc, INetworkDeployInfo, toWei } from '../scripts/common';
 import { debuglog, assert } from './utils/debug';
 
 import { LoadFacetDeployments } from '../scripts/facets';
@@ -28,13 +29,20 @@ import * as PodsOracleTests from './PodsOracleTests';
 import * as TrancheTests from './facets/TrancheTests';
 import * as PriceOracleTests from './facets/PriceOracleTests';
 import * as IrrigationControlTests from './IrrigationControlTests';
-import { mintAllTokensForTesting } from './utils/mint';
-import { initAll } from '../scripts/init';
+import { initForTest, updateOwnerForTest } from '../scripts/init';
+import { GetUpdatedFacets, attachIrrigationDiamond } from '../scripts/upgrade';
+import { impersonateSigner, setEtherBalance } from './utils/signer';
+import { DiamondLoupeFacet } from '../typechain-types';
 
 const debugging = process.env.JB_IDE_HOST !== undefined;
 
 if (!process.env.FORK_URL) {
   console.log('Unit test is supported only on chain forked from mainnet');
+  process.exit(0);
+}
+
+if (!(Number(process.env.FORK_BLOCK_NUMBER) > 18179487)) {
+  console.log('Unit test is supported from block later than 18179487.');
   process.exit(0);
 }
 
@@ -65,44 +73,29 @@ describe.only('Irrigation Diamond DApp Testing', async function () {
   before(async function () {
     await LoadFacetDeployments();
 
-    const deployer = (await ethers.getSigners())[0].address;
+    const deployer = (await ethers.getSigners())[0];
 
     const networkName = hre.network.name;
-    if (!deployments[networkName]) {
-      deployments[networkName] = {
-        DiamondAddress: '',
-        DeployerAddress: deployer,
-        FacetDeployedInfo: {},
-      };
+    if (networkName in deployments) {
+      networkDeployedInfo = deployments[networkName];
+      await LoadFacetDeployments();
+      const updatedFacetsToDeploy = await GetUpdatedFacets(networkDeployedInfo.FacetDeployedInfo);
+      debuglog(util.inspect(updatedFacetsToDeploy));
+      await attachIrrigationDiamond(networkDeployedInfo);
+      // transfer ownership to first test account
+      const oldOwnerAddress = await updateOwnerForTest(networkDeployedInfo.DiamondAddress);
+      await deployAndInitDiamondFacets(networkDeployedInfo, updatedFacetsToDeploy);
+      debuglog(`Contract address deployed is ${networkDeployedInfo.DiamondAddress}`);
+      irrigationDiamond = dc.IrrigationDiamond as IrrigationDiamond;
+      debuglog(`${util.inspect(networkDeployedInfo, { depth: null })}`);
+      debuglog('Facets Deployed');
+      await initForTest(networkDeployedInfo.DiamondAddress, oldOwnerAddress);
+    } else {
+      debuglog(`No deployments found to attach to for ${networkName}, aborting.`);
     }
-    networkDeployedInfo = deployments[networkName];
-
-    await deployIrrigationDiamond(networkDeployedInfo);
-
-    irrigationDiamond = dc.IrrigationDiamond as IrrigationDiamond;
-
-    debuglog('Diamond Deployed');
-    await deployExternalLibraries(networkDeployedInfo);
-    // do deployment of facets in 3 steps
-    await deployDiamondFacets(networkDeployedInfo);
-    debuglog(`${util.inspect(networkDeployedInfo, { depth: null })}`);
-    await deployFuncSelectors(networkDeployedInfo);
-    debuglog(`${util.inspect(networkDeployedInfo, { depth: null })}`);
-
-    // this should be a null operation.
-    await deployFuncSelectors(networkDeployedInfo);
-
-    await afterDeployCallbacks(networkDeployedInfo);
-    debuglog(`${util.inspect(networkDeployedInfo, { depth: null })}`);
-    debuglog('Facets Deployed');
-    debuglog('Minting tokens');
-    await mintAllTokensForTesting(deployer);
-    await initAll(irrigationDiamond.address);
   });
 
   describe('Facet Cut Testing', async function () {
-    let tx;
-    let receipt;
     let result;
     const addresses: any[] = [];
 
@@ -110,6 +103,12 @@ describe.only('Irrigation Diamond DApp Testing', async function () {
       const facetAddresses = await irrigationDiamond.facetAddresses();
       for (const facetAddress of facetAddresses) {
         addresses.push(facetAddress);
+      }
+      const deployedFacetAddresses: any[] = [];
+      for (const deployedFacetName in networkDeployedInfo.FacetDeployedInfo) {
+        deployedFacetAddresses.push(
+          networkDeployedInfo.FacetDeployedInfo[deployedFacetName].address,
+        );
       }
       // DiamondCutFacet is deployed but doesn't have any facets deployed
       assert.equal(addresses.length, Object.keys(networkDeployedInfo.FacetDeployedInfo).length);

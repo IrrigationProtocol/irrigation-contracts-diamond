@@ -13,6 +13,7 @@ export const CONTRACT_ADDRESSES = {
   UNRIPE_BEAN: '0x1BEA0050E63e05FBb5D8BA2f10cf5800B6224449',
   UNRIPE_LP: '0x1BEA3CcD22F4EBd3d37d731BA31Eeca95713716D',
   FERTILIZER: '0x402c84De2Ce49aF88f5e2eF3710ff89bFED36cB6',
+  BEAN_ETH_WELL: '0xBEA0e11282e2bB5893bEcE110cF199501e872bAd',
   /// tokens
   LUSD: '0x5f98805A4E8be255a32880FDeC7F6728C6568bA0',
   USDC: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
@@ -51,6 +52,7 @@ export const CONTRACT_ADDRESSES = {
   LUSD_MINTER: '0x24179CD81c9e782A4096035f7eC97fB8B783e007',
 
   BEANSTALK_PRICE: '0xF2C2b7eabcB353bF6f2128a7f8e1e32Eeb112530',
+  MULTICALL2: '0x5BA1e12693Dc8F9c48aAD8770482f4739bEeD696',
 };
 
 export enum OracleType {
@@ -61,3 +63,68 @@ export enum OracleType {
   UNISWAP_V3,
   CUSTOM_ORACLE,
 }
+
+/// all function and event names used in subgraph and UI
+export const includesInAbi = [
+  // external functions
+  //  auction
+  'buyNow',
+  'claimBid',
+  'closeAuction',
+  'createAuction',
+  'placeBid',
+  'updateAuction',
+  //  sprinkler
+  'exchangeETHToWater',
+  'exchangeTokenToWater',
+  //  tranche
+  'createTranchesWithPods',
+  'receivePodsForTranche',
+  //  watertower
+  'claim',
+  'deposit',
+  'irrigate',
+  'withdraw',
+  'setAutoIrrigate',
+  /// view functions
+  'getPrice',
+  'latestPriceOfPods',
+  'getAuctionFeeAndLimit',
+  'getTranchePods',
+  'getPlotsForTranche',
+  'getPlotsForUser',
+  'totalDeposits',
+  'userInfo',
+  'getLockedUserInfo',
+  'userETHReward',
+  'getPoolInfo',
+  'getBonusForIrrigate',
+  // events (exclude erc20 and erc1155 events)
+  //  auction
+  'AuctionCreated',
+  'AuctionBuy',
+  'AuctionBid',
+  'AuctionClosed',
+  'ClaimBid',
+  'UpdateBidTokenGroup',
+  'UpdateAuctionPeriods',
+  'UpdateAuctionFee',
+  //  sprinkler
+  'WaterExchanged',
+  'AddWhiteListAsset',
+  'UnListAsset',
+  'DepositWater',
+  //  tranche
+  'CreateTranche',
+  'ReceivePodsWithTranche',
+  'SetMaturityPeriods',
+  //  watertower
+  'Deposited',
+  'Withdrawn',
+  'Claimed',
+  'Irrigate',
+  'SetAutoIrrigate',
+  'AddETHReward',
+  'UpdateRewardPeriod',
+  'AutoIrrigate',
+];

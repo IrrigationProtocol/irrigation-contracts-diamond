@@ -29,8 +29,8 @@ export function suite(networkDeployedInfo: INetworkDeployInfo) {
 
     it('Test Bean Price based on custom oracle', async () => {
       const beanPrice = await priceOracle.getPrice(CONTRACT_ADDRESSES.BEAN);
-      expect(fromWei(beanPrice)).to.be.lt(10);
-      expect(fromWei(beanPrice)).to.be.gt(0.5);
+      expect(fromWei(beanPrice)).to.be.lt(1.2);
+      expect(fromWei(beanPrice)).to.be.gt(0.9);
     });
 
     it('Test SPOT Price based on uniswapv3 oracle', async () => {
@@ -41,8 +41,9 @@ export function suite(networkDeployedInfo: INetworkDeployInfo) {
 
     it('Test WATER Price based on off-chain', async () => {
       const waterPrice = await priceOracle.getPrice(priceOracle.address);
-      expect(fromWei(waterPrice)).to.be.eq(5);
-      expect(fromWei(await priceOracle.getWaterPrice())).to.be.eq(5);
+      const currentWaterPrice = Number(process.env.FORK_BLOCK_NUMBER) <= 18063315? 5: 20;
+      expect(fromWei(waterPrice)).to.be.eq(currentWaterPrice);
+      expect(fromWei(await priceOracle.getWaterPrice())).to.be.eq(currentWaterPrice);
     });
   });
 }

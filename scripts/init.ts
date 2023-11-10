@@ -10,7 +10,9 @@ import {
   SprinklerUpgradeable,
   WaterTowerUpgradeable,
 } from '../typechain-types';
-import { formatFixed, fromWei, toWei } from './common';
+import { INetworkDeployInfo, formatFixed, fromWei, toD6, toWei } from './common';
+import { impersonateSigner, setEtherBalance } from '../test/utils/signer';
+import { getMockPlots, mintAllTokensForTesting } from '../test/utils/mint';
 
 const debuglog: debug.Debugger = debug('IrrigationInit:log');
 debuglog.color = '159';
@@ -27,6 +29,7 @@ export const whitelist = [
   CONTRACT_ADDRESSES.CNHT,
   CONTRACT_ADDRESSES.ETHER,
   CONTRACT_ADDRESSES.gOHM,
+  CONTRACT_ADDRESSES.USDC,
 ];
 export const auctionSellTokens = [
   CONTRACT_ADDRESSES.BEAN,
@@ -44,97 +47,99 @@ export const auctionSellTokens = [
   CONTRACT_ADDRESSES.stETH,
 ];
 const purchaseTokens = [CONTRACT_ADDRESSES.DAI, CONTRACT_ADDRESSES.USDC, CONTRACT_ADDRESSES.USDT];
+
+const defaultOracleData = [
+  {
+    symbol: 'ETH',
+    asset: CONTRACT_ADDRESSES.ETHER,
+    oracle: CONTRACT_ADDRESSES.CHAINLINK_ORACLE_ETH,
+    base: ethers.constants.AddressZero,
+    oType: OracleType.CHAINLINK,
+  },
+  /// stable coins
+  {
+    symbol: 'USDC',
+    asset: CONTRACT_ADDRESSES.USDC,
+    oracle: CONTRACT_ADDRESSES.CHAINLINK_ORACLE_USDC,
+    base: ethers.constants.AddressZero,
+    oType: OracleType.CHAINLINK,
+  },
+  {
+    symbol: 'DAI',
+    asset: CONTRACT_ADDRESSES.DAI,
+    oracle: CONTRACT_ADDRESSES.CHAINLINK_ORACLE_DAI,
+    base: ethers.constants.AddressZero,
+    oType: OracleType.CHAINLINK,
+  },
+  {
+    symbol: 'USDT',
+    asset: CONTRACT_ADDRESSES.USDT,
+    oracle: CONTRACT_ADDRESSES.CHAINLINK_ORACLE_USDT,
+    base: ethers.constants.AddressZero,
+    oType: OracleType.CHAINLINK,
+  },
+  {
+    symbol: 'LUSD',
+    asset: CONTRACT_ADDRESSES.LUSD,
+    oracle: CONTRACT_ADDRESSES.CHAINLINK_ORACLE_LUSD,
+    base: ethers.constants.AddressZero,
+    oType: OracleType.CHAINLINK,
+  },
+  {
+    symbol: 'BEAN',
+    asset: CONTRACT_ADDRESSES.BEAN,
+    oracle: ethers.constants.AddressZero,
+    base: ethers.constants.AddressZero,
+    oType: OracleType.CUSTOM_ORACLE,
+  },
+  // {
+  //   symbol: 'ROOT',
+  //   asset: CONTRACT_ADDRESSES.ROOT,
+  //   oracle: CONTRACT_ADDRESSES.UNIV3_POOL_ROOT,
+  //   base: CONTRACT_ADDRESSES.BEAN,
+  //   oType: OracleType.UNISWAP_V3,
+  // },
+  {
+    symbol: 'SPOT',
+    asset: CONTRACT_ADDRESSES.SPOT,
+    oracle: CONTRACT_ADDRESSES.UNIV3_POOL_SPOT,
+    base: CONTRACT_ADDRESSES.USDC,
+    oType: OracleType.UNISWAP_V3,
+  },
+  {
+    symbol: 'OHM',
+    asset: CONTRACT_ADDRESSES.OHM,
+    oracle: CONTRACT_ADDRESSES.CHAINLINK_ORACLE_OHM,
+    base: CONTRACT_ADDRESSES.ETHER,
+    oType: OracleType.CHAINLINK,
+  },
+  {
+    symbol: 'PAXG',
+    asset: CONTRACT_ADDRESSES.PAXG,
+    oracle: CONTRACT_ADDRESSES.CHAINLINK_ORACLE_PAXG,
+    base: CONTRACT_ADDRESSES.ETHER,
+    oType: OracleType.CHAINLINK,
+  },
+  {
+    symbol: 'CNHT',
+    asset: CONTRACT_ADDRESSES.CNHT,
+    oracle: CONTRACT_ADDRESSES.UNIV3_POOL_CNHT,
+    base: CONTRACT_ADDRESSES.ETHER,
+    oType: OracleType.UNISWAP_V3,
+  },
+  {
+    symbol: 'gOHM',
+    asset: CONTRACT_ADDRESSES.gOHM,
+    oracle: CONTRACT_ADDRESSES.UNIV3_POOL_GOHM,
+    base: CONTRACT_ADDRESSES.ETHER,
+    oType: OracleType.UNISWAP_V3,
+  },
+];
 export async function initPriceOracles(priceOracle: PriceOracleUpgradeable) {
   const factory = await ethers.getContractFactory('BeanPriceOracle');
   const beanOracle = await factory.deploy();
   await beanOracle.deployed();
-  const defaultOracleData = [
-    {
-      symbol: 'ETH',
-      asset: CONTRACT_ADDRESSES.ETHER,
-      oracle: CONTRACT_ADDRESSES.CHAINLINK_ORACLE_ETH,
-      base: ethers.constants.AddressZero,
-      oType: OracleType.CHAINLINK,
-    },
-    /// stable coins
-    {
-      symbol: 'USDC',
-      asset: CONTRACT_ADDRESSES.USDC,
-      oracle: CONTRACT_ADDRESSES.CHAINLINK_ORACLE_USDC,
-      base: ethers.constants.AddressZero,
-      oType: OracleType.CHAINLINK,
-    },
-    {
-      symbol: 'DAI',
-      asset: CONTRACT_ADDRESSES.DAI,
-      oracle: CONTRACT_ADDRESSES.CHAINLINK_ORACLE_DAI,
-      base: ethers.constants.AddressZero,
-      oType: OracleType.CHAINLINK,
-    },
-    {
-      symbol: 'USDT',
-      asset: CONTRACT_ADDRESSES.USDT,
-      oracle: CONTRACT_ADDRESSES.CHAINLINK_ORACLE_USDT,
-      base: ethers.constants.AddressZero,
-      oType: OracleType.CHAINLINK,
-    },
-    {
-      symbol: 'LUSD',
-      asset: CONTRACT_ADDRESSES.LUSD,
-      oracle: CONTRACT_ADDRESSES.CHAINLINK_ORACLE_LUSD,
-      base: ethers.constants.AddressZero,
-      oType: OracleType.CHAINLINK,
-    },
-    {
-      symbol: 'BEAN',
-      asset: CONTRACT_ADDRESSES.BEAN,
-      oracle: beanOracle.address,
-      base: ethers.constants.AddressZero,
-      oType: OracleType.CUSTOM_ORACLE,
-    },
-    // {
-    //   symbol: 'ROOT',
-    //   asset: CONTRACT_ADDRESSES.ROOT,
-    //   oracle: CONTRACT_ADDRESSES.UNIV3_POOL_ROOT,
-    //   base: CONTRACT_ADDRESSES.BEAN,
-    //   oType: OracleType.UNISWAP_V3,
-    // },
-    {
-      symbol: 'SPOT',
-      asset: CONTRACT_ADDRESSES.SPOT,
-      oracle: CONTRACT_ADDRESSES.UNIV3_POOL_SPOT,
-      base: CONTRACT_ADDRESSES.USDC,
-      oType: OracleType.UNISWAP_V3,
-    },
-    {
-      symbol: 'OHM',
-      asset: CONTRACT_ADDRESSES.OHM,
-      oracle: CONTRACT_ADDRESSES.CHAINLINK_ORACLE_OHM,
-      base: CONTRACT_ADDRESSES.ETHER,
-      oType: OracleType.CHAINLINK,
-    },
-    {
-      symbol: 'PAXG',
-      asset: CONTRACT_ADDRESSES.PAXG,
-      oracle: CONTRACT_ADDRESSES.CHAINLINK_ORACLE_PAXG,
-      base: CONTRACT_ADDRESSES.ETHER,
-      oType: OracleType.CHAINLINK,
-    },
-    {
-      symbol: 'CNHT',
-      asset: CONTRACT_ADDRESSES.CNHT,
-      oracle: CONTRACT_ADDRESSES.UNIV3_POOL_CNHT,
-      base: CONTRACT_ADDRESSES.ETHER,
-      oType: OracleType.UNISWAP_V3,
-    },
-    {
-      symbol: 'gOHM',
-      asset: CONTRACT_ADDRESSES.gOHM,
-      oracle: CONTRACT_ADDRESSES.UNIV3_POOL_GOHM,
-      base: CONTRACT_ADDRESSES.ETHER,
-      oType: OracleType.UNISWAP_V3,
-    },
-  ];
+  defaultOracleData.find((e) => e.symbol === 'BEAN').oracle = beanOracle.address;
   for (const o of defaultOracleData) {
     await priceOracle.setOracle(o.asset, o.oracle, o.base, o.oType);
     debuglog(`${o.symbol} price: ${formatFixed(fromWei(await priceOracle.getPrice(o.asset)))}`);
@@ -200,6 +205,14 @@ export async function initTrancheBond(contractAddress: string) {
   await trancheBond.setMaturityPeriods([180 * 86400]);
 }
 
+async function initWaterCommon(contractAddress: string) {
+  const waterCommon = await ethers.getContractAt('WaterCommonUpgradeable', contractAddress);
+  await waterCommon.WaterCommon_Initialize(
+    CONTRACT_ADDRESSES.BEANSTALK,
+    CONTRACT_ADDRESSES.FERTILIZER,
+  );
+}
+
 export async function initAll(contractAddress: string) {
   const waterTower = await ethers.getContractAt('WaterTowerUpgradeable', contractAddress);
   const priceOracle = await ethers.getContractAt('PriceOracleUpgradeable', contractAddress);
@@ -208,6 +221,7 @@ export async function initAll(contractAddress: string) {
     'IrrigationControlUpgradeable',
     contractAddress,
   );
+  await initWaterCommon(contractAddress);
   await initPriceOracles(priceOracle);
   await initSprinkler(sprinkler);
   await initWaterTower(waterTower);
@@ -218,3 +232,52 @@ export async function initAll(contractAddress: string) {
     fromWei(await ethers.provider.getBalance((await ethers.getSigners())[0].address)),
   );
 }
+export const defaultAuctionFeeData = {
+  limits: [toWei(0), toWei(32), toWei(320), toWei(3200), toWei(32000), toWei(320000)],
+  listingFees: [toD6(0.025), toD6(0.01), toD6(0.0066), toD6(0.0033), toD6(0.002), 0],
+  successFees: [toD6(0.05), toD6(0.015), toD6(0.01), toD6(0.0075), toD6(0.005), toD6(0.005)],
+};
+export const updateOwnerForTest = async (rootAddress: string) => {
+  const curOwner = (await ethers.getSigners())[0];
+  const ownership = await ethers.getContractAt('OwnershipFacet', rootAddress);
+  const oldOwnerAddress = await ownership.owner();
+  const oldOwner = await impersonateSigner(oldOwnerAddress);
+  if (oldOwnerAddress !== curOwner.address) {
+    debuglog(`Transterring ownership from ${oldOwnerAddress}`);
+    await setEtherBalance(oldOwnerAddress, toWei(10));
+    await ownership.connect(oldOwner).transferOwnership(curOwner.address);
+  }
+  return oldOwnerAddress;
+};
+
+export const initForTest = async (rootAddress: string, oldOwnerAddress: string) => {
+  debuglog('minting tokens and plots for test');
+  const curOwner = (await ethers.getSigners())[0];
+  const oldOwner = await impersonateSigner(oldOwnerAddress);
+  const water = await ethers.getContractAt('WaterUpgradeable', rootAddress);
+  const waterBalance = await water.balanceOf(oldOwnerAddress);
+  await water.connect(oldOwner).transfer(curOwner.address, waterBalance);
+  await mintAllTokensForTesting(curOwner.address);
+  await getMockPlots();
+  const factory = await ethers.getContractFactory('MockAggregator');
+  const priceOracle = await ethers.getContractAt('PriceOracleUpgradeable', rootAddress);
+  for (const oracleToUpdate of defaultOracleData.filter((e) => e.oType === OracleType.CHAINLINK)) {
+    const mockAggregator = await factory.deploy(oracleToUpdate.oracle);
+    await mockAggregator.deployed();
+    debuglog(`Update oracle to mock ${oracleToUpdate.symbol}: ${mockAggregator.address}`);
+    await priceOracle.setOracleAddress(oracleToUpdate.asset, mockAggregator.address);
+  }
+};
+
+export const updateBeanPrice = async (networkDeployInfo: INetworkDeployInfo) => {
+  const factory = await ethers.getContractFactory('BeanPriceOracle');
+  const beanOracle = await factory.deploy();
+  await beanOracle.deployed();
+  debuglog(`Deployed bean oracle ${beanOracle.deployTransaction.hash}`);
+  const priceOracle = await ethers.getContractAt(
+    'PriceOracleUpgradeable',
+    networkDeployInfo.DiamondAddress,
+  );
+  await priceOracle.setOracleAddress(CONTRACT_ADDRESSES.BEAN, beanOracle.address);
+  debuglog(`Updated bean oracle: ${beanOracle.address}`);
+};

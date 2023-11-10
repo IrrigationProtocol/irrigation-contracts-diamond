@@ -1,3 +1,4 @@
+require('dotenv').config();
 import { BigNumber } from 'ethers';
 import { ethers } from 'hardhat';
 import { CONTRACT_ADDRESSES } from '../../scripts/shared';
@@ -6,8 +7,14 @@ import { toD6, toWei } from '../../scripts/common';
 
 const tokenHolders = {
   ROOT: '0xa3A7B6F88361F48403514059F1F16C8E78d60EeC',
-  SPOT: '0x664F743A378A430b4416B51922178fc68e5B699D',
-  PAXG: '0xF977814e90dA44bFA03b6295A0616a897441aceC',
+  SPOT:
+    Number(process.env.FORK_BLOCK_NUMBER) <= 18063315
+      ? '0x664F743A378A430b4416B51922178fc68e5B699D'
+      : '0xb0ac070ae1f9BC564c1F4EA23bD2Ed0aF1B6BA5A',
+  PAXG:
+    Number(process.env.FORK_BLOCK_NUMBER) <= 18516730
+      ? '0xF977814e90dA44bFA03b6295A0616a897441aceC'
+      : '0xE25a329d385f77df5D4eD56265babe2b99A5436e',
   CNHT: '0x742d35Cc6634C0532925a3b844Bc454e4438f44e',
 };
 
@@ -64,7 +71,7 @@ async function mintLUSD(address: string, amount) {
 async function mintWithTransfer(tokenAddress: string, from: string, address: string, amount) {
   const signer = await impersonateSigner(from);
   const token = await ethers.getContractAt('IERC20Upgradeable', tokenAddress);
-  await setEtherBalance(signer.address, toWei(0.2));
+  if ((await signer.getBalance()).lte(toWei(0.5))) await setEtherBalance(signer.address, toWei(1));
   await token.connect(signer).transfer(address, amount);
 }
 
@@ -86,10 +93,7 @@ export async function mintAllTokensForTesting(address: string) {
 }
 
 export async function deployMockToken(name, symbol, mockDeployer, factoryAddress) {
-  const factoryContract = await ethers.getContractAt(
-    'CREATE3Factory',
-    factoryAddress,
-  );
+  const factoryContract = await ethers.getContractAt('CREATE3Factory', factoryAddress);
   const mockTokenContract = await ethers.getContractFactory('MockERC20Upgradeable');
   const salt = ethers.utils.keccak256(ethers.utils.toUtf8Bytes(`Irrigation:${name}`));
   await factoryContract
@@ -103,40 +107,40 @@ export async function deployMockToken(name, symbol, mockDeployer, factoryAddress
 
 export const oldPlots = [
   {
-    "farmer": {
-      "id": "0xd79e92124a020410c238b23fb93c95b2922d0b9e"
+    farmer: {
+      id: '0xd79e92124a020410c238b23fb93c95b2922d0b9e',
     },
-    "index": "160299068297321",
-    "pods": "7664165865816"
+    index: '160299068297321',
+    pods: '7664165865816',
   },
   {
-    "farmer": {
-      "id": "0x10bf1dcb5ab7860bab1c3320163c6dddf8dcc0e4"
+    farmer: {
+      id: '0x10bf1dcb5ab7860bab1c3320163c6dddf8dcc0e4',
     },
-    "index": "345456176278838",
-    "pods": "7622833600000"
+    index: '345456176278838',
+    pods: '7622833600000',
   },
   {
-    "farmer": {
-      "id": "0x4a24e54a090b0fa060f7faaf561510775d314e84"
+    farmer: {
+      id: '0x4a24e54a090b0fa060f7faaf561510775d314e84',
     },
-    "index": "548233773854003",
-    "pods": "8118000000000"
+    index: '548233773854003',
+    pods: '8118000000000',
   },
   {
-    "farmer": {
-      "id": "0x15390a3c98fa5ba602f1b428bc21a3059362afaf"
+    farmer: {
+      id: '0x15390a3c98fa5ba602f1b428bc21a3059362afaf',
     },
-    "index": "672857205023752",
-    "pods": "10622053659968"
+    index: '672857205023752',
+    pods: '10622053659968',
   },
   {
-    "farmer": {
-      "id": "0x9a00beffa3fc064104b71f6b7ea93babdc44d9da"
+    farmer: {
+      id: '0x9a00beffa3fc064104b71f6b7ea93babdc44d9da',
     },
-    "index": "747381568584998",
-    "pods": "12828436637551"
-  }
+    index: '747381568584998',
+    pods: '12828436637551',
+  },
 ];
 
 export async function getMockPlots() {
@@ -145,6 +149,11 @@ export async function getMockPlots() {
   for (let plot of oldPlots) {
     const account = plot.farmer.id;
     const signer = await impersonateSigner(account);
-    await beanstalk.connect(signer).transferPlot(signer.address, owner.address, plot.index, 0, plot.pods);
+    if ((await ethers.provider.getBalance(account)).lt(toWei(0.2))) {
+      await setEtherBalance(account, toWei(1));
+    }
+    await beanstalk
+      .connect(signer)
+      .transferPlot(signer.address, owner.address, plot.index, 0, plot.pods);
   }
 }

@@ -22,13 +22,20 @@ contract PriceOracleUpgradeable is EIP2535Initializable, IrrigationAccessControl
 
     event UpdateOracle(address asset, address oracle, address base, OracleType oType);
 
+    event UpdateOracleAddress(address indexed asset, address indexed oracle);
+
     /// @dev errors
     error InvalidChainlinkFeed();
     error InvalidCustomOracleAddress();
 
     function getUnderlyingPriceETH() public view returns (uint) {
         /// @dev feed decimals for ether/usd is 8, so multiplier is 10**(18-8)
-        return getChainlinkPrice(getChainlinkFeed(Constants.ETHER)) * 1e10;
+        return
+            getChainlinkPrice(
+                AggregatorV2V3Interface(
+                    PriceOracleStorage.layout().oracleItems[Constants.ETHER].oracle
+                )
+            ) * 1e10;
     }
 
     function getPrice(address asset) public view returns (uint256 price) {
@@ -40,7 +47,9 @@ contract PriceOracleUpgradeable is EIP2535Initializable, IrrigationAccessControl
         if (oracleItem.oType == OracleType.DIRECT) {
             price = oracleItem.price;
         } else if (oracleItem.oType == OracleType.CHAINLINK) {
-            price = getChainlinkPrice(getChainlinkFeed(asset)) * oracleItem.multiplier;
+            price =
+                getChainlinkPrice(AggregatorV2V3Interface(oracleItem.oracle)) *
+                oracleItem.multiplier;
         } else if (oracleItem.oType == OracleType.CUSTOM_ORACLE) {
             price = ICustomOracle(oracleItem.oracle).latestPrice();
         } else {
@@ -50,7 +59,7 @@ contract PriceOracleUpgradeable is EIP2535Initializable, IrrigationAccessControl
             price = (price * getPrice(oracleItem.base)) / Constants.D18;
     }
 
-    function getWaterPrice() public view returns (uint256) {
+    function getWaterPrice() external view returns (uint256) {
         return getPrice(address(this));
     }
 
@@ -104,11 +113,13 @@ contract PriceOracleUpgradeable is EIP2535Initializable, IrrigationAccessControl
         emit UpdateOracle(asset, oracle, base, oType);
     }
 
-    function getChainlinkFeed(address asset) public view returns (AggregatorV2V3Interface) {
-        return AggregatorV2V3Interface(PriceOracleStorage.layout().oracleItems[asset].oracle);
+    // update only oracle address to reduce gas
+    function setOracleAddress(address asset, address oracle) external onlyAdminRole {
+        PriceOracleStorage.layout().oracleItems[asset].oracle = oracle;
+        emit UpdateOracleAddress(asset, oracle);
     }
 
-    function getOracleItem(address asset) public view returns (OracleItem memory) {
+    function getOracleItem(address asset) external view returns (OracleItem memory) {
         return PriceOracleStorage.layout().oracleItems[asset];
     }
 }

@@ -14,11 +14,18 @@ import '@nomiclabs/hardhat-web3';
 import { CONTRACT_ADDRESSES } from './scripts/shared';
 import { getPriceOfPods } from './test/utils/price';
 import { deployments } from './scripts/deployments';
-import { fromWei, toBN, toWei } from './scripts/common';
+import { fromGWei, fromWei, toBN, toWei, writeIrrigationAbi } from './scripts/common';
 import { restorePlots } from './test/utils/restorePlot';
-
+import { extendEnvironment } from 'hardhat/config';
+import { HardhatRuntimeEnvironment, HttpNetworkUserConfig } from 'hardhat/types';
 dotenv.config();
 
+extendEnvironment((hre: HardhatRuntimeEnvironment) => {
+  const config = hre.network.config as HttpNetworkUserConfig;
+  if (config?.url && process.env.EXTEND_NETWORK === 'ON') {
+    hre.ethers.provider = new hre.ethers.providers.JsonRpcProvider(config.url);
+  }
+});
 // This is a sample Hardhat task. To learn how to create your own go to
 // https://hardhat.org/guides/create-task.html
 task('accounts', 'Prints the list of accounts', async (taskArgs, hre) => {
@@ -27,6 +34,16 @@ task('accounts', 'Prints the list of accounts', async (taskArgs, hre) => {
   for (const account of accounts) {
     console.log(account.address);
   }
+});
+
+task('deployer', 'Prints balance of deployer account', async (taskArgs, hre) => {
+  const accounts = await hre.ethers.getSigners();
+  console.log(
+    'deployer:',
+    accounts[0].address,
+    fromWei(await hre.ethers.provider.getBalance(accounts[0].address)),
+  );
+  console.log('current gas price', fromGWei(await hre.ethers.provider.getGasPrice()));
 });
 
 task('podIndex', 'Prints podIndex and harvestableIndex', async (taskArgs, hre) => {
@@ -71,10 +88,11 @@ task('rewards', 'Prints rewards on Water Tower', async (taskArgs, hre) => {
     deployments[hre.network.name].DiamondAddress,
   );
   console.log('totalRewards in WaterTower:', fromWei(await waterTowerContract.getTotalRewards()));
-  const lastPool = await waterTowerContract.getPoolInfo(
-    (await waterTowerContract.getPoolIndex()).sub(1),
-  );
+  const curPoolIndex = await waterTowerContract.getPoolIndex();
+  const lastPool = await waterTowerContract.getPoolInfo(curPoolIndex.sub(1));
   console.log('last monthly Rewards in WaterTower:', fromWei(lastPool.monthlyRewards));
+  const curPool = await waterTowerContract.getPoolInfo(curPoolIndex);
+  console.log('current pool end time', new Date(1000 * Number(curPool.endTime)));
 });
 
 task('update-rewards', 'Update monthly rewards on Water Tower', async (taskArgs: any, hre) => {
@@ -142,6 +160,13 @@ task('reserve', 'Get reserve tokens on sprinkler', async (taskArgs: any, hre) =>
   );
 }).addParam('token');
 
+task('update-abi', 'Write updated prototocol abi file', async (taskArgs: any, hre) => {
+  const contractName = 'hardhat-diamond-abi/HardhatDiamondABI.sol:IrrigationDiamond';
+  const { abi } = await hre.artifacts.readArtifact(contractName);
+  writeIrrigationAbi(abi);
+  console.log('Irrigation abi file was updated');
+});
+
 const elementSeenSet = new Set<string>();
 // filter out duplicate function signatures
 function genSignature(name: string, inputs: Array<any>, type: string): string {
@@ -198,15 +223,18 @@ const config: HardhatUserConfig = {
           }
         : undefined,
       // chainId: 1337,
-      hardfork: 'london',
+      // hardfork: 'london',
     },
     local: {
       url: 'http://127.0.0.1:8545',
       chainId: 20239,
+      accounts: process.env.PRIVATE_KEY !== undefined ? [process.env.PRIVATE_KEY] : [],
+      timeout: 100000,
     },
     dev: {
       url: process.env.DEV_RPC || '',
       chainId: 31337,
+      accounts: process.env.PRIVATE_KEY !== undefined ? [process.env.PRIVATE_KEY] : [],
     },
     anvil: {
       url: 'http://localhost:8545',
@@ -240,6 +268,7 @@ const config: HardhatUserConfig = {
   gasReporter: {
     enabled: process.env.REPORT_GAS !== undefined,
     currency: 'USD',
+    excludeContracts: ['hardhat-diamond-abi/HardhatDiamondABI.sol:IrrigationDiamond'],
   },
   etherscan: {
     apiKey: {

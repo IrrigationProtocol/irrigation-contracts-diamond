@@ -3,6 +3,7 @@ import { Fragment } from '@ethersproject/abi';
 import fs from 'fs';
 import util from 'util';
 import crypto from 'crypto';
+import { includesInAbi } from './shared';
 
 export const toBN = BigNumber.from;
 export const FERTILIZER_TOKEN_ID = 0;
@@ -55,7 +56,14 @@ export interface IFacetToDeployInfo {
   libraries?: string[];
 }
 
+export interface IUpgradeInit {
+  initContractName: string;
+  initFuncName: string;
+  initArgs: any;
+}
+
 export type FacetToDeployInfo = Record<string, IFacetToDeployInfo>;
+export type UpgradeInitInfo = Record<string, IUpgradeInit>;
 
 export function toWei(value: number | string): BigNumber {
   return utils.parseEther(value.toString());
@@ -66,12 +74,21 @@ export function toD6(value: number | string): BigNumber {
   return utils.parseUnits(value.toString(), 6);
 }
 
+export function toD4(value: number | string): BigNumber {
+  if (typeof value === 'number') value = Math.floor(value * 10 ** 4) / 10 ** 4;
+  return utils.parseUnits(value.toString(), 4);
+}
+
 export function fromWei(value: number | string | BigNumber): number {
   return Number(utils.formatEther(value));
 }
 
-export function fromD6(value: number | string | BigNumber): string {
-  return utils.formatUnits(value, 6);
+export function fromD6(value: number | string | BigNumber): number {
+  return Number(utils.formatUnits(value, 6));
+}
+
+export function fromGWei(value: number | string | BigNumber): number {
+  return Number(utils.formatUnits(value, 9));
 }
 
 export function formatFixed(value: number): number {
@@ -92,10 +109,10 @@ export function writeDeployedInfo(deployments: { [key: string]: INetworkDeployIn
   fs.writeFileSync(
     'scripts/deployments.ts',
     `\nimport { INetworkDeployInfo } from "../scripts/common";\n` +
-    `export const deployments: { [key: string]: INetworkDeployInfo } = ${util.inspect(
-      deployments,
-      { depth: null },
-    )};\n`,
+      `export const deployments: { [key: string]: INetworkDeployInfo } = ${util.inspect(
+        deployments,
+        { depth: null },
+      )};\n`,
     'utf8',
   );
 }
@@ -108,4 +125,14 @@ export function random32bit() {
   let u = new Uint32Array(1);
   const randomeBuffer = crypto.randomBytes(32);
   return '0x' + randomeBuffer.toString('hex');
+}
+
+export function writeIrrigationAbi(rawAbi: any[]) {
+  const filteredAbi = rawAbi.filter((abiElement, index, abi) => {
+    if (includesInAbi.includes(abiElement.name)) {
+      return true;
+    }
+    return false;
+  });
+  fs.writeFileSync('data/abi/Irrigation.json', JSON.stringify(filteredAbi, null, 2), 'utf8');
 }

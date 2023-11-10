@@ -16,6 +16,7 @@ export interface FacetInfo {
   functionSelectors: string[];
   name: string;
   initFunc?: string | null;
+  initArgs?: any;
 }
 
 export class Selectors {

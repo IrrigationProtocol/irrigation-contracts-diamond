@@ -7,7 +7,7 @@ import { debug } from 'debug';
 import hre, { ethers, network } from 'hardhat';
 import { toWei } from './common';
 import { deployments } from './deployments';
-import { initAll } from './init';
+import { initAll, initForTest, updateOwnerForTest } from './init';
 import { mintAllTokensForTesting } from '../test/utils/mint';
 
 const log: debug.Debugger = debug('IrrigationInit:log');
@@ -19,12 +19,13 @@ async function main() {
   if (require.main === module) {
     debug.enable('Irrigation.*:log');
   }
-  log(`initialize contracts on ${networkName}`);  
+  log(`initialize on ${networkName}`);
   const contractAddress = deployments[networkName]?.DiamondAddress;
   const [deployer] = await ethers.getSigners();
-  if(network.name !== 'mainnet') await mintAllTokensForTesting(deployer.address);
-  log(`minting is done`);
-  await initAll(contractAddress);
+  if (network.name !== 'mainnet') {
+    const oldOwnerAddress = await updateOwnerForTest(contractAddress);
+    await initForTest(contractAddress, oldOwnerAddress);
+  }
 }
 
 main().catch((error) => {

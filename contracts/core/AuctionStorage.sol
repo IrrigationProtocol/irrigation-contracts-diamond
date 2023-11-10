@@ -71,15 +71,16 @@ struct AuctionData {
     uint8 availableBidDepth;
     // auction status
     AuctionStatus status;
-    // deprecated
-    uint256 feeAmount;
+    // updated upgrade 002
+    // locked user level 
+    uint256 lockedLevel;
 }
 /// @dev Auction Fee
 struct AuctionFee {
     // fee when creating auction. 1 => 0.1%
-    uint256[] listingFees;
+    uint32[] listingFees;
     // fee percentage for buying and settled bids when closing auction
-    uint256[] successFees;
+    uint32[] successFees;
     // stored water amount list
     uint256[] limits;
 }
@@ -105,7 +106,7 @@ library AuctionStorage {
         uint96 maxIncrementRate;
         // available auction periods like 1 day, 3 days,
         uint48[] periods;
-        // added from version 1.0.1
+        // added upgrade 002
         // listing fees and success fees
         AuctionFee fee;
         // reserve auction fees in contract

@@ -4,11 +4,11 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { IrrigationDiamond } from '../../typechain-types/hardhat-diamond-abi/HardhatDiamondABI.sol';
 import { WaterTowerUpgradeable, WaterUpgradeable } from '../../typechain-types';
 import { CONTRACT_ADDRESSES } from '../../scripts/shared';
-import { getCurrentBlockTime, skipTime } from '../utils/time';
+import { skipTime } from '../utils/time';
 import { BigNumber } from 'ethers';
 import { assert, expect } from '../utils/debug';
-import { expectWithTolerance } from '../utils';
 
+const AUTOIRRIGATE_GASLIMIT = BigNumber.from('602000');
 export function suite() {
   describe('Irrigation WaterTower Testing', async function () {
     let signers: SignerWithAddress[];
@@ -34,11 +34,19 @@ export function suite() {
       const { totalRewardRate, monthlyRewards, endTime } = await waterTower.getPoolInfo(0);
       expect(totalRewardRate).to.be.eq(0);
       expect(monthlyRewards).to.be.eq(0);
-      const endAt = new Date(Number(endTime) * 1000);
-      assert(
-        endAt.getDate() === 30 || endAt.getDate() === 31,
-        `pool should be exited at month end, but end date is ${endAt}`,
-      );
+      expect(endTime).to.be.eq(0);
+    });
+
+    it('should get current pool info when poolIndex is greater than current pool index', async () => {
+      const { totalRewardRate, monthlyRewards, endTime } = await waterTower.getPoolInfo(100000);
+      const {
+        totalRewardRate: t1,
+        monthlyRewards: m1,
+        endTime: c1,
+      } = await waterTower.getPoolInfo(await waterTower.getPoolIndex());      
+      expect(totalRewardRate).to.be.eq(t1);
+      expect(monthlyRewards).to.be.eq(m1);
+      expect(endTime).to.be.eq(c1);
     });
 
     it('Test WaterTower deposit and setAutoIrrigate', async () => {
@@ -84,6 +92,7 @@ export function suite() {
     });
 
     it('Test WaterTower claim for one depositer', async () => {
+      await waterTower.setPool(0, 0);
       await water.connect(sender).approve(irrigationDiamond.address, toWei(10));
       await waterTower.connect(sender).deposit(toWei(10), false);
       await waterTower.addETHReward({ value: toWei(10) });
@@ -114,7 +123,6 @@ export function suite() {
       await skipTime(30 * 86400);
       // set monthly reward and new month
       await waterTower.setPool(0, toWei(1));
-      expect(Number(await waterTower.getPoolIndex())).to.be.eq(3);
       let updatedEthOfClaimer = await provider.getBalance(sender.address);
       let claimValue = 1;
       expect(await waterTower.userETHReward(sender.address)).to.be.eq(toWei(claimValue));
@@ -136,7 +144,6 @@ export function suite() {
       await skipTime(30 * 86400);
       // set monthly reward and new month
       await waterTower.setPool(0, toWei(1));
-      expect(Number(await waterTower.getPoolIndex())).to.be.eq(4);
       let claimValue = 1;
       expect(await waterTower.userETHReward(sender.address)).to.be.eq(toWei(claimValue));
       let updatedEthInContract = await provider.getBalance(waterTower.address);
@@ -241,17 +248,23 @@ export function suite() {
         testerReward,
       );
       const autoIrrigateAdmin = signers[5];
+      await waterTower.grantRole(waterTower.AUTO_IRRIGATE_ADMIN_ROLE(), autoIrrigateAdmin.address);
       let autoIrrigatorEthBalance = await ethers.provider.getBalance(autoIrrigateAdmin.address);
       // slippage 10% doesn't work for small amount, so we set 20%
       const tx = await waterTower
         .connect(autoIrrigateAdmin)
         .autoIrrigate(tester.address, testerReward.sub(toWei(0.001)), swapAmount.mul(80).div(100));
       let txReceipt = await tx.wait();
-      const subractedGasFee = BigNumber.from('877100').mul(txReceipt.effectiveGasPrice);
+      const subractedGasFee = AUTOIRRIGATE_GASLIMIT.mul(txReceipt.effectiveGasPrice);
       testerReward = await waterTower.userETHReward(tester.address);
       expect(
         autoIrrigatorEthBalance.sub(await ethers.provider.getBalance(autoIrrigateAdmin.address)),
-      ).to.be.eq(txReceipt.gasUsed.sub(BigNumber.from('877100')).mul(txReceipt.effectiveGasPrice));
+      ).to.be.eq(txReceipt.gasUsed.sub(AUTOIRRIGATE_GASLIMIT).mul(txReceipt.effectiveGasPrice));
+      // actual gas is 5% smaller than expected gas
+      expect(AUTOIRRIGATE_GASLIMIT.sub(txReceipt.gasUsed)).to.be.gte(0);
+      expect(AUTOIRRIGATE_GASLIMIT.sub(txReceipt.gasUsed).toString()).to.be.lte(
+        AUTOIRRIGATE_GASLIMIT.div(20),
+      );
       expect(testerReward).to.be.eq(toWei(0.001).sub(subractedGasFee));
       expect((await waterTower.userInfo(tester.address)).amount.sub(oldDepositAmount)).to.be.gt(
         bonusAmount,
@@ -307,7 +320,7 @@ export function suite() {
         [swapAmount.mul(80).div(100), swapAmount2.mul(80).div(100)],
       );
       let txReceipt = await tx.wait();
-      const subractedGasFee = BigNumber.from('877100').mul(txReceipt.effectiveGasPrice);
+      const subractedGasFee = AUTOIRRIGATE_GASLIMIT.mul(txReceipt.effectiveGasPrice);
       testerReward = await waterTower.userETHReward(tester.address);
       expect(testerReward).to.be.eq(toWei(0.001).sub(subractedGasFee));
       expect((await waterTower.userInfo(tester.address)).amount.sub(testerAmount)).to.be.gt(
@@ -321,68 +334,6 @@ export function suite() {
         bonusAmount2,
       );
       expect(bonusAmount2).to.be.gt(toD6(0.01));
-    });
-  });
-
-  describe('Average Stored Water', async function () {
-    let signers: SignerWithAddress[];
-    let owner: SignerWithAddress;
-    let water: WaterUpgradeable;
-    let waterTower: WaterTowerUpgradeable;
-    const irrigationDiamond = dc.IrrigationDiamond as IrrigationDiamond;
-
-    before(async () => {
-      signers = await ethers.getSigners();
-      owner = signers[0];
-      water = await ethers.getContractAt('WaterUpgradeable', irrigationDiamond.address);
-      waterTower = await ethers.getContractAt('WaterTowerUpgradeable', irrigationDiamond.address);
-    });
-    it('average stored water should be same as deposited amount, in the case of only one deposit', async function () {
-      await water.approve(water.address, ethers.constants.MaxUint256);
-      let user = await waterTower.userInfo(owner.address);
-      await waterTower.withdraw(user.amount);
-      await skipTime(86400);
-      await waterTower.setPool(0, 0);
-      await skipTime(86400 * 30);
-      await waterTower.setPool(0, 0);
-      expect((await waterTower.userInfo(owner.address)).amount).to.be.eq(0);
-      await waterTower.deposit(toWei(100), true);
-      await skipTime(86400 * 30);
-      await waterTower.setPool(0, 0);
-      await waterTower.deposit(toWei(0), true);
-      expectWithTolerance(await waterTower.getAverageStoredWater(owner.address), toWei(100));
-    });
-    it('average stored water in next month', async function () {
-      await skipTime(86400 * 30);
-      await waterTower.setPool(0, 0);
-      await waterTower.deposit(toWei(0), true);
-      expectWithTolerance(await waterTower.getAverageStoredWater(owner.address), toWei(100));
-    });
-    it('average stored water after withdraw', async function () {
-      const poolInfo = await waterTower.getPoolInfo(await waterTower.getPoolIndex());
-      const curTimestamp = await getCurrentBlockTime();
-      // withdraw 20 at middle of pool period
-      await skipTime(
-        poolInfo.startTime
-          .add(poolInfo.endTime.sub(poolInfo.startTime).div(2))
-          .sub(curTimestamp)
-          .toNumber(),
-      );
-      await waterTower.withdraw(toWei(20));
-      await skipTime(86400 * 15);
-      await waterTower.setPool(0, 0);
-      // deposit 80 WATER after new pool
-      await waterTower.deposit(toWei(0), true);
-      expect(await waterTower.getAverageStoredWater(owner.address)).to.be.eq(toWei(90));
-    });
-    it('average stored water after second deposit', async function () {
-      await skipTime(86400 * 15);
-      await waterTower.deposit(toWei(20), true);
-      // deposit more 20 WATER after 15 days
-      await skipTime(86400 * 15);
-      await waterTower.setPool(0, 0);
-      await waterTower.deposit(toWei(0), true);
-      expectWithTolerance(await waterTower.getAverageStoredWater(owner.address), toWei(90));
     });
   });
 }

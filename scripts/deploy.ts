@@ -22,13 +22,13 @@ import {
 } from './common';
 import { DiamondCutFacet, IDiamondCut } from '../typechain-types';
 import { deployments } from './deployments';
-import { Facets, LoadFacetDeployments } from './facets';
+import { Facets, UpgradeInits, LoadFacetDeployments } from './facets';
 import * as util from 'util';
 
 const log: debug.Debugger = debug('IrrigationDeploy:log');
 log.color = '159';
 
-const GAS_LIMIT_PER_FACET = 60000;
+const GAS_LIMIT_PER_FACET = 20000;
 const GAS_LIMIT_CUT_BASE = 70000;
 
 export async function deployIrrigationDiamond(networkDeployInfo: INetworkDeployInfo) {
@@ -99,9 +99,7 @@ export async function deployIrrigationDiamond(networkDeployInfo: INetworkDeployI
     tx_hash: diamondCutFacet.deployTransaction.hash,
     version: 0.0,
     funcSelectors: [
-      diamondCutFacet.interface.getSighash(
-        'diamondCut((address,uint8,bytes4[])[],address,bytes)',
-      ),
+      diamondCutFacet.interface.getSighash('diamondCut((address,uint8,bytes4[])[],address,bytes)'),
     ],
   };
 
@@ -110,16 +108,18 @@ export async function deployIrrigationDiamond(networkDeployInfo: INetworkDeployI
 
 export async function deployFuncSelectors(
   networkDeployInfo: INetworkDeployInfo,
+  oldNetworkDeployInfo: INetworkDeployInfo,
   facetsToDeploy: FacetToDeployInfo = Facets,
 ) {
   const cut: FacetInfo[] = [];
   const deployedFacets = networkDeployInfo.FacetDeployedInfo;
-  const deployedFuncSelectors = await getDeployedFuncSelectors(networkDeployInfo);
+  const deployedFuncSelectors = await getDeployedFuncSelectors(oldNetworkDeployInfo);
   const registeredFunctionSignatures = new Set<string>();
 
   const facetsPriority = Object.keys(facetsToDeploy).sort(
     (a, b) => facetsToDeploy[a].priority - facetsToDeploy[b].priority,
   );
+  let protocolUpgradeVersion = 0;
   for (const name of facetsPriority) {
     const facetDeployVersionInfo = facetsToDeploy[name];
     let facetVersions = ['0.0'];
@@ -129,6 +129,7 @@ export async function deployFuncSelectors(
     }
 
     const upgradeVersion = +facetVersions[0];
+    protocolUpgradeVersion = Math.max(upgradeVersion, protocolUpgradeVersion);
     const facetDeployInfo = facetDeployVersionInfo.versions
       ? facetDeployVersionInfo.versions[upgradeVersion]
       : {};
@@ -197,7 +198,6 @@ export async function deployFuncSelectors(
           action: FacetCutAction.Replace,
           functionSelectors: replaceFuncSelectors,
           name: name,
-          initFunc: initFunc,
         });
         numFuncSelectorsCut++;
       }
@@ -208,7 +208,6 @@ export async function deployFuncSelectors(
           action: FacetCutAction.Add,
           functionSelectors: addFuncSelectors,
           name: name,
-          initFunc: initFunc,
         });
         numFuncSelectorsCut++;
       }
@@ -233,40 +232,51 @@ export async function deployFuncSelectors(
   }
 
   // upgrade diamond with facets
-  log('');
+  log('Protocol upgrade version: ', protocolUpgradeVersion);
   log('Diamond Cut:', cut);
   let diamondCut = dc.IrrigationDiamond as IDiamondCut;
   // when upgrading, gets DiamondCutFacet interface from address
   if (!diamondCut)
     diamondCut = await ethers.getContractAt('DiamondCutFacet', networkDeployInfo.DiamondAddress);
 
-  for (const facetCutInfo of cut) {
-    const contract = dc[facetCutInfo.name]!;
-    let functionCall;
-    let initAddress;
-    if (facetCutInfo.initFunc) {
-      functionCall = contract.interface.encodeFunctionData(facetCutInfo.initFunc!);
-      initAddress = facetCutInfo.facetAddress;
-      log(`Calling Function ${facetCutInfo.initFunc}`);
-    } else {
-      functionCall = [];
-      initAddress = ethers.constants.AddressZero;
-    }
-    log('Cutting: ', facetCutInfo);
-    try {
-      const tx = await diamondCut.diamondCut([facetCutInfo], initAddress, functionCall, {
-        gasLimit: GAS_LIMIT_CUT_BASE + facetCutInfo.functionSelectors.length * GAS_LIMIT_PER_FACET,
-      });
-      log(`Diamond cut: ${facetCutInfo.name} tx hash: ${tx.hash}`);
-      const receipt = await tx.wait();
-      if (!receipt.status) {
-        throw Error(`Diamond upgrade of ${facetCutInfo.name} failed: ${tx.hash}`);
-      }
-    } catch (e) {
-      log(`unable to cut facet: ${facetCutInfo.name}\n ${e}`);
-      continue;
-    }
+  let functionCall: any = [];
+  let initAddress = ethers.constants.AddressZero;
+  if (UpgradeInits[protocolUpgradeVersion]) {
+    const upgradeInitInfo = UpgradeInits[protocolUpgradeVersion];
+    const initContractFactory: any = await ethers.getContractFactory(
+      upgradeInitInfo.initContractName,
+    );
+    const initContract = await initContractFactory.deploy();
+    await initContract.deployed();
+    if (!upgradeInitInfo.initArgs) {
+      functionCall = initContract.interface.encodeFunctionData(upgradeInitInfo.initFuncName);
+    } else
+      functionCall = initContract.interface.encodeFunctionData(
+        upgradeInitInfo.initFuncName,
+        upgradeInitInfo.initArgs,
+      );
+    initAddress = initContract.address;
+    log(`Calling Function:`, upgradeInitInfo);
+  }
 
+  try {
+    let totalSelectors = 0;
+    cut.forEach((e) => {
+      totalSelectors += e.functionSelectors.length;
+    });
+    const tx = await diamondCut.diamondCut(cut, initAddress, functionCall, {
+      gasLimit: GAS_LIMIT_CUT_BASE + totalSelectors * GAS_LIMIT_PER_FACET,
+    });
+
+    log(`Diamond cut: tx hash: ${tx.hash}`);
+    const receipt = await tx.wait();
+    if (!receipt.status) {
+      throw Error(`Diamond upgrade was failed: ${tx.hash}`);
+    }
+  } catch (e) {
+    log(`unable to cut facet: \n ${e}`);
+  }
+  for (const facetCutInfo of cut) {
     for (const facetModified of facetCutInfo.functionSelectors) {
       switch (facetCutInfo.action) {
         case FacetCutAction.Add:
@@ -317,8 +327,19 @@ export async function deployAndInitDiamondFacets(
   networkDeployInfo: INetworkDeployInfo,
   facetsToDeploy: FacetToDeployInfo = Facets,
 ) {
+  const deployInfoBeforeUpgraded: INetworkDeployInfo = JSON.parse(
+    JSON.stringify(networkDeployInfo),
+  );
   await deployDiamondFacets(networkDeployInfo, facetsToDeploy);
-  await deployFuncSelectors(networkDeployInfo, facetsToDeploy);
+  const deployInfoWithOldFacet: INetworkDeployInfo = Object.assign(
+    JSON.parse(JSON.stringify(networkDeployInfo)),
+  );
+  for (const key in deployInfoWithOldFacet.FacetDeployedInfo) {
+    if (deployInfoBeforeUpgraded.FacetDeployedInfo[key])
+      deployInfoWithOldFacet.FacetDeployedInfo[key] =
+        deployInfoBeforeUpgraded.FacetDeployedInfo[key];
+  }
+  await deployFuncSelectors(networkDeployInfo, deployInfoWithOldFacet, facetsToDeploy);
   await afterDeployCallbacks(networkDeployInfo, facetsToDeploy);
 }
 
