@@ -29,8 +29,8 @@ export function suite(networkDeployedInfo: INetworkDeployInfo) {
 
     it('Test Bean Price based on custom oracle', async () => {
       const beanPrice = await priceOracle.getPrice(CONTRACT_ADDRESSES.BEAN);
-      expect(fromWei(beanPrice)).to.be.lt(10);
-      expect(fromWei(beanPrice)).to.be.gt(0.5);
+      expect(fromWei(beanPrice)).to.be.lt(1.2);
+      expect(fromWei(beanPrice)).to.be.gt(0.9);
     });
 
     it('Test SPOT Price based on uniswapv3 oracle', async () => {

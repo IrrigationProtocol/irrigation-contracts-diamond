@@ -10,12 +10,7 @@ import {
   SprinklerUpgradeable,
   WaterTowerUpgradeable,
 } from '../typechain-types';
-import {
-  formatFixed,
-  fromWei,
-  toD6,
-  toWei,
-} from './common';
+import { INetworkDeployInfo, formatFixed, fromWei, toD6, toWei } from './common';
 import { impersonateSigner, setEtherBalance } from '../test/utils/signer';
 import { getMockPlots, mintAllTokensForTesting } from '../test/utils/mint';
 
@@ -255,11 +250,24 @@ export const updateOwnerForTest = async (rootAddress: string) => {
 
 export const initForTest = async (rootAddress: string, oldOwnerAddress: string) => {
   debuglog('minting tokens and plots for test');
-  const curOwner = (await ethers.getSigners())[0];  
+  const curOwner = (await ethers.getSigners())[0];
   const oldOwner = await impersonateSigner(oldOwnerAddress);
   const water = await ethers.getContractAt('WaterUpgradeable', rootAddress);
   const waterBalance = await water.balanceOf(oldOwnerAddress);
-  await water.connect(oldOwner).transfer(curOwner.address, waterBalance);  
+  await water.connect(oldOwner).transfer(curOwner.address, waterBalance);
   await mintAllTokensForTesting(curOwner.address);
   await getMockPlots();
+};
+
+export const updateBeanPrice = async (networkDeployInfo: INetworkDeployInfo) => {
+  const factory = await ethers.getContractFactory('BeanPriceOracle');
+  const beanOracle = await factory.deploy();
+  await beanOracle.deployed();
+  debuglog(`Deployed bean oracle ${beanOracle.deployTransaction.hash}`);
+  const priceOracle = await ethers.getContractAt(
+    'PriceOracleUpgradeable',
+    networkDeployInfo.DiamondAddress,
+  );
+  await priceOracle.setOracleAddress(CONTRACT_ADDRESSES.BEAN, beanOracle.address);
+  debuglog(`Updated bean oracle: ${beanOracle.address}`);
 };

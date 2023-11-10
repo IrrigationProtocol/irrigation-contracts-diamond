@@ -11,7 +11,10 @@ const tokenHolders = {
     Number(process.env.FORK_BLOCK_NUMBER) <= 18063315
       ? '0x664F743A378A430b4416B51922178fc68e5B699D'
       : '0xb0ac070ae1f9BC564c1F4EA23bD2Ed0aF1B6BA5A',
-  PAXG: '0xF977814e90dA44bFA03b6295A0616a897441aceC',
+  PAXG:
+    Number(process.env.FORK_BLOCK_NUMBER) <= 18516730
+      ? '0xF977814e90dA44bFA03b6295A0616a897441aceC'
+      : '0xE25a329d385f77df5D4eD56265babe2b99A5436e',
   CNHT: '0x742d35Cc6634C0532925a3b844Bc454e4438f44e',
 };
 
@@ -68,7 +71,7 @@ async function mintLUSD(address: string, amount) {
 async function mintWithTransfer(tokenAddress: string, from: string, address: string, amount) {
   const signer = await impersonateSigner(from);
   const token = await ethers.getContractAt('IERC20Upgradeable', tokenAddress);
-  await setEtherBalance(signer.address, toWei(1));
+  if ((await signer.getBalance()).lte(toWei(0.5))) await setEtherBalance(signer.address, toWei(1));
   await token.connect(signer).transfer(address, amount);
 }
 

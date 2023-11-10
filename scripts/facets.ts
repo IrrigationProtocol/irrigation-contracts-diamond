@@ -1,5 +1,6 @@
 import { FacetToDeployInfo, UpgradeInitInfo } from './common';
 import { glob } from 'glob';
+import { updateBeanPrice } from './init';
 
 export const Facets: FacetToDeployInfo = {
   DiamondCutFacet: { priority: 10, versions: { 0.0: { init: 'initDiamondCut' } } },
@@ -13,9 +14,13 @@ export const Facets: FacetToDeployInfo = {
   AuctionUpgradeable: { priority: 90, versions: { 0.2: {} } },
   // ZSCUpgradeable: { priority: 100, libraries: ['BurnVerifier', 'ZetherVerifier', 'libEncryption'] },
   PodsOracleUpgradeable: { priority: 110 },
-  TrancheBondUpgradeable: { priority: 120 },
+  TrancheBondUpgradeable: { priority: 120, versions: { 0.2: {} } },
   ERC1155WhitelistUpgradeable: { priority: 130 },
-  PriceOracleUpgradeable: { priority: 140, libraries: ['UniswapV3Twap'] },
+  PriceOracleUpgradeable: {
+    priority: 140,
+    versions: { 0.2: { callback: updateBeanPrice } },
+    libraries: ['UniswapV3Twap'],
+  },
   IrrigationControlUpgradeable: { priority: 150, versions: { 0.2: {} } },
 };
 

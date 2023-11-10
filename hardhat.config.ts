@@ -14,7 +14,7 @@ import '@nomiclabs/hardhat-web3';
 import { CONTRACT_ADDRESSES } from './scripts/shared';
 import { getPriceOfPods } from './test/utils/price';
 import { deployments } from './scripts/deployments';
-import { fromWei, toBN, toWei, writeIrrigationAbi } from './scripts/common';
+import { fromGWei, fromWei, toBN, toWei, writeIrrigationAbi } from './scripts/common';
 import { restorePlots } from './test/utils/restorePlot';
 import { extendEnvironment } from 'hardhat/config';
 import { HardhatRuntimeEnvironment, HttpNetworkUserConfig } from 'hardhat/types';
@@ -43,6 +43,7 @@ task('deployer', 'Prints balance of deployer account', async (taskArgs, hre) => 
     accounts[0].address,
     fromWei(await hre.ethers.provider.getBalance(accounts[0].address)),
   );
+  console.log('current gas price', fromGWei(await hre.ethers.provider.getGasPrice()));
 });
 
 task('podIndex', 'Prints podIndex and harvestableIndex', async (taskArgs, hre) => {
