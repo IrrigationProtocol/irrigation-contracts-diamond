@@ -412,16 +412,16 @@ export const deployments: { [key: string]: INetworkDeployInfo } = {
         verified: true
       },
       WaterTowerUpgradeable: {
-        address: '0x768FA9e240D55EDCaBEdB658896b872d7862dB1e',
-        tx_hash: '0x4485734bed6422975e8080cd10c3370080d8edf77fb508f3d7bcf2ca578e3cbe',
-        version: 0,
+        address: '0x21307D63096403b03395448Fdbde0db0a3581fEE',
+        tx_hash: '0x151e721306703e0995322248dbe10dad6b5e567259454aa1cb8c567bb674a6a5',
+        version: 0.2,
         funcSelectors: [
           '0x41f894ff', '0xc5e78556',
           '0x23eb4574', '0x379607f5',
           '0x9a408321', '0x775def35',
-          '0xeedb94a9', '0x22c14db9',
-          '0x2f380b35', '0xe627f2db',
-          '0x3904503f', '0xd0a2b314',
+          '0x8477a3f4', '0xeedb94a9',
+          '0x22c14db9', '0x2f380b35',
+          '0xe627f2db', '0xd0a2b314',
           '0x62c799a9', '0x92eb6da5',
           '0x297a5edf', '0x46430af1',
           '0x7d882097', '0xe7d7f14d',
@@ -444,16 +444,17 @@ export const deployments: { [key: string]: INetworkDeployInfo } = {
         verified: true
       },
       AuctionUpgradeable: {
-        address: '0xB4EfBC620a529b805854806568009a98213884C8',
-        tx_hash: '0x4788cd83721bb9e24c311d8fb4689c0999965f6176ca20c31b0d50948b5522c7',
-        version: 0,
+        address: '0xCa8BCD94a353Ebb566ff33D470a6865FA81e23F0',
+        tx_hash: '0x3ee66f425f8eb06f407f21c50f86b586ca98121d9b9576fa622dc0606ec38f89',
+        version: 0.2,
         funcSelectors: [
           '0xd14228d3', '0xc34a7336',
           '0x236ed8f3', '0x8f031880',
-          '0x78bd7935', '0x1031ca44',
+          '0x78bd7935', '0x32b560db',
           '0xca039017', '0xe45c1879',
           '0x582c7ffd', '0xa6523f8f',
-          '0x4c1cafc6', '0x808bf40c',
+          '0x4c1cafc6', '0x51b5d816',
+          '0x808bf40c', '0x4c6fc8e9',
           '0x76741bb9', '0x5e06f72b',
           '0xe47fd1f1'
         ],
@@ -467,9 +468,9 @@ export const deployments: { [key: string]: INetworkDeployInfo } = {
         verified: true
       },
       TrancheBondUpgradeable: {
-        address: '0x40c325AD0fa4E497F802985936fE26F542845Bd6',
-        tx_hash: '0x29a86819fe7a4a11dd1eee55bb41ed1fd2e7a126882e24d938eab310f3fcf3f0',
-        version: 0,
+        address: '0x1cF17743cFd3e8A2FF272d3da927a7956b3f2163',
+        tx_hash: '0x07eb2395a0a22214457076cdcc6cc3a36d758c01580b922e85545564781e98e4',
+        version: 0.2,
         funcSelectors: [
           '0x3bf5e1e4',
           '0xd6f5e33f',
@@ -502,33 +503,34 @@ export const deployments: { [key: string]: INetworkDeployInfo } = {
         verified: true
       },
       PriceOracleUpgradeable: {
-        address: '0xc4D1848D4740f915dB4c6Ea9DBF02C04d0A7a27E',
-        tx_hash: '0xa9a23bda303560f8b17f13072b2139bf9aa902a4613f7417baeed5dc1c08e4b0',
-        version: 0,
+        address: '0xc8A0e5609c736f999A3187A23b43f6D592674929',
+        tx_hash: '0xdff7e0b0067cb5901f011f03593c6f3c17ce090e6f9a8c2b2b1c317e187f1d16',
+        version: 0.2,
         funcSelectors: [
-          '0xea0129ca',
           '0xd63c570b',
           '0x41976e09',
           '0x84a2ce13',
           '0x7d848fec',
           '0x09a8acb0',
-          '0x4680bab0'
+          '0x4680bab0',
+          '0x46093b0e'
         ],
         verified: true
       },
       IrrigationControlUpgradeable: {
-        address: '0x4eD65a975e3DCa1BDc43544184eFF6BaFe4480e5',
-        tx_hash: '0x718153018204b4a45a85de9a008b94cbe0fa72195c287172bdaa9b1beb1ecf73',
-        version: 0,
+        address: '0x229620Fe6F0e9a25D4f23D8B615a876Edf12932B',
+        tx_hash: '0x883a6715272fc65fe41a8bc763a642e114c2ea011a963336dfb85f25bb567e7e',
+        version: 0.2,
         funcSelectors: [
           '0xcb3597d8',
-          '0x5b36cf3d',
           '0x8456cb59',
-          '0x54fdbe1a',
+          '0xa88abf73',
+          '0x50ca7655',
           '0x49981ef5',
           '0x3f4ba83a',
           '0x3a46153e',
-          '0x733754e5'
+          '0x733754e5',
+          '0xdd5e83b8'
         ],
         verified: true
       }
