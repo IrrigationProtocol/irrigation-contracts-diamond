@@ -18,10 +18,11 @@ export const Facets: FacetToDeployInfo = {
   ERC1155WhitelistUpgradeable: { priority: 130 },
   PriceOracleUpgradeable: {
     priority: 140,
-    versions: { 0.2: { callback: updateBeanPrice } },
+    versions: { 0.2: {} },
     libraries: ['UniswapV3Twap'],
   },
   IrrigationControlUpgradeable: { priority: 150, versions: { 0.2: {} } },
+  ERC1155ForMetamask: { priority: 160, versions: { 0.3: {} } },
 };
 
 export const UpgradeInits: UpgradeInitInfo = {

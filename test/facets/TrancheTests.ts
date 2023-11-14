@@ -610,7 +610,11 @@ export function suite() {
         const trancheId = curDepositId.mul(4).add(3);
         const { starts } = await trancheBond.getPlotsForTranche(trancheId);
         await skipTime(180 * 86400);
-        await trancheCollection.connect(tester).setApprovalForAll(trancheBond.address, true);
+        const erc1155 = await ethers.getContractAt('ERC1155ForMetamask', rootAddress);
+        await expect(trancheBond.connect(tester).receivePodsForTranche(trancheId)).revertedWith(
+          'ERC1155: caller is not token owner or approved',
+        );
+        await erc1155.connect(tester).Metamask_ApprovalForAll(trancheBond.address, true);
         await trancheBond.connect(tester).receivePodsForTranche(trancheId);
         await trancheBond.connect(tester).receivePodsForTranche(trancheId.sub(2));
         await trancheBond.connect(tester).receivePodsForTranche(trancheId.sub(1));

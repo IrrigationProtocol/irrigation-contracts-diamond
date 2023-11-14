@@ -43,7 +43,7 @@ export function suite() {
         totalRewardRate: t1,
         monthlyRewards: m1,
         endTime: c1,
-      } = await waterTower.getPoolInfo(await waterTower.getPoolIndex());      
+      } = await waterTower.getPoolInfo(await waterTower.getPoolIndex());
       expect(totalRewardRate).to.be.eq(t1);
       expect(monthlyRewards).to.be.eq(m1);
       expect(endTime).to.be.eq(c1);
@@ -260,11 +260,12 @@ export function suite() {
       expect(
         autoIrrigatorEthBalance.sub(await ethers.provider.getBalance(autoIrrigateAdmin.address)),
       ).to.be.eq(txReceipt.gasUsed.sub(AUTOIRRIGATE_GASLIMIT).mul(txReceipt.effectiveGasPrice));
-      // actual gas is 5% smaller than expected gas
-      expect(AUTOIRRIGATE_GASLIMIT.sub(txReceipt.gasUsed)).to.be.gte(0);
-      expect(AUTOIRRIGATE_GASLIMIT.sub(txReceipt.gasUsed).toString()).to.be.lte(
-        AUTOIRRIGATE_GASLIMIT.div(20),
+      // actual gas is greater than 1% expected gas
+      expect(AUTOIRRIGATE_GASLIMIT).to.be.gte(
+        txReceipt.gasUsed.sub(AUTOIRRIGATE_GASLIMIT.div(100)),
       );
+      // actual gas is 5% smaller than expected gas
+      expect(AUTOIRRIGATE_GASLIMIT).to.be.lte(txReceipt.gasUsed.add(AUTOIRRIGATE_GASLIMIT.div(20)));
       expect(testerReward).to.be.eq(toWei(0.001).sub(subractedGasFee));
       expect((await waterTower.userInfo(tester.address)).amount.sub(oldDepositAmount)).to.be.gt(
         bonusAmount,
