@@ -58,7 +58,7 @@ export const deployments: { [key: string]: INetworkDeployInfo } = {
       },
       WaterTowerUpgradeable: {
         address: '0x21307D63096403b03395448Fdbde0db0a3581fEE',
-        tx_hash: '0x35a1399f4de29cf0a0d8d728d2ea8a6c60752e8d904496e70d24a09a4fba41fd',
+        tx_hash: '0x151e721306703e0995322248dbe10dad6b5e567259454aa1cb8c567bb674a6a5',
         version: 0.2,
         funcSelectors: [
           '0x41f894ff', '0xc5e78556',
@@ -71,7 +71,8 @@ export const deployments: { [key: string]: INetworkDeployInfo } = {
           '0x297a5edf', '0x46430af1',
           '0x7d882097', '0xe7d7f14d',
           '0x1959a002', '0x2e1a7d4d'
-        ]
+        ],
+        verified: true
       },
       WaterUpgradeable: {
         address: '0xf258Fb0c495D539FCb1F509F8Fb382bc1bd38687',
@@ -89,7 +90,7 @@ export const deployments: { [key: string]: INetworkDeployInfo } = {
       },
       AuctionUpgradeable: {
         address: '0xCa8BCD94a353Ebb566ff33D470a6865FA81e23F0',
-        tx_hash: '0x8780df151ca4153c86323c8b56cafce0562218e79a4a2edd21c353bcd9547f0b',
+        tx_hash: '0x3ee66f425f8eb06f407f21c50f86b586ca98121d9b9576fa622dc0606ec38f89',
         version: 0.2,
         funcSelectors: [
           '0xd14228d3', '0xc34a7336',
@@ -101,7 +102,8 @@ export const deployments: { [key: string]: INetworkDeployInfo } = {
           '0x808bf40c', '0x4c6fc8e9',
           '0x76741bb9', '0x5e06f72b',
           '0xe47fd1f1'
-        ]
+        ],
+        verified: true
       },
       PodsOracleUpgradeable: {
         address: '0xbc139e4A8260c56EC0AFeA25150C93B435CFc785',
@@ -111,9 +113,9 @@ export const deployments: { [key: string]: INetworkDeployInfo } = {
         verified: true
       },
       TrancheBondUpgradeable: {
-        address: '0x40c325AD0fa4E497F802985936fE26F542845Bd6',
-        tx_hash: '0x29a86819fe7a4a11dd1eee55bb41ed1fd2e7a126882e24d938eab310f3fcf3f0',
-        version: 0,
+        address: '0x1cF17743cFd3e8A2FF272d3da927a7956b3f2163',
+        tx_hash: '0x07eb2395a0a22214457076cdcc6cc3a36d758c01580b922e85545564781e98e4',
+        version: 0.2,
         funcSelectors: [
           '0x3bf5e1e4',
           '0xd6f5e33f',
@@ -146,23 +148,23 @@ export const deployments: { [key: string]: INetworkDeployInfo } = {
         verified: true
       },
       PriceOracleUpgradeable: {
-        address: '0xc4D1848D4740f915dB4c6Ea9DBF02C04d0A7a27E',
-        tx_hash: '0xa9a23bda303560f8b17f13072b2139bf9aa902a4613f7417baeed5dc1c08e4b0',
-        version: 0,
+        address: '0xc8A0e5609c736f999A3187A23b43f6D592674929',
+        tx_hash: '0xdff7e0b0067cb5901f011f03593c6f3c17ce090e6f9a8c2b2b1c317e187f1d16',
+        version: 0.2,
         funcSelectors: [
-          '0xea0129ca',
           '0xd63c570b',
           '0x41976e09',
           '0x84a2ce13',
           '0x7d848fec',
           '0x09a8acb0',
-          '0x4680bab0'
+          '0x4680bab0',
+          '0x46093b0e'
         ],
         verified: true
       },
       IrrigationControlUpgradeable: {
-        address: '0x1cF17743cFd3e8A2FF272d3da927a7956b3f2163',
-        tx_hash: '0x3fd4a6f9d1e26de897807dc4a611dae888e4b1c99f2b2c90eab4909500fa39e5',
+        address: '0x229620Fe6F0e9a25D4f23D8B615a876Edf12932B',
+        tx_hash: '0x883a6715272fc65fe41a8bc763a642e114c2ea011a963336dfb85f25bb567e7e',
         version: 0.2,
         funcSelectors: [
           '0xcb3597d8',
@@ -174,7 +176,14 @@ export const deployments: { [key: string]: INetworkDeployInfo } = {
           '0x3a46153e',
           '0x733754e5',
           '0xdd5e83b8'
-        ]
+        ],
+        verified: true
+      },
+      ERC1155ForMetamask: {
+        address: '0xA722ed96bD26143831609f58BC5e4b578189Eda0',
+        tx_hash: '0xd6361f7c3c458eae9e781fb6545814b4b33f57bab6a498175d6eb0811cb4d855',
+        version: 0.3,
+        funcSelectors: [ '0x2ec86d41' ]
       }
     },
     ExternalLibraries: { UniswapV3Twap: '0xf255AB88e6b4C825D465DA5eBB13c6A27e89367C' }

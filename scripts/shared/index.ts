@@ -86,6 +86,9 @@ export const includesInAbi = [
   'irrigate',
   'withdraw',
   'setAutoIrrigate',
+  //  tranche erc1155
+  'setApprovalForAll',
+  'Metamask_ApprovalForAll',
   /// view functions
   'getPrice',
   'latestPriceOfPods',
@@ -99,6 +102,8 @@ export const includesInAbi = [
   'userETHReward',
   'getPoolInfo',
   'getBonusForIrrigate',
+  'balanceOf',
+  'isApprovedForAll',
   // events (exclude erc20 and erc1155 events)
   //  auction
   'AuctionCreated',

@@ -12,5 +12,7 @@
     "claim": "90805",
     "deposit": "166530",
     "irrigate": "593091",
-    "withdraw": "83122"
+    "withdraw": "83122",
+    "setApprovalForAll": "51292",
+    "Metamask_ApprovalForAll": "51292"
 }
