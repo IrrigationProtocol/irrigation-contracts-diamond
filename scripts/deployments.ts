@@ -542,6 +542,13 @@ export const deployments: { [key: string]: INetworkDeployInfo } = {
           '0xdd5e83b8'
         ],
         verified: true
+      },
+      ERC1155ForMetamask: {
+        address: '0xA722ed96bD26143831609f58BC5e4b578189Eda0',
+        tx_hash: '0x1469db5fe67baec807206986ab2d8303ac421789af55adbd87c523ba910994d3',
+        version: 0.3,
+        funcSelectors: [ '0x2ec86d41' ],
+        verified: true
       }
     },
     ExternalLibraries: { UniswapV3Twap: '0xf255AB88e6b4C825D465DA5eBB13c6A27e89367C' }
