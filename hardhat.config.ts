@@ -102,8 +102,11 @@ task('update-rewards', 'Update monthly rewards on Water Tower', async (taskArgs:
   );
   const curTimestamp = (await hre.ethers.provider.getBlock('latest')).timestamp;
   let date = new Date(curTimestamp * 1000);
-  date.setMonth(date.getMonth() + 1);
-  date.setDate(0);
+  date.setUTCMonth(date.getUTCMonth() + (date.getDate()<15? 1: 2));
+  date.setUTCDate(0);
+  date.setUTCHours(23);
+  date.setUTCMinutes(59);
+  date.setUTCSeconds(59);
   await waterTowerContract.setPool(Math.floor(date.getTime() / 1000), toWei(taskArgs?.monthly));
   console.log('totalRewards in WaterTower:', fromWei(await waterTowerContract.getTotalRewards()));
   const lastPool = await waterTowerContract.getPoolInfo(

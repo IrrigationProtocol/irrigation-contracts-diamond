@@ -89,6 +89,8 @@ export const includesInAbi = [
   //  tranche erc1155
   'setApprovalForAll',
   'Metamask_ApprovalForAll',
+  'safeTransferFrom',
+  'safeBatchTransferFrom',
   /// view functions
   'getPrice',
   'latestPriceOfPods',
@@ -104,6 +106,7 @@ export const includesInAbi = [
   'getBonusForIrrigate',
   'balanceOf',
   'isApprovedForAll',
+  'balanceOfBatch',
   // events (exclude erc20 and erc1155 events)
   //  auction
   'AuctionCreated',
