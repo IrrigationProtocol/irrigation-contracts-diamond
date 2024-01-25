@@ -63,6 +63,7 @@ contract AuctionUpgradeable is
     error NoBidder();
     error SmallBidAmount();
     error InvalidBidToken();
+    error InsufficientEther();
 
     event AuctionCreated(
         AuctionSetting auctionSetting,
@@ -247,7 +248,7 @@ contract AuctionUpgradeable is
         uint256 auctionId,
         uint128 purchaseAmount,
         uint16 buyTokenId
-    ) external nonReentrant whenNotPaused {
+    ) external payable nonReentrant whenNotPaused {
         AuctionStorage.Layout storage auctionStorage = AuctionStorage.layout();
         AuctionData memory auction = auctionStorage.auctions[auctionId];
         // Check auction.seller if address(0) auction hasn't been initialized/created and then check the auction type.
@@ -288,12 +289,23 @@ contract AuctionUpgradeable is
         );
         uint256 fee = (payAmount * auctionStorage.fee.successFees[auction.lockedLevel]) /
             FEE_DENOMINATOR;
-        IERC20Upgradeable(_purchaseToken).safeTransferFrom(
-            msg.sender,
-            auction.seller,
-            payAmount - fee
-        );
-        IERC20Upgradeable(_purchaseToken).safeTransferFrom(msg.sender, address(this), fee);
+        if (_purchaseToken == Constants.ETHER) {
+            if (msg.value < payAmount) revert InsufficientEther();
+            bool success1;
+            bool success2;
+            if (msg.value > payAmount) {
+                (success1, ) = payable(msg.sender).call{value: msg.value - payAmount}("");
+            }
+            (success2, ) = payable(auction.seller).call{value: payAmount - fee}("");
+            if (!success1 || !success2) revert InsufficientEther();
+        } else {
+            IERC20Upgradeable(_purchaseToken).safeTransferFrom(
+                msg.sender,
+                auction.seller,
+                payAmount - fee
+            );
+            IERC20Upgradeable(_purchaseToken).safeTransferFrom(msg.sender, address(this), fee);
+        }
         auctionStorage.reserveFees[_purchaseToken] += fee;
         emit AuctionBuy(msg.sender, payAmount, purchaseAmount, _purchaseToken, auctionId);
     }
@@ -304,7 +316,7 @@ contract AuctionUpgradeable is
         uint16 bidTokenId,
         uint128 bidPrice,
         uint128 maxBidPrice
-    ) external nonReentrant whenNotPaused returns (uint256) {
+    ) external payable nonReentrant whenNotPaused returns (uint256) {
         AuctionStorage.Layout storage auctionStorage = AuctionStorage.layout();
         AuctionData memory auction = auctionStorage.auctions[auctionId];
         if (auction.seller == address(0) || auction.s.auctionType == AuctionType.FixedPrice)
@@ -334,7 +346,18 @@ contract AuctionUpgradeable is
                 ? 6
                 : IERC20MetadataUpgradeable(auction.s.sellToken).decimals()
         );
-        IERC20Upgradeable(_purchaseToken).safeTransferFrom(msg.sender, address(this), payAmount);
+        if (_purchaseToken == Constants.ETHER) {
+            if (msg.value < payAmount) revert InsufficientEther();
+            if (msg.value > payAmount) {
+                payable(msg.sender).transfer(msg.value - payAmount);
+            }
+        } else {
+            IERC20Upgradeable(_purchaseToken).safeTransferFrom(
+                msg.sender,
+                address(this),
+                payAmount
+            );
+        }
         Bid memory bid = Bid({
             bidder: msg.sender,
             bidAmount: bidAmount,
@@ -367,10 +390,16 @@ contract AuctionUpgradeable is
                 }
                 /// cancel not eligible bids
                 if (cancelBid.bCleared) revert NoCancelBid();
-                IERC20Upgradeable(bidTokens[cancelBid.bidTokenId]).safeTransfer(
-                    cancelBid.bidder,
-                    cancelBid.paidAmount
-                );
+                if (bidTokens[cancelBid.bidTokenId] == Constants.ETHER) {
+                    (bool success, ) = payable(cancelBid.bidder).call{value: cancelBid.paidAmount}(
+                        ""
+                    );
+                    if (!success) revert InsufficientEther();
+                } else
+                    IERC20Upgradeable(bidTokens[cancelBid.bidTokenId]).safeTransfer(
+                        cancelBid.bidder,
+                        cancelBid.paidAmount
+                    );
                 AuctionStorage.layout().bids[_auctionId][_cancelBidId].bCleared = true;
                 if (gasRemaining - gasleft() > BID_GAS_LIMIT) break;
             }
@@ -424,9 +453,9 @@ contract AuctionUpgradeable is
         if (isClaimed) revert ClaimedBid();
         auctionStorage.bids[auctionId][bidId].bCleared = true;
         if (auction.status != AuctionStatus.Closed) revert NoClosedAuction();
-        IERC20Upgradeable _purchaseToken = IERC20Upgradeable(
-            auctionStorage.bidTokenGroups[auction.s.bidTokenGroupId].bidTokens[bid.bidTokenId]
-        );
+        address _purchaseToken = auctionStorage.bidTokenGroups[auction.s.bidTokenGroupId].bidTokens[
+            bid.bidTokenId
+        ];
         if (isWinner) {
             auctionStorage.auctions[auctionId].s.reserve = auction.s.reserve - uint128(claimAmount);
             _settleBid(
@@ -437,7 +466,12 @@ contract AuctionUpgradeable is
                 uint128(claimAmount)
             );
         } else {
-            _purchaseToken.safeTransfer(bid.bidder, bid.paidAmount);
+            if (_purchaseToken == Constants.ETHER) {
+                (bool success, ) = payable(bid.bidder).call{value: bid.paidAmount}("");
+                if (!success) revert InsufficientEther();
+            } else {
+                IERC20Upgradeable(_purchaseToken).safeTransfer(bid.bidder, bid.paidAmount);
+            }
         }
         emit ClaimBid(auctionId, bidId, isWinner, claimAmount);
     }
@@ -462,7 +496,7 @@ contract AuctionUpgradeable is
                 (uint128 settledAmount, uint128 payoutAmount) = _settleBid(
                     auction.s.sellToken,
                     auction.s.trancheIndex,
-                    IERC20Upgradeable(bidTokens[bid.bidTokenId]),
+                    bidTokens[bid.bidTokenId],
                     bid,
                     availableAmount
                 );
@@ -498,7 +532,10 @@ contract AuctionUpgradeable is
             if (payoutAmount > 0) {
                 address _purchaseToken = bidTokens[i];
                 uint256 realPayAmount = (payoutAmount * realPayPecentage) / FEE_DENOMINATOR;
-                IERC20Upgradeable(bidTokens[i]).safeTransfer(auction.seller, realPayAmount);
+                if (bidTokens[i] == Constants.ETHER) {
+                    (bool success, ) = payable(auction.seller).call{value: realPayAmount}("");
+                    if (!success) revert InsufficientEther();
+                } else IERC20Upgradeable(bidTokens[i]).safeTransfer(auction.seller, realPayAmount);
                 unchecked {
                     auctionStorage.reserveFees[_purchaseToken] += (payoutAmount - realPayAmount);
                 }
@@ -544,7 +581,7 @@ contract AuctionUpgradeable is
     function _settleBid(
         address sellToken,
         uint256 trancheIndex,
-        IERC20Upgradeable _purchaseToken,
+        address _purchaseToken,
         Bid memory bid,
         uint128 availableAmount
     ) internal returns (uint128 settledAmount, uint128 payoutAmount) {
@@ -559,7 +596,12 @@ contract AuctionUpgradeable is
             repayAmount = (repayAmount * bid.paidAmount) / bid.bidAmount;
             payoutAmount -= repayAmount;
             settledAmount = availableAmount;
-            _purchaseToken.safeTransfer(bid.bidder, repayAmount);
+            if (_purchaseToken == Constants.ETHER) {
+                (bool success, ) = payable(bid.bidder).call{value: repayAmount}("");
+                if (!success) revert InsufficientEther();
+            } else {
+                IERC20Upgradeable(_purchaseToken).safeTransfer(bid.bidder, repayAmount);
+            }
         }
         if (trancheIndex == 0) {
             IERC20Upgradeable(sellToken).safeTransfer(bid.bidder, settledAmount);
@@ -737,7 +779,7 @@ contract AuctionUpgradeable is
                 // find locked min level
                 for (uint256 i = lockedLevelForAuction - 1; i > 0; ) {
                     if (lockedInfo.lockedCounts[i] > 0) {
-                       lockedInfo.lockedAmount = fee.limits[i];
+                        lockedInfo.lockedAmount = fee.limits[i];
                         return successFee;
                     }
                     unchecked {

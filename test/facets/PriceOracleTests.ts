@@ -39,9 +39,16 @@ export function suite(networkDeployedInfo: INetworkDeployInfo) {
       expect(fromWei(spotPrice)).to.be.gt(0.001);
     });
 
-    it('Test WATER Price based on off-chain', async () => {
+    it('Test WATER Price on chain', async () => {
       const waterPrice = await priceOracle.getPrice(priceOracle.address);
-      const currentWaterPrice = Number(process.env.FORK_BLOCK_NUMBER) <= 18063315? 5: 20;
+      const currentWaterPrice =
+        Number(process.env.FORK_BLOCK_NUMBER) <= 18063315
+          ? 5
+          : Number(process.env.FORK_BLOCK_NUMBER) <= 18581329
+          ? 20
+          : Number(process.env.FORK_BLOCK_NUMBER) <= 18987487
+          ? 15
+          : 10;
       expect(fromWei(waterPrice)).to.be.eq(currentWaterPrice);
       expect(fromWei(await priceOracle.getWaterPrice())).to.be.eq(currentWaterPrice);
     });
